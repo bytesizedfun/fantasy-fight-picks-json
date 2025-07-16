@@ -39,6 +39,17 @@ app.post("/api/submit", (req, res) => {
   res.json({ success: true });
 });
 
+// Check if user already submitted
+app.get("/api/picks/:username", (req, res) => {
+  const data = JSON.parse(fs.readFileSync(picksPath));
+  const userPicks = data[req.params.username];
+  if (userPicks) {
+    res.json({ submitted: true, picks: userPicks });
+  } else {
+    res.json({ submitted: false });
+  }
+});
+
 // Load leaderboard
 app.get("/api/leaderboard", (req, res) => {
   const data = JSON.parse(fs.readFileSync(picksPath));
