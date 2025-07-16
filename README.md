@@ -1,14 +1,14 @@
-# UFC 318 Fantasy Picks
+# Fantasy Fight Picks
 
-**Overview**  
-Pick winners and win method for every fight, save to Google Sheets, and see real-time leaderboard.
+A UFC fantasy picks app that lets users choose winners and methods for upcoming fights. Picks are locked after submission. Scoring is based on actual results, with a live leaderboard.
 
-**Setup**  
-1. Deploy `code.gs` as **Web App** (execute as Me, access Anyone). Copy URL into `server.js`.  
-2. Create a Google Sheet named `fight_picks` with tabs `fight_picks` and `fight_results`. Add headers.  
-3. Fill in `fight_results`.  
+## Features
 
-**Local Test**  
-```bash
-npm install
-npm start
+- Username lock-in
+- Picks locked after submission
+- Scoring: 1 point for correct winner, 1 for correct method
+- Google Sheets backend (no database needed)
+- Render.com deployable
+
+## Folder Structure
+
