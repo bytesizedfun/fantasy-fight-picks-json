@@ -1,22 +1,22 @@
-let username = localStorage.getItem("username");
 const welcome = document.getElementById("welcome");
 const fightList = document.getElementById("fightList");
 const submitBtn = document.getElementById("submitBtn");
 
+let username = localStorage.getItem("username");
+
 if (username) {
-  document.getElementById("usernamePrompt").style.display = "none";
-  welcome.innerText = `Welcome, ${username}!`;
-  welcome.style.display = "block";
-  loadFights();
-  loadLeaderboard();
-  loadMyPicks();
+  finalizeLogin(username);
 }
 
 function lockUsername() {
   const input = document.getElementById("usernameInput").value.trim();
   if (!input) return alert("Please enter your name.");
-  username = input;
-  localStorage.setItem("username", username);
+  localStorage.setItem("username", input);
+  finalizeLogin(input);
+}
+
+function finalizeLogin(name) {
+  username = name;
   document.getElementById("usernamePrompt").style.display = "none";
   welcome.innerText = `Welcome, ${username}!`;
   welcome.style.display = "block";
@@ -97,24 +97,4 @@ function loadMyPicks() {
     .then(data => {
       if (!data.submitted) return;
       const myPicksDiv = document.getElementById("myPicks");
-      myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-      Object.entries(data.picks).forEach(([fight, pick]) => {
-        myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${pick.winner} by ${pick.method}</p>`;
-      });
-    });
-}
-
-function loadLeaderboard() {
-  fetch("/api/leaderboard")
-    .then(res => res.json())
-    .then(data => {
-      const board = document.getElementById("leaderboard");
-      board.innerHTML = "";
-      Object.entries(data.scores).forEach(([user, score]) => {
-        board.innerHTML += `<li>${user}: ${score} pts</li>`;
-      });
-      if (data.champ) {
-        board.innerHTML += `<li><strong>🏆 Champion of the Week: ${data.champ}</strong></li>`;
-      }
-    });
-}
+      myPicksDiv.innerHTML = "<h3>Your
