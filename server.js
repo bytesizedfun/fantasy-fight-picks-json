@@ -9,23 +9,22 @@ app.use(express.json());
 app.use(express.static("public"));
 
 const picksPath = path.join(__dirname, "data", "picks.json");
+const resultsPath = path.join(__dirname, "data", "results.json");
 
 const fights = [
   {
     fighter1: "Max Holloway",
     fighter2: "Dustin Poirier",
-    is_underdog: true,
     method_options: ["KO/TKO", "Submission", "Decision"]
   },
   {
     fighter1: "Erin Blanchfield",
     fighter2: "Maycee Barber",
-    is_underdog: false,
     method_options: ["KO/TKO", "Submission", "Decision"]
   }
 ];
 
-// Serve list of fights
+// Serve fights list
 app.get("/api/fights", (req, res) => {
   res.json(fights);
 });
@@ -34,33 +33,45 @@ app.get("/api/fights", (req, res) => {
 app.post("/api/submit", (req, res) => {
   const { username, picks } = req.body;
   const data = JSON.parse(fs.readFileSync(picksPath));
+  
+  // Prevent duplicate submission
+  if (data[username]) {
+    return res.status(400).json({ error: "You have already submitted picks." });
+  }
+
   data[username] = picks;
   fs.writeFileSync(picksPath, JSON.stringify(data, null, 2));
   res.json({ success: true });
 });
 
-// Check if user already submitted
-app.get("/api/picks/:username", (req, res) => {
-  const data = JSON.parse(fs.readFileSync(picksPath));
-  const userPicks = data[req.params.username];
-  if (userPicks) {
-    res.json({ submitted: true, picks: userPicks });
-  } else {
-    res.json({ submitted: false });
-  }
-});
-
-// Load leaderboard
+// Load leaderboard with scoring
 app.get("/api/leaderboard", (req, res) => {
-  const data = JSON.parse(fs.readFileSync(picksPath));
+  const picksData = JSON.parse(fs.readFileSync(picksPath));
+  const resultsData = JSON.parse(fs.readFileSync(resultsPath));
   const scores = {};
-  Object.keys(data).forEach((user) => {
-    scores[user] = Object.keys(data[user]).length;
+
+  Object.entries(picksData).forEach(([user, userPicks]) => {
+    let score = 0;
+
+    Object.entries(userPicks).forEach(([fight, pick]) => {
+      const result = resultsData[fight];
+      if (!result) return;
+
+      if (pick.winner === result.winner) {
+        score += 1;
+        if (pick.method === result.method) {
+          score += 1;
+        }
+      }
+    });
+
+    scores[user] = score;
   });
+
   res.json(scores);
 });
 
-// Start server
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
