@@ -1,90 +1,129 @@
 let username = localStorage.getItem("username");
 
 function lockUsername() {
-  const val = document.getElementById("usernameInput").value.trim();
-  if(!val) return alert("Enter your name");
-  username = val;
+  const input = document.getElementById("usernameInput");
+  if (!input.value.trim()) return alert("Please enter your name.");
+  username = input.value.trim();
   localStorage.setItem("username", username);
-  showWelcome();
-  checkStatus();
-}
-
-function showWelcome() {
   document.getElementById("usernamePrompt").style.display = "none";
-  const w = document.getElementById("welcome");
-  w.textContent = `Welcome, ${username}!`;
-  w.style.display = "block";
+  document.getElementById("welcome").textContent = `Welcome, ${username}!`;
+  document.getElementById("welcome").style.display = "block";
+  checkSubmissionStatus();
 }
 
-window.onload = () => {
-  if(username) showWelcome(), checkStatus();
-};
+if (username) {
+  document.getElementById("usernamePrompt").style.display = "none";
+  document.getElementById("welcome").textContent = `Welcome, ${username}!`;
+  document.getElementById("welcome").style.display = "block";
+  checkSubmissionStatus();
+}
 
-function checkStatus() {
+function checkSubmissionStatus() {
   fetch("/api/picks", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({username})
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username })
   })
-  .then(r=>r.json())
-  .then(data => {
-    if(data.submitted) handleSubmitted(data.picks);
-    else loadFights();
-    loadLeaderboard();
-  });
+    .then(res => res.json())
+    .then(data => {
+      if (data.submitted) {
+        showMyPicks(data.picks);
+        document.getElementById("fightList").style.display = "none";
+        document.getElementById("submitBtn").style.display = "none";
+      } else {
+        loadFights();
+        document.getElementById("fightList").style.display = "block";
+        document.getElementById("submitBtn").style.display = "inline-block";
+      }
+      loadLeaderboard();
+    });
 }
 
 function loadFights() {
-  fetch("/api/fights").then(r=>r.json()).then(fights=>{
-    const c = document.getElementById("fightList");
-    c.innerHTML = "";
-    fights.forEach((f,i)=> c.innerHTML += `
-      <div class="fight">
-        <h3>${f.fighter1} vs ${f.fighter2}</h3>
-        <select id="w${i}">
-          <option>${f.fighter1}</option><option>${f.fighter2}</option>
-        </select>
-        <select id="m${i}">${f.method_options.map(m=>`<option>${m}</option>`).join("")}</select>
-      </div>`);
-    c.style.display="block";
-    document.getElementById("submitBtn").style.display="inline-block";
-  });
+  fetch("/api/fights")
+    .then(res => res.json())
+    .then(fights => {
+      const container = document.getElementById("fightList");
+      container.innerHTML = "";
+      fights.forEach((fight, index) => {
+        const div = document.createElement("div");
+        div.classList.add("fight");
+        div.innerHTML = `
+          <h3>${fight.fighter1} vs ${fight.fighter2}</h3>
+          <label>Pick a Winner:
+            <select id="winner-${index}">
+              <option value="${fight.fighter1}">${fight.fighter1}</option>
+              <option value="${fight.fighter2}">${fight.fighter2}</option>
+            </select>
+          </label>
+          <label>Method:
+            <select id="method-${index}">
+              ${fight.method_options.map(m => `<option value="${m}">${m}</option>`).join("")}
+            </select>
+          </label>
+          <hr>`;
+        container.appendChild(div);
+      });
+    });
 }
 
 function submitPicks() {
-  fetch("/api/fights").then(r=>r.json()).then(fights => {
-    const picks = {};
-    fights.forEach((f,i)=>{
-      picks[`${f.fighter1} vs ${f.fighter2}`] = {
-        winner: document.getElementById(`w${i}`).value,
-        method: document.getElementById(`m${i}`).value
-      };
+  fetch("/api/fights")
+    .then(res => res.json())
+    .then(fights => {
+      const picks = {};
+      fights.forEach((fight, index) => {
+        const winner = document.getElementById(`winner-${index}`).value;
+        const method = document.getElementById(`method-${index}`).value;
+        picks[`${fight.fighter1} vs ${fight.fighter2}`] = { winner, method };
+      });
+
+      fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, picks })
+      })
+        .then(res => res.json())
+        .then(() => {
+          alert("Picks submitted!");
+          showMyPicks(picks);
+          document.getElementById("fightList").style.display = "none";
+          document.getElementById("submitBtn").style.display = "none";
+          loadLeaderboard();
+        });
     });
-    fetch("/api/submit", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({username, picks})
-    })
-    .then(r=>r.json()).then(j=>{
-      if(j.success) handleSubmitted(picks);
-      else alert(j.error);
-    });
-  });
 }
 
-function handleSubmitted(picks) {
-  document.getElementById("fightList").style.display="none";
-  document.getElementById("submitBtn").style.display="none";
-  const c = document.getElementById("myPicks");
-  c.innerHTML = "<h3>Your Picks</h3>" + Object.entries(picks).map(([f,p])=>`<div>${f}: ${p.winner} by ${p.method}</div>`).join("");
+function showMyPicks(picks) {
+  const container = document.getElementById("myPicks");
+  container.innerHTML = "<h2>Your Picks</h2>";
+  Object.entries(picks).forEach(([fight, pick]) => {
+    const div = document.createElement("div");
+    div.innerHTML = `<strong>${fight}</strong>: ${pick.winner} by ${pick.method}`;
+    container.appendChild(div);
+  });
 }
 
 function loadLeaderboard() {
   fetch("/api/leaderboard")
-  .then(r=>r.json())
-  .then(({scores, champ})=>{
-    const lb = document.getElementById("leaderboard"), c=document.getElementById("champ");
-    lb.innerHTML=""; c.textContent = champ ? `🏆 Top: ${champ}` : "";
-    Object.entries(scores).sort((a,b)=>b[1]-a[1]).forEach(([u,s])=>{
-      lb.innerHTML += `<li>${u}: ${s}</li>`;
+    .then(res => res.json())
+    .then(data => {
+      const board = document.getElementById("leaderboard");
+      board.innerHTML = "";
+      const { scores, champ } = data;
+
+      if (champ) {
+        const champEl = document.createElement("div");
+        champEl.innerHTML = `<strong>🏆 Fight Card Champ: ${champ}</strong>`;
+        board.appendChild(champEl);
+      }
+
+      Object.entries(scores)
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([name, score]) => {
+          const li = document.createElement("li");
+          li.textContent = `${name}: ${score} pts`;
+          board.appendChild(li);
+        });
     });
-  });
 }
