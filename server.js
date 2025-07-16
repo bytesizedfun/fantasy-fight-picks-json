@@ -1,3 +1,4 @@
+// server.js (Fully Fixed Version)
 const express = require("express");
 const fetch = require("node-fetch");
 const path = require("path");
@@ -52,7 +53,7 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// Load leaderboard (✅ changed to POST)
+// Leaderboard
 app.get("/api/leaderboard", async (req, res) => {
   const response = await fetch(GOOGLE_SCRIPT_URL, {
     method: "POST",
@@ -64,9 +65,9 @@ app.get("/api/leaderboard", async (req, res) => {
   res.json(data);
 });
 
-// Load user picks (✅ changed to POST)
-app.get("/api/picks/:username", async (req, res) => {
-  const username = req.params.username;
+// Get user picks via POST (fixes frontend bug)
+app.post("/api/picks", async (req, res) => {
+  const { username } = req.body;
 
   const response = await fetch(GOOGLE_SCRIPT_URL, {
     method: "POST",
