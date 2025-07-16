@@ -13,22 +13,33 @@ function lockUsername() {
   document.getElementById("usernamePrompt").style.display = "none";
   document.getElementById("welcome").textContent = `Welcome, ${username}!`;
   document.getElementById("welcome").style.display = "block";
-  document.getElementById("fightList").style.display = "block";
-  document.getElementById("submitBtn").style.display = "inline-block";
 
-  loadFights();
-  loadLeaderboard();
+  checkSubmissionStatus();
 }
 
 if (username) {
   document.getElementById("usernamePrompt").style.display = "none";
   document.getElementById("welcome").textContent = `Welcome, ${username}!`;
   document.getElementById("welcome").style.display = "block";
-  document.getElementById("fightList").style.display = "block";
-  document.getElementById("submitBtn").style.display = "inline-block";
 
-  loadFights();
-  loadLeaderboard();
+  checkSubmissionStatus();
+}
+
+function checkSubmissionStatus() {
+  fetch(`/api/picks/${username}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.submitted) {
+        showMyPicks(data.picks);
+        document.getElementById("fightList").style.display = "none";
+        document.getElementById("submitBtn").style.display = "none";
+      } else {
+        loadFights();
+        document.getElementById("fightList").style.display = "block";
+        document.getElementById("submitBtn").style.display = "inline-block";
+      }
+      loadLeaderboard();
+    });
 }
 
 function loadFights() {
@@ -87,6 +98,8 @@ function submitPicks() {
         .then(() => {
           alert("Picks submitted!");
           showMyPicks(picks);
+          document.getElementById("fightList").style.display = "none";
+          document.getElementById("submitBtn").style.display = "none";
           loadLeaderboard();
         });
     });
