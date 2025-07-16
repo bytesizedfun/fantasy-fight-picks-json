@@ -5,6 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Fantasy Fight Picks</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      color: #e10600;
+    }
+    input, select, button {
+      margin: 5px 0;
+      padding: 5px;
+      font-size: 1em;
+    }
+    .fight {
+      margin-bottom: 15px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 10px;
+    }
+    #submitBtn {
+      background-color: #e10600;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+    #submitBtn:hover {
+      background-color: #ff2e2e;
+    }
+    ul#leaderboard {
+      list-style: none;
+      padding: 0;
+    }
+    ul#leaderboard li {
+      padding: 3px 0;
+    }
+    #champ {
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
   <h1>Fantasy Fight Picks</h1>
@@ -29,6 +71,7 @@
 
     <!-- Leaderboard -->
     <h2>Leaderboard</h2>
+    <div id="champ"></div>
     <ul id="leaderboard"></ul>
   </div>
 
