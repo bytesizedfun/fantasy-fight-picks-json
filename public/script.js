@@ -4,21 +4,26 @@ const submitBtn = document.getElementById("submitBtn");
 
 let username = localStorage.getItem("username");
 
-if (username) {
-  finalizeLogin(username);
-}
+document.addEventListener("DOMContentLoaded", () => {
+  if (username) {
+    finalizeLogin(username);
+  }
+});
 
 function lockUsername() {
   const input = document.getElementById("usernameInput").value.trim();
-  if (!input) return alert("Please enter your name.");
-  localStorage.setItem("username", input);
-  finalizeLogin(input);
+  if (!input) {
+    alert("Please enter your name.");
+    return;
+  }
+  username = input;
+  localStorage.setItem("username", username);
+  finalizeLogin(username);
 }
 
 function finalizeLogin(name) {
-  username = name;
   document.getElementById("usernamePrompt").style.display = "none";
-  welcome.innerText = `Welcome, ${username}!`;
+  welcome.innerText = `Welcome, ${name}!`;
   welcome.style.display = "block";
   loadFights();
   loadLeaderboard();
@@ -65,36 +70,4 @@ function submitPicks() {
     const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
     const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
     if (winner && method) {
-      picks[fightName] = { winner, method };
-    }
-  });
-
-  fetch("/api/submit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, picks })
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert("Picks submitted!");
-        loadMyPicks();
-        fightList.innerHTML = "";
-        submitBtn.style.display = "none";
-      } else {
-        alert(data.error || "Something went wrong.");
-      }
-    });
-}
-
-function loadMyPicks() {
-  fetch("/api/picks", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username })
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (!data.submitted) return;
-      const myPicksDiv = document.getElementById("myPicks");
-      myPicksDiv.innerHTML = "<h3>Your
+      pi
