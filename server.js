@@ -15,13 +15,13 @@ const fights = [
     fighter1: "Max Holloway",
     fighter2: "Dustin Poirier",
     is_underdog: true,
-    method_options: ["KO/TKO", "Submission", "Decision"],
+    method_options: ["KO/TKO", "Submission", "Decision"]
   },
   {
     fighter1: "Erin Blanchfield",
     fighter2: "Maycee Barber",
     is_underdog: false,
-    method_options: ["KO/TKO", "Submission", "Decision"],
+    method_options: ["KO/TKO", "Submission", "Decision"]
   }
 ];
 
@@ -44,4 +44,12 @@ app.get("/api/leaderboard", (req, res) => {
   const data = JSON.parse(fs.readFileSync(picksPath));
   const scores = {};
   Object.keys(data).forEach((user) => {
-    scores[user] = Object.keys(data[user]).le
+    scores[user] = Object.keys(data[user]).length;
+  });
+  res.json(scores);
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
