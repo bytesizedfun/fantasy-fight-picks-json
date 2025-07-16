@@ -1,4 +1,3 @@
-// server.js (Fully Fixed Version)
 const express = require("express");
 const fetch = require("node-fetch");
 const path = require("path");
@@ -9,7 +8,10 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
+// ✅ Your live Apps Script Web App URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzs6Jg54csLTWWqGWeN76lPygWFxUvH8jFdst_41VoIulte5EksLWAgUyr0Ufm0kYyE/exec";
+
+// ⏰ Lockout before card starts
 const lockoutTime = new Date("2025-07-19T18:00:00");
 
 const fights = [
@@ -25,12 +27,12 @@ const fights = [
   }
 ];
 
-// Serve fight card
+// ✅ Send fight card to frontend
 app.get("/api/fights", (req, res) => {
   res.json(fights);
 });
 
-// Submit picks
+// ✅ Submit picks to Google Sheets backend
 app.post("/api/submit", async (req, res) => {
   const now = new Date();
   if (now >= lockoutTime) {
@@ -53,7 +55,7 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// Leaderboard
+// ✅ Get leaderboard from backend
 app.get("/api/leaderboard", async (req, res) => {
   const response = await fetch(GOOGLE_SCRIPT_URL, {
     method: "POST",
@@ -65,7 +67,7 @@ app.get("/api/leaderboard", async (req, res) => {
   res.json(data);
 });
 
-// Get user picks via POST (fixes frontend bug)
+// ✅ Get user picks (via POST)
 app.post("/api/picks", async (req, res) => {
   const { username } = req.body;
 
@@ -79,6 +81,23 @@ app.post("/api/picks", async (req, res) => {
   res.json(data);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// ✅ Optional test route to check backend connectivity
+app.get("/test", async (req, res) => {
+  try {
+    const testRes = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getLeaderboard" })
+    });
+
+    const json = await testRes.json();
+    res.json({ success: true, connected: true, sampleData: json });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
+
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+});
+  
