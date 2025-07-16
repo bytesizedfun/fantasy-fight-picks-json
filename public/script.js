@@ -123,12 +123,20 @@ function loadLeaderboard() {
       const board = document.getElementById("leaderboard");
       board.innerHTML = "";
 
-      Object.entries(data)
+      const { scores, champ } = data;
+
+      Object.entries(scores)
         .sort((a, b) => b[1] - a[1])
         .forEach(([name, score]) => {
           const li = document.createElement("li");
           li.textContent = `${name}: ${score} points`;
           board.appendChild(li);
         });
+
+      if (champ) {
+        const champEl = document.createElement("div");
+        champEl.innerHTML = `<strong>🏆 Fight Card Champ: ${champ}</strong>`;
+        board.prepend(champEl);
+      }
     });
 }
