@@ -1,15 +1,8 @@
-body {
-  background-color: #111;
-  color: #eee;
-  font-family: Arial, sans-serif;
-  padding: 20px;
-}
-
-input, select, button {
-  margin: 5px;
-  padding: 5px;
-}
-
-h1, h2 {
-  color: #c00;
-}
+body { background:#121212; color:#eee; font-family:sans-serif; padding:20px; }
+h1 { color:#e10600; }
+input,select,button { margin:5px 0; padding:8px; font-size:1em; }
+button { cursor:pointer; background:#e10600; color:#fff; border:none; }
+button:hover { background:#ff2e2e; }
+.fight { margin:10px 0; padding:10px; border:1px solid #444; }
+ul { list-style:none; padding:0; }
+li { margin:3px 0; }
