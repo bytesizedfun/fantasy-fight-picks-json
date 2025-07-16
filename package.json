@@ -1,7 +1,7 @@
 {
   "name": "fantasy-fight-picks",
   "version": "1.0.0",
-  "description": "UFC Fantasy Picks Web App with Google Sheets Backend",
+  "description": "UFC 318 Fantasy Picks with Google Sheets backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
