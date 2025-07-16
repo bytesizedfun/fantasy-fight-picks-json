@@ -26,7 +26,11 @@ if (username) {
 }
 
 function checkSubmissionStatus() {
-  fetch(`/api/picks/${username}`)
+  fetch("/api/picks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username })
+  })
     .then(res => res.json())
     .then(data => {
       if (data.submitted) {
