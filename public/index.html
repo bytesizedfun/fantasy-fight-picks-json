@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fantasy Fight Picks</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Fantasy Fight Picks</h1>
+  <div id="login">
+    <input id="username" placeholder="Enter your name" />
+    <button onclick="lockName()">Lock Name</button>
+  </div>
+
+  <div id="main" style="display:none;">
+    <h2 id="welcome"></h2>
+    <div id="fights"></div>
+    <button onclick="submitPicks()">Submit Picks</button>
+    <h3>Your Picks</h3>
+    <pre id="yourPicks"></pre>
+    <h3>Leaderboard</h3>
+    <ul id="leaderboard"></ul>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

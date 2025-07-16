@@ -1,0 +1,21 @@
+body {
+  background: #121212;
+  color: white;
+  font-family: sans-serif;
+  padding: 20px;
+}
+
+input, button {
+  padding: 8px;
+  margin: 5px;
+}
+
+button {
+  background: crimson;
+  color: white;
+  border: none;
+}
+
+h1, h2, h3 {
+  color: red;
+}
