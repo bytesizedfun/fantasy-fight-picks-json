@@ -8,7 +8,8 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzs6Jg54csLTWWqGWeN76lPygWFxUvH8jFdst_41VoIulte5EksLWAgUyr0Ufm0kYyE/exec";
+https://script.google.com/macros/s/AKfycbzFc7Ikhdum2ILaZB0Y7K1ohugVgS_MpIlO2oLD7Paq2uhR2-gI1p9mEJzy8kdyZrlaKQ/exec
+
 const lockoutTime = new Date("2025-07-19T18:00:00");
 
 const fights = [
