@@ -8,13 +8,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
-// 🔗 Your deployed Apps Script URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzs6Jg54csLTWWqGWeN76lPygWFxUvH8jFdst_41VoIulte5EksLWAgUyr0Ufm0kYyE/exec";
-
-// 🔒 Lockout time
 const lockoutTime = new Date("2025-07-19T18:00:00");
 
-// 🎯 Current fight list
 const fights = [
   {
     fighter1: "Max Holloway",
@@ -28,12 +24,12 @@ const fights = [
   }
 ];
 
-// 📡 Serve fights
+// Serve fight card
 app.get("/api/fights", (req, res) => {
   res.json(fights);
 });
 
-// 📝 Submit picks (with lockout + one-time check)
+// Submit picks
 app.post("/api/submit", async (req, res) => {
   const now = new Date();
   if (now >= lockoutTime) {
@@ -56,23 +52,32 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// 📊 Leaderboard with weekly champ
+// Load leaderboard (✅ changed to POST)
 app.get("/api/leaderboard", async (req, res) => {
-  const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`);
+  const response = await fetch(GOOGLE_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "getLeaderboard" })
+  });
+
   const data = await response.json();
   res.json(data);
 });
 
-// 🔍 Check if user has submitted picks
+// Load user picks (✅ changed to POST)
 app.get("/api/picks/:username", async (req, res) => {
   const username = req.params.username;
 
-  const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUserPicks&username=${encodeURIComponent(username)}`);
+  const response = await fetch(GOOGLE_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "getUserPicks", username })
+  });
+
   const data = await response.json();
   res.json(data);
 });
 
-// 🚀 Launch server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
