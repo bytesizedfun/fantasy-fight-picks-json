@@ -1,3 +1,4 @@
+// script.js (Cleaned + Fully Functional)
 let username = localStorage.getItem("username");
 
 function lockUsername() {
@@ -48,8 +49,8 @@ function checkSubmissionStatus() {
 
 function loadFights() {
   fetch("/api/fights")
-    .then((res) => res.json())
-    .then((fights) => {
+    .then(res => res.json())
+    .then(fights => {
       const container = document.getElementById("fightList");
       container.innerHTML = "";
 
@@ -66,9 +67,7 @@ function loadFights() {
           </label>
           <label>Method:
             <select id="method-${index}">
-              ${fight.method_options
-                .map((method) => `<option value="${method}">${method}</option>`)
-                .join("")}
+              ${fight.method_options.map(method => `<option value="${method}">${method}</option>`).join("")}
             </select>
           </label>
           <hr>
@@ -80,67 +79,22 @@ function loadFights() {
 
 function submitPicks() {
   fetch("/api/fights")
-    .then((res) => res.json())
-    .then((fights) => {
+    .then(res => res.json())
+    .then(fights => {
       const picks = {};
 
       fights.forEach((fight, index) => {
         const winner = document.getElementById(`winner-${index}`).value;
         const method = document.getElementById(`method-${index}`).value;
-        picks[`${fight.fighter1} vs ${fight.fighter2}`] = {
-          winner,
-          method,
-        };
+        picks[`${fight.fighter1} vs ${fight.fighter2}`] = { winner, method };
       });
 
       fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, picks }),
+        body: JSON.stringify({ username, picks })
       })
-        .then((res) => res.json())
-        .then(() => {
-          alert("Picks submitted!");
-          showMyPicks(picks);
-          document.getElementById("fightList").style.display = "none";
-          document.getElementById("submitBtn").style.display = "none";
-          loadLeaderboard();
-        });
-    });
-}
-
-function showMyPicks(picks) {
-  const container = document.getElementById("myPicks");
-  container.innerHTML = "<h2>Your Picks</h2>";
-
-  Object.entries(picks).forEach(([fight, pick]) => {
-    const div = document.createElement("div");
-    div.innerHTML = `<strong>${fight}</strong>: ${pick.winner} by ${pick.method}`;
-    container.appendChild(div);
-  });
-}
-
-function loadLeaderboard() {
-  fetch("/api/leaderboard")
-    .then((res) => res.json())
-    .then((data) => {
-      const board = document.getElementById("leaderboard");
-      board.innerHTML = "";
-
-      const { scores, champ } = data;
-
-      Object.entries(scores)
-        .sort((a, b) => b[1] - a[1])
-        .forEach(([name, score]) => {
-          const li = document.createElement("li");
-          li.textContent = `${name}: ${score} points`;
-          board.appendChild(li);
-        });
-
-      if (champ) {
-        const champEl = document.createElement("div");
-        champEl.innerHTML = `<strong>🏆 Fight Card Champ: ${champ}</strong>`;
-        board.prepend(champEl);
-      }
-    });
-}
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert("Picks submitted!");
