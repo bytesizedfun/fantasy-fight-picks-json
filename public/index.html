@@ -6,6 +6,106 @@
   <title>Fantasy Fight Picks</title>
   <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #111;
+      color: #fff;
+      padding: 1rem;
+    }
+
+    h1 {
+      font-family: 'Anton', sans-serif;
+      font-size: 2.2rem;
+      color: #e50914;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    h1::before {
+      content: "🥊 ";
+    }
+
+    h2 {
+      text-align: center;
+      color: #f1f1f1;
+    }
+
+    #app {
+      max-width: 500px;
+      margin: auto;
+      background-color: #1c1c1c;
+      border-radius: 10px;
+      padding: 1rem;
+      box-shadow: 0 0 10px #e50914;
+    }
+
+    label, input, select, button {
+      font-size: 1rem;
+      display: block;
+      margin: 0.5rem auto;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 5px;
+      border: none;
+    }
+
+    button {
+      background-color: #e50914;
+      color: #fff;
+      border: none;
+      padding: 0.6rem;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #ff1e2d;
+    }
+
+    .fight {
+      background: #2a2a2a;
+      padding: 1rem;
+      margin-top: 1rem;
+      border-radius: 8px;
+    }
+
+    .fight h3 {
+      margin: 0 0 0.5rem 0;
+    }
+
+    .fight label {
+      display: block;
+      margin: 0.3rem 0;
+    }
+
+    #leaderboard li {
+      margin: 0.5rem 0;
+      padding: 0.3rem;
+      background: #333;
+      border-radius: 5px;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 0.5rem;
+      }
+
+      #app {
+        padding: 0.8rem;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
 </head>
 <body>
   <h1>Fantasy Fight Picks</h1>
@@ -13,7 +113,7 @@
   <div id="app">
     <!-- Username section -->
     <div id="usernamePrompt">
-      <label>Enter your name:</label>
+      <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
       <button onclick="lockUsername()">Lock In</button>
     </div>
