@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap');
+
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Oswald', sans-serif;
   background-color: #121212;
   color: #f0f0f0;
   padding: 20px;
@@ -28,6 +30,9 @@ h1 {
   color: #f5f5f5;
   text-align: center;
   margin-bottom: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 #app {
@@ -39,7 +44,7 @@ h1 {
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
-/* Fight cards */
+/* Fight card */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
@@ -66,7 +71,6 @@ h1 {
   transform: scale(1.2);
 }
 
-/* Inputs */
 input[type="text"] {
   width: 100%;
   padding: 8px;
@@ -87,7 +91,6 @@ select {
   color: #fff;
 }
 
-/* Buttons */
 button {
   background-color: #e63946;
   color: white;
@@ -98,21 +101,23 @@ button {
   width: 100%;
   font-weight: bold;
   margin-top: 10px;
+  font-family: 'Oswald', sans-serif;
 }
 
 button:hover {
   background-color: #d62828;
 }
 
-/* 💚 Leaderboard Heading (matches welcome text) */
+/* 💛 Leaderboard Heading - Gold */
 h2 {
   font-size: 1.8rem;
-  color: #b5ffb5;
+  color: #FFD700;
   text-align: center;
   margin-top: 40px;
   letter-spacing: 1px;
-  text-shadow: 0 0 5px #1aff91, 0 0 10px #1aff91;
+  text-shadow: 0 0 6px #FFD700, 0 0 10px #e6c200;
   position: relative;
+  text-transform: uppercase;
 }
 
 h2::after {
@@ -120,7 +125,7 @@ h2::after {
   display: block;
   width: 60px;
   height: 3px;
-  background: #1aff91;
+  background: #FFD700;
   margin: 8px auto 0;
   border-radius: 2px;
 }
@@ -132,19 +137,18 @@ h2::after {
   margin-top: 20px;
   background: linear-gradient(to right, #1e1e1e, #2a2a2a);
   border-radius: 8px;
-  border: 1px solid #333;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  border: 1px solid #FFD700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
   list-style: none;
-  transition: all 0.3s ease;
 }
 
-/* Leaderboard entries */
+/* Leaderboard items */
 #leaderboard li {
   background: #1e1e1e;
   padding: 10px;
   margin: 8px 0;
   border-radius: 4px;
-  border-left: 3px solid #e63946;
+  border-left: 3px solid #FFD700;
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -155,13 +159,24 @@ h2::after {
 
 #leaderboard li:hover {
   transform: scale(1.02);
-  background-color: #242424;
+  background-color: #2a2a2a;
 }
 
-/* 👑 First place crown */
+/* 👑 Crown for 1st place (bounces + glows) */
+@keyframes crownBounce {
+  0%, 100% {
+    transform: translateY(-50%) scale(1);
+    text-shadow: 0 0 8px #FFD700, 0 0 12px #ffc400;
+  }
+  50% {
+    transform: translateY(-55%) scale(1.15);
+    text-shadow: 0 0 12px #FFD700, 0 0 18px #ffdf00;
+  }
+}
+
 #leaderboard li:first-child {
   background: #2c2c2c;
-  color: #ffd700;
+  color: #FFD700;
   font-weight: bold;
   padding-left: 2rem;
 }
@@ -171,25 +186,27 @@ h2::after {
   position: absolute;
   left: 10px;
   top: 50%;
-  transform: translateY(-50%);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  animation: crownBounce 1.8s infinite ease-in-out;
 }
 
 /* Welcome message */
 #welcome {
   font-size: 1.2rem;
-  color: #b5ffb5;
+  color: #f2f2f2;
   text-align: center;
   margin: 20px 0;
+  font-style: italic;
+  letter-spacing: 0.5px;
 }
 
-/* My picks */
+/* My Picks */
 #myPicks p {
   margin: 4px 0;
   font-size: 0.95rem;
 }
 
-/* Responsive tweaks */
+/* Responsive */
 @media (max-width: 600px) {
   h1 {
     font-size: 1.8rem;
