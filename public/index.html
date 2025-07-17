@@ -8,19 +8,16 @@
   <!-- 👊 Fist emoji favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
 
-  <!-- UFC-style Google Font -->
+  <!-- Font and CSS -->
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
-
-  <!-- Custom styles -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-  <!-- Title with pulsing fist -->
+  <!-- Header with pulsing fist -->
   <h1><span class="fist">👊</span> Fantasy Fight Picks</h1>
 
   <div id="app">
-    <!-- Username input -->
+    <!-- Username prompt -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
@@ -30,11 +27,11 @@
     <!-- Welcome message -->
     <h2 id="welcome" style="display: none;"></h2>
 
-    <!-- Fight picks -->
+    <!-- Fight picks area -->
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
-    <!-- Your submitted picks -->
+    <!-- Your picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
 
     <!-- Leaderboard -->
@@ -42,7 +39,9 @@
     <ul id="leaderboard"></ul>
   </div>
 
-  <!-- JavaScript -->
+  <!-- Optional punch sound (if added later) -->
+  <!-- <audio id="punchSound" src="punch.mp3" preload="auto"></audio> -->
+
   <script src="script.js"></script>
 </body>
 </html>
