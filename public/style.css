@@ -108,14 +108,14 @@ button:hover {
   background-color: #d62828;
 }
 
-/* 💚 Leaderboard Heading — matches old welcome green */
+/* 🥇 Leaderboard Heading — Gold Glow */
 h2 {
   font-size: 1.8rem;
-  color: #b5ffb5;
+  color: #FFD700;
   text-align: center;
   margin-top: 40px;
   letter-spacing: 1px;
-  text-shadow: 0 0 6px #66ff99, 0 0 12px #33ff77;
+  text-shadow: 0 0 6px #FFD700, 0 0 12px #ffdf00;
   position: relative;
   text-transform: uppercase;
 }
@@ -125,7 +125,7 @@ h2::after {
   display: block;
   width: 60px;
   height: 3px;
-  background: #33ff77;
+  background: #FFD700;
   margin: 8px auto 0;
   border-radius: 2px;
 }
@@ -137,18 +137,18 @@ h2::after {
   margin-top: 20px;
   background: linear-gradient(to right, #1e1e1e, #2a2a2a);
   border-radius: 8px;
-  border: 1px solid #b5ffb5;
-  box-shadow: 0 0 10px rgba(102, 255, 153, 0.3);
+  border: 1px solid #FFD700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
   list-style: none;
 }
 
 /* Leaderboard items */
 #leaderboard li {
   background: #1e1e1e;
-  padding: 10px 10px 10px 40px; /* 👈 add left padding for crown space */
+  padding: 10px 10px 10px 40px;
   margin: 8px 0;
   border-radius: 4px;
-  border-left: 3px solid #b5ffb5;
+  border-left: 3px solid #FFD700;
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -189,14 +189,15 @@ h2::after {
   animation: crownBounce 1.8s infinite ease-in-out;
 }
 
-/* 🎨 Welcome message — new light blue */
+/* 💛 Welcome message — new fist yellow */
 #welcome {
   font-size: 1.2rem;
-  color: #66ccff;
+  color: #FFD700;
   text-align: center;
   margin: 20px 0;
   font-style: italic;
   letter-spacing: 0.5px;
+  text-shadow: 0 0 6px #FFD700, 0 0 10px #ffcc00;
 }
 
 /* My Picks */
