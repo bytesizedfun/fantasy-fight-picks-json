@@ -4,35 +4,42 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fantasy Fight Picks</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Google Font (Optional: Only if you're using one) -->
+  <!-- <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet"> -->
+
+  <!-- Your Custom Styles -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <!-- Title with pulsing fist -->
   <h1><span class="fist">👊</span> Fantasy Fight Picks</h1>
 
   <div id="app">
-    <!-- Username section -->
+    <!-- Username entry -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
       <button onclick="lockUsername()">Lock In</button>
     </div>
 
-    <!-- Welcome banner -->
+    <!-- Welcome message -->
     <h2 id="welcome" style="display: none;"></h2>
 
-    <!-- Fight picks -->
+    <!-- Fight list container -->
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
-    <!-- Your submitted picks -->
+    <!-- Your confirmed picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
 
-    <!-- Leaderboard -->
+    <!-- Leaderboard section -->
     <h2>Leaderboard</h2>
     <ul id="leaderboard"></ul>
   </div>
 
+  <!-- Main JavaScript -->
   <script src="script.js"></script>
 </body>
 </html>
