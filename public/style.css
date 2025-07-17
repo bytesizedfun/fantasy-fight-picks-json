@@ -1,99 +1,70 @@
 body {
-  margin: 0;
-  font-family: 'Roboto Condensed', sans-serif;
-  background-color: #000;
+  font-family: Arial, sans-serif;
+  background-color: #121212;
   color: #f0f0f0;
-  padding: 1rem;
+  text-align: center;
+  padding: 20px;
+  margin: 0;
+}
+
+/* NEW: Center content container */
+#app {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #1a1a1a;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  text-align: left;
 }
 
 h1 {
-  font-size: 2.5rem;
-  color: #ffffff;
-  text-align: center;
-  margin-bottom: 0.5rem;
-  letter-spacing: 1px;
+  color: #e63946;
+  margin-top: 0;
 }
 
-.fist {
-  margin-right: 0.4rem;
-  display: inline-block;
-  animation: pulse 1.5s infinite ease-in-out;
-  transform-origin: center;
+.fight {
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid #333;
+  border-radius: 5px;
+  background-color: #1e1e1e;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.15);
-  }
-}
-
-h2 {
-  text-align: center;
-  color: #d0d0d0;
-  font-weight: 400;
-  margin-top: 1.5rem;
-}
-
-#app {
-  max-width: 540px;
-  margin: auto;
-  background-color: #111;
-  border-radius: 10px;
-  padding: 1rem 1.2rem;
-  box-shadow: 0 0 8px rgba(0,0,0,0.4);
-}
-
-label, input, select, button {
-  font-size: 1rem;
-  display: block;
-  margin: 0.5rem auto;
-}
-
-input, select {
+select {
+  margin: 5px 0;
   width: 100%;
-  padding: 0.5rem;
+  padding: 8px;
   border-radius: 4px;
-  border: 1px solid #444;
-  background-color: #1b1b1b;
+  border: none;
+  background-color: #2a2a2a;
+  color: #fff;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 4px;
+  border: none;
+  background-color: #2a2a2a;
   color: #fff;
 }
 
 button {
-  background-color: #ffffff;
-  color: #000;
+  background-color: #e63946;
+  color: white;
+  padding: 10px 16px;
   border: none;
-  padding: 0.6rem;
   border-radius: 4px;
   cursor: pointer;
   width: 100%;
   font-weight: bold;
-  transition: background 0.2s ease;
+  margin-top: 10px;
 }
 
 button:hover {
-  background-color: #e0e0e0;
-}
-
-.fight {
-  background: #1a1a1a;
-  padding: 1rem;
-  margin-top: 1rem;
-  border-radius: 8px;
-  border-left: 4px solid #fff;
-}
-
-.fight h3 {
-  margin: 0 0 0.5rem 0;
-  font-weight: 700;
-  font-size: 1.1rem;
-}
-
-.fight label {
-  display: block;
-  margin: 0.3rem 0;
+  background-color: #d62828;
 }
 
 #leaderboard {
@@ -102,32 +73,41 @@ button:hover {
 }
 
 #leaderboard li {
-  margin: 0.5rem 0;
-  padding: 0.5rem;
-  background: #1c1c1c;
+  background: #1e1e1e;
+  padding: 10px;
+  margin: 8px 0;
   border-radius: 4px;
-  font-weight: 500;
-  border-left: 3px solid #333;
+  border-left: 3px solid #e63946;
 }
 
 #welcome {
   font-size: 1.3rem;
   color: #b5ffb5;
   text-align: center;
-  margin-bottom: 1rem;
+  margin: 20px 0;
 }
 
 #myPicks p {
-  margin: 0.3rem 0;
+  margin: 5px 0;
   font-size: 0.95rem;
 }
 
+/* ✅ Mobile Optimizations */
 @media (max-width: 600px) {
   h1 {
-    font-size: 2rem;
+    font-size: 1.8rem;
   }
 
   #app {
-    padding: 0.8rem;
+    padding: 15px;
+  }
+
+  button {
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .fight {
+    padding: 12px;
   }
 }
