@@ -56,14 +56,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function submitPicks() {
-    const picks = {};
+    const picks = [];
     const fights = document.querySelectorAll(".fight");
     fights.forEach(fight => {
       const fightName = fight.querySelector("h3").innerText;
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
       if (winner && method) {
-        picks[fightName] = { winner, method };
+        picks.push({ fight: fightName, winner, method });
       }
     });
 
@@ -95,11 +95,11 @@ document.addEventListener("DOMContentLoaded", () => {
     })
       .then(res => res.json())
       .then(data => {
-        if (!data.submitted) return;
+        if (!data.success || !data.picks) return;
         const myPicksDiv = document.getElementById("myPicks");
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-        Object.entries(data.picks).forEach(([fight, pick]) => {
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${pick.winner} by ${pick.method}</p>`;
+        data.picks.forEach(({ fight, winner, method }) => {
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method}</p>`;
         });
       });
   }
