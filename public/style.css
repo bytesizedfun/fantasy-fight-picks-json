@@ -6,7 +6,7 @@ body {
   margin: 0;
 }
 
-/* Pulsing fist icon beside title */
+/* 👊 Pulsing fist */
 .fist {
   display: inline-block;
   margin-right: 0.4rem;
@@ -39,6 +39,7 @@ h1 {
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
+/* Fight cards */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
@@ -65,6 +66,7 @@ h1 {
   transform: scale(1.2);
 }
 
+/* Inputs */
 input[type="text"] {
   width: 100%;
   padding: 8px;
@@ -85,6 +87,7 @@ select {
   color: #fff;
 }
 
+/* Buttons */
 button {
   background-color: #e63946;
   color: white;
@@ -101,14 +104,14 @@ button:hover {
   background-color: #d62828;
 }
 
-/* Leaderboard Heading */
+/* 💚 Leaderboard Heading (matches welcome text) */
 h2 {
   font-size: 1.8rem;
-  color: #ffcc00;
+  color: #b5ffb5;
   text-align: center;
   margin-top: 40px;
   letter-spacing: 1px;
-  text-shadow: 0 0 5px #e63946, 0 0 10px #e63946;
+  text-shadow: 0 0 5px #1aff91, 0 0 10px #1aff91;
   position: relative;
 }
 
@@ -117,12 +120,12 @@ h2::after {
   display: block;
   width: 60px;
   height: 3px;
-  background: #e63946;
+  background: #1aff91;
   margin: 8px auto 0;
   border-radius: 2px;
 }
 
-/* Leaderboard Container */
+/* Leaderboard box */
 #leaderboard {
   min-height: 100px;
   padding: 16px;
@@ -135,7 +138,7 @@ h2::after {
   transition: all 0.3s ease;
 }
 
-/* Leaderboard Entries */
+/* Leaderboard entries */
 #leaderboard li {
   background: #1e1e1e;
   padding: 10px;
@@ -155,7 +158,7 @@ h2::after {
   background-color: #242424;
 }
 
-/* 1st place only: crown and gold style */
+/* 👑 First place crown */
 #leaderboard li:first-child {
   background: #2c2c2c;
   color: #ffd700;
@@ -180,13 +183,13 @@ h2::after {
   margin: 20px 0;
 }
 
-/* My Picks display */
+/* My picks */
 #myPicks p {
   margin: 4px 0;
   font-size: 0.95rem;
 }
 
-/* Mobile optimization */
+/* Responsive tweaks */
 @media (max-width: 600px) {
   h1 {
     font-size: 1.8rem;
