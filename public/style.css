@@ -192,10 +192,10 @@ h2::after {
   transform: translateY(-50%);
 }
 
-/* ✅ Clean yellow welcome message (no glow) */
+/* ✅ Clean red welcome message (no glow) */
 #welcome {
   font-size: 1.2rem;
-  color: #f4c542;
+  color: #e50914; /* UFC Red */
   text-align: center;
   margin: 20px 0;
   letter-spacing: 0.5px;
