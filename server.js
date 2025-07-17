@@ -9,7 +9,8 @@ app.use(express.json());
 app.use(express.static("public"));
 
 // ✅ Your new correct deployment URL:
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+const GOOGLE_SCRIPT_URL = "const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+";
 
 const lockoutTime = new Date("2025-07-20T18:00:00"); // Adjust as needed
 
