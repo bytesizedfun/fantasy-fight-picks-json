@@ -1,35 +1,133 @@
 body {
-  font-family: Arial, sans-serif;
-  background-color: #121212;
+  margin: 0;
+  font-family: 'Roboto Condensed', sans-serif;
+  background-color: #000;
   color: #f0f0f0;
-  text-align: center;
-  padding: 20px;
+  padding: 1rem;
 }
 
 h1 {
-  color: #e63946;
+  font-size: 2.5rem;
+  color: #ffffff;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  letter-spacing: 1px;
 }
 
-.fight {
-  margin-bottom: 20px;
-  padding: 10px;
-  border: 1px solid #333;
-  border-radius: 5px;
+.fist {
+  margin-right: 0.4rem;
+  display: inline-block;
+  animation: pulse 1.5s infinite ease-in-out;
+  transform-origin: center;
 }
 
-select {
-  margin: 5px;
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+h2 {
+  text-align: center;
+  color: #d0d0d0;
+  font-weight: 400;
+  margin-top: 1.5rem;
+}
+
+#app {
+  max-width: 540px;
+  margin: auto;
+  background-color: #111;
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
+
+label, input, select, button {
+  font-size: 1rem;
+  display: block;
+  margin: 0.5rem auto;
+}
+
+input, select {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background-color: #1b1b1b;
+  color: #fff;
 }
 
 button {
-  background-color: #e63946;
-  color: white;
-  padding: 8px 16px;
+  background-color: #ffffff;
+  color: #000;
   border: none;
+  padding: 0.6rem;
   border-radius: 4px;
   cursor: pointer;
+  width: 100%;
+  font-weight: bold;
+  transition: background 0.2s ease;
 }
 
 button:hover {
-  background-color: #d62828;
+  background-color: #e0e0e0;
+}
+
+.fight {
+  background: #1a1a1a;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #fff;
+}
+
+.fight h3 {
+  margin: 0 0 0.5rem 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.fight label {
+  display: block;
+  margin: 0.3rem 0;
+}
+
+#leaderboard {
+  list-style: none;
+  padding: 0;
+}
+
+#leaderboard li {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: #1c1c1c;
+  border-radius: 4px;
+  font-weight: 500;
+  border-left: 3px solid #333;
+}
+
+#welcome {
+  font-size: 1.3rem;
+  color: #b5ffb5;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+#myPicks p {
+  margin: 0.3rem 0;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 600px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  #app {
+    padding: 0.8rem;
+  }
 }
