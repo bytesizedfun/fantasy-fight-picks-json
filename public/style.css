@@ -6,6 +6,24 @@ body {
   margin: 0;
 }
 
+/* Pulsing fist icon beside title */
+.fist {
+  display: inline-block;
+  margin-right: 0.4rem;
+  animation: pulse 1.5s infinite ease-in-out;
+  transform-origin: center;
+  font-size: 1.4rem;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
 h1 {
   color: #f5f5f5;
   text-align: center;
@@ -104,7 +122,7 @@ h2::after {
   border-radius: 2px;
 }
 
-/* Leaderboard container */
+/* Leaderboard Container */
 #leaderboard {
   min-height: 100px;
   padding: 16px;
@@ -117,7 +135,7 @@ h2::after {
   transition: all 0.3s ease;
 }
 
-/* List entries */
+/* Leaderboard Entries */
 #leaderboard li {
   background: #1e1e1e;
   padding: 10px;
@@ -137,7 +155,7 @@ h2::after {
   background-color: #242424;
 }
 
-/* 👑 First place crown */
+/* 1st place only: crown and gold style */
 #leaderboard li:first-child {
   background: #2c2c2c;
   color: #ffd700;
@@ -162,7 +180,7 @@ h2::after {
   margin: 20px 0;
 }
 
-/* Pick confirmation */
+/* My Picks display */
 #myPicks p {
   margin: 4px 0;
   font-size: 0.95rem;
