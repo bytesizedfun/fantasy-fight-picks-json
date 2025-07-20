@@ -17,6 +17,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     username = input;
 
+    // ✅ Clear blocked names from localStorage
+    if (["test", "user", "username"].includes(username.toLowerCase())) {
+      localStorage.removeItem("username");
+    } else {
+      localStorage.setItem("username", username);
+    }
+
     // ✅ Check if user already submitted valid picks
     fetch("/api/picks", {
       method: "POST",
