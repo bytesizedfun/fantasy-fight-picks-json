@@ -43,9 +43,18 @@ document.addEventListener("DOMContentLoaded", () => {
             <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
             <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
             <select name="${fight}-method">
+              <option value="">Select Method</option>
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
+            </select>
+            <select name="${fight}-round">
+              <option value="">Select Round</option>
+              <option value="Round 1">Round 1</option>
+              <option value="Round 2">Round 2</option>
+              <option value="Round 3">Round 3</option>
+              <option value="Round 4">Round 4</option>
+              <option value="Round 5">Round 5</option>
             </select>
           `;
           fightList.appendChild(div);
@@ -62,8 +71,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const fightName = fight.querySelector("h3").innerText;
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      if (winner && method) {
-        picks.push({ fight: fightName, winner, method });
+      const round = fight.querySelector(`select[name="${fightName}-round"]`)?.value;
+      if (winner && method && round) {
+        picks.push({ fight: fightName, winner, method, round });
       }
     });
 
@@ -98,8 +108,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!data.success || !data.picks) return;
         const myPicksDiv = document.getElementById("myPicks");
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-        data.picks.forEach(({ fight, winner, method }) => {
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method}</p>`;
+        data.picks.forEach(({ fight, winner, method, round }) => {
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} (${round})</p>`;
         });
       });
   }
