@@ -72,6 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
       const round = fight.querySelector(`select[name="${fightName}-round"]`)?.value;
+
       if (winner && method && round) {
         picks.push({ fight: fightName, winner, method, round });
       }
@@ -106,26 +107,4 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         if (!data.success || !data.picks) return;
-        const myPicksDiv = document.getElementById("myPicks");
-        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-        data.picks.forEach(({ fight, winner, method, round }) => {
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} (${round})</p>`;
-        });
-      });
-  }
-
-  function loadLeaderboard() {
-    fetch("/api/leaderboard")
-      .then(res => res.json())
-      .then(data => {
-        const board = document.getElementById("leaderboard");
-        board.innerHTML = "";
-        Object.entries(data.scores).forEach(([user, score]) => {
-          board.innerHTML += `<li>${user}: ${score} pts</li>`;
-        });
-        if (data.champ) {
-          board.innerHTML += `<li><strong>🏆 Champion of the Week: ${data.champ}</strong></li>`;
-        }
-      });
-  }
-});
+        cons
