@@ -52,6 +52,17 @@ document.addEventListener("DOMContentLoaded", () => {
               <option value="5">Round 5</option>
             </select>
           `;
+          const methodSelect = div.querySelector(`select[name="${fight}-method"]`);
+          const roundSelect = div.querySelector(`select[name="${fight}-round"]`);
+          methodSelect.addEventListener("change", function () {
+            if (this.value === "Decision") {
+              roundSelect.value = "5";
+              roundSelect.disabled = true;
+            } else {
+              roundSelect.disabled = false;
+              if (roundSelect.value === "5") roundSelect.value = "";
+            }
+          });
           fightList.appendChild(div);
         });
         fightList.style.display = "block";
