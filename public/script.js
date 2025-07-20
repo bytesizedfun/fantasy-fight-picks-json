@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = "";
 
-  // Called when user locks in name
+  // ✅ Called when user locks in name
   window.lockUsername = () => {
     const input = usernameInput.value.trim();
     if (!input) {
@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     username = input;
 
-    // ✅ Check if user already submitted picks
+    // ✅ Check if user already submitted valid picks
     fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -25,7 +25,11 @@ document.addEventListener("DOMContentLoaded", () => {
     })
       .then(res => res.json())
       .then(data => {
-        if (data.success && data.picks.length > 0) {
+        if (
+          data.success &&
+          data.picks.length > 0 &&
+          !["test", "user", "username"].includes(username.toLowerCase())
+        ) {
           displayPicksOnly(data.picks);
         } else {
           finalizeLogin();
