@@ -1,7 +1,3 @@
-// ✅ Fantasy Fight Picks App
-// ✅ Updated script.js with dynamic round logic on 'Decision' method selection
-
-// ✅ Wait for DOM to load
 document.addEventListener("DOMContentLoaded", () => {
   const welcome = document.getElementById("welcome");
   const fightList = document.getElementById("fightList");
@@ -12,7 +8,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = "";
 
-  // ✅ Lock in name
   window.lockUsername = () => {
     const input = usernameInput.value.trim();
     if (!input) {
@@ -21,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     username = input;
 
+    // Check if user already submitted picks
     fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -54,7 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
     picks.forEach(({ fight, winner, method, round }) => {
-      myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method}, Round ${round}</p>`;
+      myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} in Round ${round}</p>`;
     });
 
     loadLeaderboard();
@@ -78,6 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <option value="Submission">Submission</option>
             </select>
             <select name="${fight}-round" class="round">
+              <option value="">Round</option>
               <option value="1">Round 1</option>
               <option value="2">Round 2</option>
               <option value="3">Round 3</option>
@@ -87,25 +84,27 @@ document.addEventListener("DOMContentLoaded", () => {
           `;
           fightList.appendChild(div);
         });
-        setupDecisionRoundSync();
+
+        // Add method-round sync
+        const fights = document.querySelectorAll(".fight");
+        fights.forEach(fight => {
+          const methodSelect = fight.querySelector(".method");
+          const roundSelect = fight.querySelector(".round");
+
+          methodSelect.addEventListener("change", () => {
+            if (methodSelect.value === "Decision") {
+              roundSelect.disabled = true;
+              roundSelect.value = "3"; // or "5" depending on your format
+            } else {
+              roundSelect.disabled = false;
+              if (roundSelect.value === "3") roundSelect.value = "";
+            }
+          });
+        });
+
         fightList.style.display = "block";
         submitBtn.style.display = "block";
       });
-  }
-
-  function setupDecisionRoundSync() {
-    document.querySelectorAll(".fight").forEach(fight => {
-      const methodSelect = fight.querySelector(".method");
-      const roundSelect = fight.querySelector(".round");
-      methodSelect.addEventListener("change", () => {
-        if (methodSelect.value === "Decision") {
-          roundSelect.value = "3";
-          roundSelect.disabled = true;
-        } else {
-          roundSelect.disabled = false;
-        }
-      });
-    });
   }
 
   function submitPicks() {
@@ -132,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
           alert("Picks submitted!");
           displayPicksOnly(picks);
         } else {
-          alert(data.error || "Something went wrong.");
+          alert(data.message || "Something went wrong.");
         }
       });
   }
