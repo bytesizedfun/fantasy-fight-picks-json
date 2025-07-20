@@ -5,15 +5,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const myPicksDiv = document.getElementById("myPicks");
-
   let username = "";
 
   window.lockUsername = () => {
     const input = usernameInput.value.trim();
-    if (!input) {
-      alert("Please enter your name.");
-      return;
-    }
+    if (!input) return alert("Please enter your name.");
     username = input;
 
     fetch("/api/picks", {
@@ -43,14 +39,12 @@ document.addEventListener("DOMContentLoaded", () => {
     usernamePrompt.style.display = "none";
     welcome.innerText = `Welcome back, ${username}!`;
     welcome.style.display = "block";
-
     fightList.style.display = "none";
     submitBtn.style.display = "none";
 
     myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
     picks.forEach(({ fight, winner, method, round }) => {
-      const roundDisplay = method === "Decision" ? "R3" : `R${round}`;
-      myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} (${roundDisplay})</p>`;
+      myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} (${round ? "R" + round : "No Round"})</p>`;
     });
 
     loadLeaderboard();
@@ -69,13 +63,11 @@ document.addEventListener("DOMContentLoaded", () => {
             <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
             <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
             <select name="${fight}-method" class="method">
-              <option value="">Method</option>
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
             </select>
             <select name="${fight}-round" class="round">
-              <option value="">Round</option>
               <option value="1">Round 1</option>
               <option value="2">Round 2</option>
               <option value="3">Round 3</option>
@@ -86,8 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.appendChild(div);
         });
 
-        const fights = document.querySelectorAll(".fight");
-        fights.forEach(fight => {
+        document.querySelectorAll(".fight").forEach(fight => {
           const methodSelect = fight.querySelector(".method");
           const roundSelect = fight.querySelector(".round");
 
@@ -97,7 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
               roundSelect.value = "3";
             } else {
               roundSelect.disabled = false;
-              if (roundSelect.value === "3") roundSelect.value = "";
             }
           });
         });
@@ -116,13 +106,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
       const round = fight.querySelector(`select[name="${fightName}-round"]`)?.value;
 
-      if (winner && method) {
-        picks.push({
-          fight: fightName,
-          winner,
-          method,
-          round: method === "Decision" ? "3" : round || ""
-        });
+      if (winner && method && round) {
+        picks.push({ fight: fightName, winner, method, round });
       }
     });
 
