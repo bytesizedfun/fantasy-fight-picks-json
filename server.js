@@ -8,11 +8,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
-// ✅ Your new correct deployment URL:
+// ✅ Correct deployment URL to Apps Script
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-
-const lockoutTime = new Date("2025-07-20T18:00:00"); // Adjust as needed
+// 🟢 LOCKOUT DISABLED for testing purposes
+// const lockoutTime = new Date("2025-07-20T18:00:00"); // Previous hardcoded lockout time
 
 app.get("/api/fights", (req, res) => {
   const fights = require("./data/fights.json");
@@ -20,11 +20,13 @@ app.get("/api/fights", (req, res) => {
 });
 
 app.post("/api/submit", async (req, res) => {
-  if (new Date() >= lockoutTime) {
-    return res.status(403).json({ error: "Picks are locked. Fight card has started." });
-  }
+  // 🔕 Disabled lockout check for testing
+  // if (new Date() >= lockoutTime) {
+  //   return res.status(403).json({ error: "Picks are locked. Fight card has started." });
+  // }
 
   const { username, picks } = req.body;
+
   const response = await fetch(GOOGLE_SCRIPT_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -61,5 +63,6 @@ app.get("/api/leaderboard", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
+
