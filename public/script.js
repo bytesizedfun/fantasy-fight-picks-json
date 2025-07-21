@@ -82,6 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const methodSelect = fight.querySelector(".method");
           const roundSelect = fight.querySelector(".round");
 
+          // ✅ Disable round dropdown if method is Decision
           methodSelect.addEventListener("change", () => {
             if (methodSelect.value === "Decision") {
               roundSelect.disabled = true;
@@ -90,6 +91,12 @@ document.addEventListener("DOMContentLoaded", () => {
               roundSelect.disabled = false;
             }
           });
+
+          // Trigger the default state for Decision
+          if (methodSelect.value === "Decision") {
+            roundSelect.disabled = true;
+            roundSelect.value = "3";
+          }
         });
 
         fightList.style.display = "block";
@@ -148,4 +155,3 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 });
-
