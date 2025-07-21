@@ -12,7 +12,7 @@ app.use(express.static("public"));
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
 // ✅ Cutoff to lock submissions
-const lockoutTime = new Date("2025-07-20T18:00:00");
+const lockoutTime = new Date("2025-07-27T15:00:00-04:00");
 
 app.get("/api/fights", (req, res) => {
   const fights = require("./data/fights.json");
