@@ -1,4 +1,20 @@
+@@ -1,17 +1,18 @@
 [
+  {
+    "fight": "Max Holloway vs Dustin Poirier",
+    "fighter1": "Max Holloway",
+    "fighter2": "Dustin Poirier"
+  },
+  {
+    "fight": "Rose Namajunas vs Amanda Ribas",
+    "fighter1": "Rose Namajunas",
+    "fighter2": "Amanda Ribas"
+  },
+  {
+    "fight": "Kevin Holland vs Neil Magny",
+    "fighter1": "Kevin Holland",
+    "fighter2": "Neil Magny"
+  }
   { "fight": "Max Holloway vs Dustin Poirier", "fighter1": "Max Holloway", "fighter2": "Dustin Poirier" },
   { "fight": "Paulo Costa vs Roman Kopylov", "fighter1": "Paulo Costa", "fighter2": "Roman Kopylov" },
   { "fight": "Kevin Holland vs Daniel Rodriguez", "fighter1": "Kevin Holland", "fighter2": "Daniel Rodriguez" },
@@ -15,4 +31,8 @@
   { "fight": "Ryan Spann vs Lukasz Brzeski", "fighter1": "Ryan Spann", "fighter2": "Lukasz Brzeski" },
   { "fight": "Brunno Ferreira vs Jackson McVey", "fighter1": "Brunno Ferreira", "fighter2": "Jackson McVey" },
   { "fight": "Carli Judice vs Nicolle Caliari", "fighter1": "Carli Judice", "fighter2": "Nicolle Caliari" }
-]
+
+
+
+
+
