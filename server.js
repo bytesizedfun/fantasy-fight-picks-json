@@ -8,13 +8,13 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
-// ✅ Your correct deployed Apps Script Web App URL
+// ✅ Correct deployed Apps Script Web App URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-// ✅ Set your lockout time
-const lockoutTime = new Date("2025-07-20T15:00:00"); // Adjust as needed
+// ✅ Lockout set to July 26, 2025 @ 3:00 PM Eastern Time (EDT)
+const lockoutTime = new Date("2025-07-26T15:00:00-04:00");
 
-// Serve fights.json (no changes)
+// Serve fights.json
 app.get("/api/fights", (req, res) => {
   const fights = require("./data/fights.json");
   res.json(fights);
@@ -52,7 +52,7 @@ app.post("/api/picks", async (req, res) => {
   res.json(result);
 });
 
-// Leaderboard
+// Get leaderboard
 app.get("/api/leaderboard", async (req, res) => {
   const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`);
   const data = await response.json();
