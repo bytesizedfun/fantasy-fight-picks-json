@@ -82,7 +82,6 @@ document.addEventListener("DOMContentLoaded", () => {
           const methodSelect = fight.querySelector(".method");
           const roundSelect = fight.querySelector(".round");
 
-          // ✅ Disable round dropdown if method is Decision
           methodSelect.addEventListener("change", () => {
             if (methodSelect.value === "Decision") {
               roundSelect.disabled = true;
@@ -92,7 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           });
 
-          // Trigger the default state for Decision
           if (methodSelect.value === "Decision") {
             roundSelect.disabled = true;
             roundSelect.value = "3";
