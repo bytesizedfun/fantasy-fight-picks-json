@@ -3,51 +3,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
-  const usernameInput = document.getElementById("usernameInput");
   const myPicksDiv = document.getElementById("myPicks");
-  let username = "";
 
-  window.lockUsername = () => {
-    const input = usernameInput.value.trim();
-    if (!input) return alert("Please enter your name.");
+  let username = localStorage.getItem("username");
+
+  if (username) {
+    finalizeLogin(username);
+  }
+
+  document.querySelector("button").addEventListener("click", () => {
+    const input = document.getElementById("usernameInput").value.trim();
+    if (!input) {
+      alert("Please enter your name.");
+      return;
+    }
     username = input;
+    localStorage.setItem("username", username);
+    finalizeLogin(username);
+  });
 
-    fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.picks.length > 0) {
-          displayPicksOnly(data.picks);
-        } else {
-          finalizeLogin();
-        }
-      });
-  };
-
-  function finalizeLogin() {
+  function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
-    welcome.innerText = `Welcome, ${username}!`;
+    welcome.innerText = `Welcome, ${name}!`;
     welcome.style.display = "block";
     loadFights();
     loadLeaderboard();
-  }
-
-  function displayPicksOnly(picks) {
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `Welcome back, ${username}!`;
-    welcome.style.display = "block";
-    fightList.style.display = "none";
-    submitBtn.style.display = "none";
-
-    myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-    picks.forEach(({ fight, winner, method, round }) => {
-      myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} (${round ? "R" + round : "No Round"})</p>`;
-    });
-
-    loadLeaderboard();
+    loadMyPicks();
   }
 
   function loadFights() {
@@ -78,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.appendChild(div);
         });
 
+        // Round dropdown logic
         document.querySelectorAll(".fight").forEach(fight => {
           const methodSelect = fight.querySelector(".method");
           const roundSelect = fight.querySelector(".round");
@@ -85,12 +67,13 @@ document.addEventListener("DOMContentLoaded", () => {
           methodSelect.addEventListener("change", () => {
             if (methodSelect.value === "Decision") {
               roundSelect.disabled = true;
-              roundSelect.value = "3";
+              roundSelect.value = "3"; // default for Decision
             } else {
               roundSelect.disabled = false;
             }
           });
 
+          // Initialize in case default is Decision
           if (methodSelect.value === "Decision") {
             roundSelect.disabled = true;
             roundSelect.value = "3";
@@ -109,11 +92,9 @@ document.addEventListener("DOMContentLoaded", () => {
     fights.forEach(fight => {
       const fightName = fight.querySelector("h3").innerText;
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
-      const methodSelect = fight.querySelector(`select[name="${fightName}-method"]`);
-      const roundSelect = fight.querySelector(`select[name="${fightName}-round"]`);
-
-      const method = methodSelect?.value;
-      const round = roundSelect.disabled ? "3" : roundSelect?.value;
+      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const roundDropdown = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = roundDropdown.disabled ? "3" : roundDropdown?.value;
 
       if (winner && method && round) {
         picks.push({ fight: fightName, winner, method, round });
@@ -129,7 +110,9 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         if (data.success) {
           alert("Picks submitted!");
-          displayPicksOnly(picks);
+          loadMyPicks();
+          fightList.innerHTML = "";
+          submitBtn.style.display = "none";
         } else {
           alert(data.error || "Something went wrong.");
         }
@@ -137,6 +120,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   submitBtn.addEventListener("click", submitPicks);
+
+  function loadMyPicks() {
+    fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success || !data.picks) return;
+        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+        data.picks.forEach(({ fight, winner, method, round }) => {
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} (R${round})</p>`;
+        });
+      });
+  }
 
   function loadLeaderboard() {
     fetch("/api/leaderboard")
