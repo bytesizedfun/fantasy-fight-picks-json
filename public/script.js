@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
+  const lockBtn = document.getElementById("lockBtn");
 
   let username = localStorage.getItem("username");
 
@@ -10,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     finalizeLogin(username);
   }
 
-  document.querySelector("button").addEventListener("click", () => {
+  lockBtn.addEventListener("click", () => {
     const input = document.getElementById("usernameInput").value.trim();
     if (!input) {
       alert("Please enter your name.");
@@ -42,37 +43,35 @@ document.addEventListener("DOMContentLoaded", () => {
             <h3>${fight}</h3>
             <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
             <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
-            <select name="${fight}-method" onchange="toggleRound('${fight}')">
+            <select name="${fight}-method" class="method-select">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
             </select>
-            <select name="${fight}-round">
-              <option value="R1">Round 1</option>
-              <option value="R2">Round 2</option>
-              <option value="R3">Round 3</option>
+            <select name="${fight}-round" class="round-select">
+              <option value="1">Round 1</option>
+              <option value="2">Round 2</option>
+              <option value="3">Round 3</option>
+              <option value="4">Round 4</option>
+              <option value="5">Round 5</option>
             </select>
           `;
           fightList.appendChild(div);
-          toggleRound(fight); // initialize dropdown state
         });
+
+        document.querySelectorAll(".method-select").forEach((methodSelect, i) => {
+          methodSelect.addEventListener("change", () => {
+            const roundSelect = document.querySelectorAll(".round-select")[i];
+            roundSelect.disabled = methodSelect.value === "Decision";
+          });
+        });
+
         fightList.style.display = "block";
         submitBtn.style.display = "block";
       });
   }
 
-  window.toggleRound = function(fightName) {
-    const method = document.querySelector(`select[name="${fightName}-method"]`).value;
-    const roundSelect = document.querySelector(`select[name="${fightName}-round"]`);
-    if (method === "Decision") {
-      roundSelect.disabled = true;
-      roundSelect.value = "R3";
-    } else {
-      roundSelect.disabled = false;
-    }
-  };
-
-  function submitPicks() {
+  submitBtn.addEventListener("click", () => {
     const picks = [];
     const fights = document.querySelectorAll(".fight");
     fights.forEach(fight => {
@@ -101,9 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
           alert(data.error || "Something went wrong.");
         }
       });
-  }
-
-  submitBtn.addEventListener("click", submitPicks);
+  });
 
   function loadMyPicks() {
     fetch("/api/picks", {
@@ -117,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const myPicksDiv = document.getElementById("myPicks");
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
         data.picks.forEach(({ fight, winner, method, round }) => {
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} in ${round}</p>`;
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} in round ${round}</p>`;
         });
       });
   }
