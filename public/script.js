@@ -108,6 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
           alert("Picks submitted!");
           submitBtn.disabled = true;
           loadLeaderboard();
+          loadMyPicks();
         } else {
           alert("Submission failed: " + (data.error || "Unknown error"));
         }
@@ -141,8 +142,6 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         if (data.success && data.picks.length > 0) {
           submitBtn.disabled = true;
-
-          // Optionally show submitted picks
           const myPicks = document.getElementById("myPicks");
           myPicks.innerHTML = "<h2>📋 Your Picks</h2>";
           data.picks.forEach(({ fight, winner, method, round }) => {
