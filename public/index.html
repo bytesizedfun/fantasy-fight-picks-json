@@ -30,6 +30,12 @@
     <!-- Fight picks area -->
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <p id="submitWarning">⚠️ Click once and be patient...</p>
+
+    <!-- Point system -->
+    <p id="pointSystem">
+      1 point for correct fighter, 1 point for correct method, 1 point for the correct round (round is correct if decision is the outcome), 1 bonus point for a perfect pick, 1 bonus point for an underdog win 🐶
+    </p>
 
     <!-- Your picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
@@ -38,9 +44,6 @@
     <h2>Leaderboard</h2>
     <ul id="leaderboard"></ul>
   </div>
-
-  <!-- Optional punch sound (if added later) -->
-  <!-- <audio id="punchSound" src="punch.mp3" preload="auto"></audio> -->
 
   <script src="script.js"></script>
 </body>
