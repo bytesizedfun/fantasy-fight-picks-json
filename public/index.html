@@ -4,41 +4,41 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fantasy Fight Picks</title>
+
+  <!-- 👊 Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+
+  <!-- Fonts + Styles -->
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1><span class="fist">👊</span> Fantasy Fight Picks</h1>
+
   <div id="app">
+    <!-- Username input -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
-      <button id="lockBtn">Lock In</button>
+      <button>Lock In</button>
     </div>
 
+    <!-- Welcome Message -->
     <h2 id="welcome" style="display: none;"></h2>
 
+    <!-- Picks -->
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" style="display: none;">Submit Picks</button>
 
+    <!-- My Picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
 
+    <!-- Leaderboard -->
     <h2>Leaderboard</h2>
     <ul id="leaderboard"></ul>
-
-    <div id="bonusRules" style="margin-top: 30px; padding: 15px; border: 1px solid #ccc; background: #111; color: #fff;">
-      <h3>Scoring Rules</h3>
-      <ul>
-        <li>+1 correct winner</li>
-        <li>+1 correct method</li>
-        <li>+1 correct round (unless method is Decision)</li>
-        <li>+1 bonus for perfect pick</li>
-        <li>+1 underdog bonus</li>
-      </ul>
-    </div>
   </div>
+
+  <!-- JS -->
   <script src="script.js"></script>
 </body>
 </html>
-
