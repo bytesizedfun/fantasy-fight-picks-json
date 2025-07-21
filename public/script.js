@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
-  let username = localStorage.getItem("username"); // ✅ Only username stored
+  let username = localStorage.getItem("username");
 
   if (username) {
     finalizeLogin(username);
@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("usernameInput").value.trim();
     if (!input) return alert("Please enter your name.");
     username = input;
-    localStorage.setItem("username", username); // ✅ Just username stored
+    localStorage.setItem("username", username);
     finalizeLogin(username);
   });
 
@@ -57,12 +57,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const methodSelect = div.querySelector(`select[name="${fight}-method"]`);
           const roundSelect = div.querySelector(`select[name="${fight}-round"]`);
+
           methodSelect.addEventListener("change", () => {
             if (methodSelect.value === "Decision") {
-              roundSelect.disabled = true;
+              roundSelect.setAttribute("disabled", "disabled");
               roundSelect.value = "";
             } else {
-              roundSelect.disabled = false;
+              roundSelect.removeAttribute("disabled");
             }
           });
         });
