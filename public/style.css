@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap');
 
 body {
@@ -195,37 +196,16 @@ h2::after {
 /* ✅ Clean red welcome message (no glow) */
 #welcome {
   font-size: 1.2rem;
-  color: #e50914;
+  color: #e50914; /* UFC Red */
   text-align: center;
   margin: 20px 0;
   letter-spacing: 0.5px;
 }
 
-/* 👤 My Picks display */
+/* My Picks */
 #myPicks p {
   margin: 4px 0;
   font-size: 0.95rem;
-}
-
-/* 🆕 Styled pick output */
-.fight-name {
-  font-weight: bold;
-  color: #e50914;
-}
-
-.user-pick {
-  margin-left: 10px;
-  color: #9be7ff;
-  font-style: italic;
-}
-
-/* ⚠️ Submit warning */
-#submitNotice {
-  text-align: center;
-  color: #ffcc00;
-  margin-top: 5px;
-  font-size: 0.9rem;
-  letter-spacing: 0.3px;
 }
 
 /* Responsive tweaks */
@@ -256,3 +236,6 @@ h2::after {
     padding: 12px;
   }
 }
+
+
+
