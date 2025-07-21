@@ -1,4 +1,3 @@
-public/script.js:
 document.addEventListener("DOMContentLoaded", () => {
   const welcome = document.getElementById("welcome");
   const fightList = document.getElementById("fightList");
@@ -48,9 +47,39 @@ document.addEventListener("DOMContentLoaded", () => {
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
             </select>
+            <select name="${fight}-round">
+              <option value="1">Round 1</option>
+              <option value="2">Round 2</option>
+              <option value="3">Round 3</option>
+              <option value="4">Round 4</option>
+              <option value="5">Round 5</option>
+            </select>
           `;
           fightList.appendChild(div);
         });
+
+        // Disable round if method is Decision
+        document.querySelectorAll(".fight").forEach(fight => {
+          const methodSelect = fight.querySelector(`select[name$="-method"]`);
+          const roundSelect = fight.querySelector(`select[name$="-round"]`);
+
+          methodSelect.addEventListener("change", () => {
+            if (methodSelect.value === "Decision") {
+              roundSelect.disabled = true;
+              roundSelect.value = "";
+            } else {
+              roundSelect.disabled = false;
+              roundSelect.value = "1";
+            }
+          });
+
+          // Initialize state based on default method
+          if (methodSelect.value === "Decision") {
+            roundSelect.disabled = true;
+            roundSelect.value = "";
+          }
+        });
+
         fightList.style.display = "block";
         submitBtn.style.display = "block";
       });
@@ -63,8 +92,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const fightName = fight.querySelector("h3").innerText;
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const round = fight.querySelector(`select[name="${fightName}-round"]`)?.value || "";
+
       if (winner && method) {
-        picks.push({ fight: fightName, winner, method });
+        picks.push({ fight: fightName, winner, method, round });
       }
     });
 
@@ -99,8 +130,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!data.success || !data.picks) return;
         const myPicksDiv = document.getElementById("myPicks");
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-        data.picks.forEach(({ fight, winner, method }) => {
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method}</p>`;
+        data.picks.forEach(({ fight, winner, method, round }) => {
+          const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
         });
       });
   }
@@ -120,5 +152,4 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 });
-
 
