@@ -3,7 +3,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
-  const myPicksDiv = document.getElementById("myPicks");
 
   let username = localStorage.getItem("username");
 
@@ -43,43 +42,19 @@ document.addEventListener("DOMContentLoaded", () => {
             <h3>${fight}</h3>
             <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
             <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
-            <select name="${fight}-method" class="method">
+            <select name="${fight}-method" onchange="toggleRound(this, '${fight}')">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
             </select>
-            <select name="${fight}-round" class="round">
-              <option value="1">Round 1</option>
-              <option value="2">Round 2</option>
-              <option value="3">Round 3</option>
-              <option value="4">Round 4</option>
-              <option value="5">Round 5</option>
+            <select name="${fight}-round">
+              <option value="R1">Round 1</option>
+              <option value="R2">Round 2</option>
+              <option value="R3">Round 3</option>
             </select>
           `;
           fightList.appendChild(div);
         });
-
-        // Round dropdown logic
-        document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector(".method");
-          const roundSelect = fight.querySelector(".round");
-
-          methodSelect.addEventListener("change", () => {
-            if (methodSelect.value === "Decision") {
-              roundSelect.disabled = true;
-              roundSelect.value = "3"; // default for Decision
-            } else {
-              roundSelect.disabled = false;
-            }
-          });
-
-          // Initialize in case default is Decision
-          if (methodSelect.value === "Decision") {
-            roundSelect.disabled = true;
-            roundSelect.value = "3";
-          }
-        });
-
         fightList.style.display = "block";
         submitBtn.style.display = "block";
       });
@@ -88,15 +63,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function submitPicks() {
     const picks = [];
     const fights = document.querySelectorAll(".fight");
-
     fights.forEach(fight => {
       const fightName = fight.querySelector("h3").innerText;
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundDropdown = fight.querySelector(`select[name="${fightName}-round"]`);
-      const round = roundDropdown.disabled ? "3" : roundDropdown?.value;
+      const roundSelect = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = method === "Decision" ? "R3 (auto)" : roundSelect?.value;
 
-      if (winner && method && round) {
+      if (winner && method) {
         picks.push({ fight: fightName, winner, method, round });
       }
     });
@@ -130,9 +104,10 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         if (!data.success || !data.picks) return;
+        const myPicksDiv = document.getElementById("myPicks");
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
         data.picks.forEach(({ fight, winner, method, round }) => {
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} (R${round})</p>`;
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${round ? `in ${round}` : ""}</p>`;
         });
       });
   }
@@ -152,3 +127,14 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 });
+
+// ✅ Global round toggle function
+function toggleRound(methodSelect, fightName) {
+  const roundSelect = document.querySelector(`select[name="${fightName}-round"]`);
+  if (methodSelect.value === "Decision") {
+    roundSelect.disabled = true;
+    roundSelect.value = "R3 (auto)";
+  } else {
+    roundSelect.disabled = false;
+  }
+}
