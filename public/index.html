@@ -18,10 +18,10 @@
 
   <div id="app">
     <!-- Username prompt -->
-    <div id="usernamePrompt">
+    <div id="usernamePrompt" style="display: none;">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
-      <button id="loginBtn">Lock In</button>
+      <button id="lockBtn">Lock In</button>
     </div>
 
     <!-- Welcome message -->
@@ -44,6 +44,45 @@
     <h2>Leaderboard</h2>
     <ul id="leaderboard"></ul>
   </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const usernamePrompt = document.getElementById("usernamePrompt");
+      const usernameInput = document.getElementById("usernameInput");
+      const welcome = document.getElementById("welcome");
+      const lockBtn = document.getElementById("lockBtn");
+
+      let username = localStorage.getItem("username");
+
+      if (username) {
+        finalizeLogin(username);
+      } else {
+        usernamePrompt.style.display = "block";
+      }
+
+      lockBtn.addEventListener("click", () => {
+        const input = usernameInput.value.trim();
+        if (!input) {
+          alert("Please enter your name.");
+          return;
+        }
+        username = input;
+        localStorage.setItem("username", username);
+        finalizeLogin(username);
+      });
+
+      function finalizeLogin(name) {
+        usernamePrompt.style.display = "none";
+        welcome.innerText = `Welcome, ${name}!`;
+        welcome.style.display = "block";
+        document.getElementById("fightList").style.display = "block";
+        document.getElementById("submitBtn").style.display = "block";
+        loadFights(); // from script.js
+        loadLeaderboard();
+        loadMyPicks();
+      }
+    });
+  </script>
 
   <script src="script.js"></script>
 </body>
