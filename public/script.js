@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
-  let username = localStorage.getItem("username");
+  let username = localStorage.getItem("username"); // ✅ Only username stored
 
   if (username) {
     finalizeLogin(username);
@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("usernameInput").value.trim();
     if (!input) return alert("Please enter your name.");
     username = input;
-    localStorage.setItem("username", username);
+    localStorage.setItem("username", username); // ✅ Just username stored
     finalizeLogin(username);
   });
 
@@ -137,4 +137,3 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 });
-
