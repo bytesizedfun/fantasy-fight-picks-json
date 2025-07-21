@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.appendChild(div);
         });
 
-        // Disable round if method is Decision
+        // Disable round if Decision is selected
         document.querySelectorAll("select[name$='-method']").forEach(methodSelect => {
           methodSelect.addEventListener("change", () => {
             const fight = methodSelect.name.split("-method")[0];
@@ -120,7 +120,11 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         const leaderboard = document.getElementById("leaderboard");
-        leaderboard.innerHTML = "<h2>🏆 Leaderboard</h2>";
+        leaderboard.innerHTML = ""; // ✅ Clear previous content
+        const title = document.createElement("h2");
+        title.innerText = "🏆 Leaderboard";
+        leaderboard.appendChild(title);
+
         const scores = data.scores;
         for (let user in scores) {
           const score = scores[user];
@@ -136,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getUserPicks", username })
+      body: JSON.stringify({ username })
     })
       .then(res => res.json())
       .then(data => {
