@@ -8,40 +8,53 @@
   <!-- 👊 Fist emoji favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
 
-  <!-- Font and CSS -->
+  <!-- Fonts and Styles -->
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Header with pulsing fist -->
+  <!-- Header -->
   <h1><span class="fist">👊</span> Fantasy Fight Picks</h1>
 
   <div id="app">
-    <!-- Username prompt -->
+
+    <!-- Scoring Explanation -->
+    <div style="max-width: 700px; margin: 0 auto; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; font-size: 0.95rem; color: #ccc;">
+      <strong>🏆 Scoring System:</strong><br>
+      +1 point for correct <strong>fighter</strong><br>
+      +1 point for correct <strong>method</strong> (KO/TKO, Sub, Decision)<br>
+      +1 point for correct <strong>round</strong><br>
+      +2 points if you get a <strong>Decision method</strong> correct (method + round auto-count)<br>
+      +1 bonus for a <strong>perfect pick</strong> (fighter + method + round)<br>
+      +1 bonus for picking a winning <strong>underdog</strong> 🐶
+    </div>
+
+    <!-- Username -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
       <button onclick="lockUsername()">Lock In</button>
     </div>
 
-    <!-- Welcome message -->
+    <!-- Welcome -->
     <h2 id="welcome" style="display: none;"></h2>
 
-    <!-- Fight picks area -->
+    <!-- Fight picks -->
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <p id="submitNotice" style="display: none; text-align: center; color: #ffcc00; margin-top: 5px;">⚠️ Click once and be patient!</p>
 
-    <!-- Your picks -->
-    <div id="myPicks" style="margin-top: 20px;"></div>
+    <!-- My Picks -->
+    <div id="myPicks" style="margin-top: 30px;"></div>
 
     <!-- Leaderboard -->
-    <h2>Leaderboard</h2>
-    <ul id="leaderboard"></ul>
+    <div id="leaderboardContainer" style="margin-top: 40px; background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #444;">
+      <h2 style="text-align: center; color: gold; font-weight: 700; text-shadow: 1px 1px 2px #000;">🏆 Leaderboard</h2>
+      <ul id="leaderboard" style="list-style: none; padding: 0; font-size: 1.1rem;"></ul>
+    </div>
   </div>
-
-  <!-- Optional punch sound (if added later) -->
-  <!-- <audio id="punchSound" src="punch.mp3" preload="auto"></audio> -->
 
   <script src="script.js"></script>
 </body>
 </html>
+
