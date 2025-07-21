@@ -10,19 +10,16 @@
 </head>
 <body>
   <h1><span class="fist">👊</span> Fantasy Fight Picks</h1>
-
   <div id="app">
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
-      <button onclick="lockUsername()">Lock In</button>
+      <button id="lockBtn">Lock In</button>
     </div>
 
     <h2 id="welcome" style="display: none;"></h2>
 
     <div id="fightList" style="display: none;"></div>
-
-    <!-- ✅ Removed inline onclick -->
     <button id="submitBtn" style="display: none;">Submit Picks</button>
 
     <div id="myPicks" style="margin-top: 20px;"></div>
@@ -33,16 +30,15 @@
     <div id="bonusRules" style="margin-top: 30px; padding: 15px; border: 1px solid #ccc; background: #111; color: #fff;">
       <h3>Scoring Rules</h3>
       <ul>
-        <li>✅ +1 for correct winner</li>
-        <li>✅ +1 for correct method</li>
-        <li>✅ +1 for correct round (unless method is Decision)</li>
-        <li>✅ +1 bonus if all 3 are correct</li>
-        <li>✅ +1 bonus if you correctly picked an underdog</li>
-        <li>💡 If method is Decision, round is auto-correct and round picker is disabled</li>
+        <li>+1 correct winner</li>
+        <li>+1 correct method</li>
+        <li>+1 correct round (unless method is Decision)</li>
+        <li>+1 bonus for perfect pick</li>
+        <li>+1 underdog bonus</li>
       </ul>
     </div>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
+
