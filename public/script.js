@@ -4,8 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
+  const punchSound = new Audio("https://www.fesliyanstudios.com/play-mp3/387");
 
-  let username = "";
+  let username = localStorage.getItem("username");
+
+  if (username) {
+    finalizeLogin(username);
+  }
 
   document.querySelector("button").addEventListener("click", () => {
     const input = usernameInput.value.trim();
@@ -14,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     username = input;
+    localStorage.setItem("username", username);
     finalizeLogin(username);
   });
 
@@ -36,14 +42,16 @@ document.addEventListener("DOMContentLoaded", () => {
           div.className = "fight";
           div.innerHTML = `
             <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}"> ${fighter1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}"> ${fighter2}</label>
             <select name="${fight}-method">
-              <option value="Decision">Decision</option>
+              <option value="">Method</option>
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
+              <option value="Decision">Decision</option>
             </select>
             <select name="${fight}-round">
+              <option value="">Round</option>
               <option value="1">Round 1</option>
               <option value="2">Round 2</option>
               <option value="3">Round 3</option>
@@ -54,44 +62,39 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.appendChild(div);
         });
 
-        document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector(`select[name$="-method"]`);
-          const roundSelect = fight.querySelector(`select[name$="-round"]`);
-
+        // Disable round if Decision is selected
+        document.querySelectorAll("select[name$='-method']").forEach(methodSelect => {
           methodSelect.addEventListener("change", () => {
+            const fight = methodSelect.name.split("-method")[0];
+            const roundSelect = document.querySelector(`select[name='${fight}-round']`);
             if (methodSelect.value === "Decision") {
-              roundSelect.disabled = true;
               roundSelect.value = "";
+              roundSelect.disabled = true;
             } else {
               roundSelect.disabled = false;
-              roundSelect.value = "1";
             }
           });
-
-          if (methodSelect.value === "Decision") {
-            roundSelect.disabled = true;
-            roundSelect.value = "";
-          }
         });
-
-        fightList.style.display = "block";
-        submitBtn.style.display = "block";
       });
   }
 
-  function submitPicks() {
+  submitBtn.addEventListener("click", () => {
     const picks = [];
     const fights = document.querySelectorAll(".fight");
-    fights.forEach(fight => {
-      const fightName = fight.querySelector("h3").innerText;
-      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const round = fight.querySelector(`select[name="${fightName}-round"]`)?.value || "";
 
-      if (winner && method) {
-        picks.push({ fight: fightName, winner, method, round });
+    for (let fightDiv of fights) {
+      const fight = fightDiv.querySelector("h3").innerText;
+      const winner = fightDiv.querySelector(`input[name="${fight}-winner"]:checked`)?.value;
+      const method = fightDiv.querySelector(`select[name="${fight}-method"]`)?.value;
+      const round = fightDiv.querySelector(`select[name="${fight}-round"]`)?.value;
+
+      if (!winner || !method || (!round && method !== "Decision")) {
+        alert(`Please complete all picks, including round (except for Decisions)`);
+        return;
       }
-    });
+
+      picks.push({ fight, winner, method, round: method === "Decision" ? "N/A" : round });
+    }
 
     fetch("/api/submit", {
       method: "POST",
@@ -101,17 +104,32 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
+          punchSound.play();
           alert("Picks submitted!");
-          loadMyPicks();
-          fightList.innerHTML = "";
-          submitBtn.style.display = "none";
+          submitBtn.disabled = true;
+          loadLeaderboard();
         } else {
-          alert(data.error || "Something went wrong.");
+          alert("Submission failed: " + (data.error || "Unknown error"));
+        }
+      });
+  });
+
+  function loadLeaderboard() {
+    fetch("/api/leaderboard")
+      .then(res => res.json())
+      .then(data => {
+        const leaderboard = document.getElementById("leaderboard");
+        leaderboard.innerHTML = "<h2>🏆 Leaderboard</h2>";
+        const scores = data.scores;
+        for (let user in scores) {
+          const score = scores[user];
+          const line = document.createElement("p");
+          line.innerText = `${user}: ${score} pts`;
+          if (user === data.champ) line.style.fontWeight = "bold";
+          leaderboard.appendChild(line);
         }
       });
   }
-
-  submitBtn.addEventListener("click", submitPicks);
 
   function loadMyPicks() {
     fetch("/api/picks", {
@@ -121,27 +139,17 @@ document.addEventListener("DOMContentLoaded", () => {
     })
       .then(res => res.json())
       .then(data => {
-        if (!data.success || !data.picks) return;
-        const myPicksDiv = document.getElementById("myPicks");
-        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-        data.picks.forEach(({ fight, winner, method, round }) => {
-          const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
-        });
-      });
-  }
+        if (data.success && data.picks.length > 0) {
+          submitBtn.disabled = true;
 
-  function loadLeaderboard() {
-    fetch("/api/leaderboard")
-      .then(res => res.json())
-      .then(data => {
-        const board = document.getElementById("leaderboard");
-        board.innerHTML = "";
-        Object.entries(data.scores).forEach(([user, score]) => {
-          board.innerHTML += `<li>${user}: ${score} pts</li>`;
-        });
-        if (data.champ) {
-          board.innerHTML += `<li><strong>🏆 Champion of the Week: ${data.champ}</strong></li>`;
+          // Optionally show submitted picks
+          const myPicks = document.getElementById("myPicks");
+          myPicks.innerHTML = "<h2>📋 Your Picks</h2>";
+          data.picks.forEach(({ fight, winner, method, round }) => {
+            const p = document.createElement("p");
+            p.innerText = `${fight}: ${winner} via ${method} (${round})`;
+            myPicks.appendChild(p);
+          });
         }
       });
   }
