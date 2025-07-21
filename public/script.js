@@ -30,7 +30,8 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch("/api/fights")
       .then(res => res.json())
       .then(data => {
-        fightList.innerHTML = "";
+        fightList.innerHTML = ""; // 🧼 Always reset fight list
+
         data.forEach(({ fight, fighter1, fighter2 }) => {
           const div = document.createElement("div");
           div.className = "fight";
@@ -67,6 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           });
         });
+
         fightList.style.display = "block";
         submitBtn.style.display = "block";
       });
@@ -113,13 +115,20 @@ document.addEventListener("DOMContentLoaded", () => {
     })
       .then(res => res.json())
       .then(data => {
-        if (!data.success || !data.picks) return;
         const myPicksDiv = document.getElementById("myPicks");
+        myPicksDiv.innerHTML = ""; // Reset display every time
+
+        if (!data.success || !data.picks) return;
+
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision - no round)" : `Round ${round}`;
           myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
         });
+
+        // Optionally hide pick form if already submitted
+        fightList.style.display = "none";
+        submitBtn.style.display = "none";
       });
   }
 
