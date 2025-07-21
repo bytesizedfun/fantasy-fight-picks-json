@@ -18,10 +18,10 @@
 
   <div id="app">
     <!-- Username prompt -->
-    <div id="usernamePrompt" style="display: none;">
+    <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
-      <button id="lockBtn">Lock In</button>
+      <button onclick="lockUsername()">Lock In</button>
     </div>
 
     <!-- Welcome message -->
@@ -29,13 +29,7 @@
 
     <!-- Fight picks area -->
     <div id="fightList" style="display: none;"></div>
-    <button id="submitBtn" style="display: none;">Submit Picks</button>
-    <p id="submitWarning">⚠️ Click once and be patient...</p>
-
-    <!-- Point system -->
-    <p id="pointSystem">
-      1 point for correct fighter, 1 point for correct method, 1 point for the correct round (round is correct if decision is the outcome), 1 bonus point for a perfect pick, 1 bonus point for an underdog win 🐶
-    </p>
+    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
     <!-- Your picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
@@ -45,46 +39,9 @@
     <ul id="leaderboard"></ul>
   </div>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const usernamePrompt = document.getElementById("usernamePrompt");
-      const usernameInput = document.getElementById("usernameInput");
-      const welcome = document.getElementById("welcome");
-      const lockBtn = document.getElementById("lockBtn");
-
-      let username = localStorage.getItem("username");
-
-      if (username) {
-        finalizeLogin(username);
-      } else {
-        usernamePrompt.style.display = "block";
-      }
-
-      lockBtn.addEventListener("click", () => {
-        const input = usernameInput.value.trim();
-        if (!input) {
-          alert("Please enter your name.");
-          return;
-        }
-        username = input;
-        localStorage.setItem("username", username);
-        finalizeLogin(username);
-      });
-
-      function finalizeLogin(name) {
-        usernamePrompt.style.display = "none";
-        welcome.innerText = `Welcome, ${name}!`;
-        welcome.style.display = "block";
-        document.getElementById("fightList").style.display = "block";
-        document.getElementById("submitBtn").style.display = "block";
-        loadFights(); // from script.js
-        loadLeaderboard();
-        loadMyPicks();
-      }
-    });
-  </script>
+  <!-- Optional punch sound (if added later) -->
+  <!-- <audio id="punchSound" src="punch.mp3" preload="auto"></audio> -->
 
   <script src="script.js"></script>
 </body>
 </html>
-
