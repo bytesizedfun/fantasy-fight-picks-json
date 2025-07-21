@@ -8,11 +8,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
-// ✅ Correct Google Apps Script Web App URL
+// ✅ Your new correct deployment URL:
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-// ✅ Cutoff to lock submissions
-const lockoutTime = new Date("2025-07-27T15:00:00-04:00");
+
+const lockoutTime = new Date("2025-07-20T18:00:00"); // Adjust as needed
 
 app.get("/api/fights", (req, res) => {
   const fights = require("./data/fights.json");
@@ -46,7 +46,6 @@ app.post("/api/picks", async (req, res) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "getUserPicks", username })
   });
-
   const result = await response.json();
   res.json(result);
 });
@@ -57,11 +56,10 @@ app.get("/api/leaderboard", async (req, res) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "getLeaderboard" })
   });
-
   const result = await response.json();
   res.json(result);
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
