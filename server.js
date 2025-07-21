@@ -13,7 +13,7 @@ app.use(express.static("public"));
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
 // ⏳ Lockout time for fight submissions
-const lockoutTime = new Date("2025-07-20T15:00:00");
+const lockoutTime = new Date("2025-07-26T15:00:00");
 
 // ✅ Safely load fights.json using fs (Render-safe)
 app.get("/api/fights", (req, res) => {
