@@ -21,7 +21,7 @@
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
-      <button onclick="lockUsername()">Lock In</button>
+      <button id="loginBtn">Lock In</button>
     </div>
 
     <!-- Welcome message -->
@@ -29,7 +29,7 @@
 
     <!-- Fight picks area -->
     <div id="fightList" style="display: none;"></div>
-    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <button id="submitBtn" style="display: none;">Submit Picks</button>
     <p id="submitWarning">⚠️ Click once and be patient...</p>
 
     <!-- Point system -->
@@ -48,3 +48,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+
