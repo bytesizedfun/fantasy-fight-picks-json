@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <h3>${fight}</h3>
             <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
             <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
-            <select name="${fight}-method" onchange="toggleRound(this, '${fight}')">
+            <select name="${fight}-method" onchange="toggleRound('${fight}')">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
@@ -54,11 +54,23 @@ document.addEventListener("DOMContentLoaded", () => {
             </select>
           `;
           fightList.appendChild(div);
+          toggleRound(fight); // initialize dropdown state
         });
         fightList.style.display = "block";
         submitBtn.style.display = "block";
       });
   }
+
+  window.toggleRound = function(fightName) {
+    const method = document.querySelector(`select[name="${fightName}-method"]`).value;
+    const roundSelect = document.querySelector(`select[name="${fightName}-round"]`);
+    if (method === "Decision") {
+      roundSelect.disabled = true;
+      roundSelect.value = "R3";
+    } else {
+      roundSelect.disabled = false;
+    }
+  };
 
   function submitPicks() {
     const picks = [];
@@ -67,9 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const fightName = fight.querySelector("h3").innerText;
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundSelect = fight.querySelector(`select[name="${fightName}-round"]`);
-      const round = method === "Decision" ? "R3 (auto)" : roundSelect?.value;
-
+      const round = fight.querySelector(`select[name="${fightName}-round"]`)?.value;
       if (winner && method) {
         picks.push({ fight: fightName, winner, method, round });
       }
@@ -107,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const myPicksDiv = document.getElementById("myPicks");
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
         data.picks.forEach(({ fight, winner, method, round }) => {
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${round ? `in ${round}` : ""}</p>`;
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} in ${round}</p>`;
         });
       });
   }
@@ -127,14 +137,3 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 });
-
-// ✅ Global round toggle function
-function toggleRound(methodSelect, fightName) {
-  const roundSelect = document.querySelector(`select[name="${fightName}-round"]`);
-  if (methodSelect.value === "Decision") {
-    roundSelect.disabled = true;
-    roundSelect.value = "R3 (auto)";
-  } else {
-    roundSelect.disabled = false;
-  }
-}
