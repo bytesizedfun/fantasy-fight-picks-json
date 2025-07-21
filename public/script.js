@@ -4,8 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
+  const punchSound = new Audio("punch.mp3");
 
-  let username = "";
+  let username = localStorage.getItem("username") || "";
+
+  if (username) {
+    finalizeLogin(username);
+  }
 
   document.querySelector("button").addEventListener("click", () => {
     const input = usernameInput.value.trim();
@@ -14,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     username = input;
+    localStorage.setItem("username", username);
     finalizeLogin(username);
   });
 
@@ -22,8 +28,8 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.innerText = `Welcome, ${name}!`;
     welcome.style.display = "block";
     loadFights();
-    loadLeaderboard();
     loadMyPicks();
+    loadLeaderboard(); // ✅ Called once
   }
 
   function loadFights() {
@@ -54,6 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.appendChild(div);
         });
 
+        // Auto-disable round if method is Decision
         document.querySelectorAll(".fight").forEach(fight => {
           const methodSelect = fight.querySelector(`select[name$="-method"]`);
           const roundSelect = fight.querySelector(`select[name$="-round"]`);
@@ -81,17 +88,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function submitPicks() {
     const picks = [];
-    document.querySelectorAll(".fight").forEach(fight => {
+    const fights = document.querySelectorAll(".fight");
+
+    for (const fight of fights) {
       const fightName = fight.querySelector("h3").innerText;
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundDropdown = fight.querySelector(`select[name="${fightName}-round"]`);
-      const round = roundDropdown && !roundDropdown.disabled ? roundDropdown.value : "";
+      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
 
-      if (winner && method) {
-        picks.push({ fight: fightName, winner, method, round });
+      if (!winner || !method) {
+        alert(`Please complete all picks. Missing data for "${fightName}".`);
+        return;
       }
-    });
+
+      picks.push({ fight: fightName, winner, method, round });
+    }
 
     fetch("/api/submit", {
       method: "POST",
@@ -101,27 +113,33 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
+          punchSound.play();
           alert("Picks submitted!");
+          loadMyPicks();
           fightList.innerHTML = "";
           submitBtn.style.display = "none";
-          loadMyPicks();
         } else {
-          alert(data.error || "Failed to submit picks.");
+          alert(data.error || "Something went wrong.");
         }
       });
   }
 
+  submitBtn.addEventListener("click", submitPicks);
+
   function loadMyPicks() {
-    fetch("/api/getUserPicks", {
+    fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username })
     })
       .then(res => res.json())
       .then(data => {
-        if (!data.success || !data.picks) return;
         const myPicksDiv = document.getElementById("myPicks");
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+        if (!data.success || !data.picks.length) {
+          myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
+          return;
+        }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
           myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
@@ -134,15 +152,14 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
-        board.innerHTML = "<h3>🏆 Leaderboard</h3>";
+        board.innerHTML = "<h3>Leaderboard:</h3><ul>";
         Object.entries(data.scores).forEach(([user, score]) => {
           board.innerHTML += `<li>${user}: ${score} pts</li>`;
         });
         if (data.champ) {
-          board.innerHTML += `<li><strong>Champion of the Week: ${data.champ}</strong></li>`;
+          board.innerHTML += `<li><strong>🏆 Champion of the Week: ${data.champ}</strong></li>`;
         }
+        board.innerHTML += "</ul>";
       });
   }
-
-  submitBtn.addEventListener("click", submitPicks);
 });
