@@ -13,25 +13,70 @@
     "fight": "Kevin Holland vs Neil Magny",
     "fighter1": "Kevin Holland",
     "fighter2": "Neil Magny"
+  },
+  {
+    "fight": "Paulo Costa vs Roman Kopylov",
+    "fighter1": "Paulo Costa",
+    "fighter2": "Roman Kopylov"
+  },
+  {
+    "fight": "Kevin Holland vs Daniel Rodriguez",
+    "fighter1": "Kevin Holland",
+    "fighter2": "Daniel Rodriguez"
+  },
+  {
+    "fight": "Dan Ige vs Patricio Pitbull",
+    "fighter1": "Dan Ige",
+    "fighter2": "Patricio Pitbull"
+  },
+  {
+    "fight": "Michael Johnson vs Daniel Zellhuber",
+    "fighter1": "Michael Johnson",
+    "fighter2": "Daniel Zellhuber"
+  },
+  {
+    "fight": "Kyler Phillips vs Vinicius Oliveira",
+    "fighter1": "Kyler Phillips",
+    "fighter2": "Vinicius Oliveira"
+  },
+  {
+    "fight": "Marvin Vettori vs Brendan Allen",
+    "fighter1": "Marvin Vettori",
+    "fighter2": "Brendan Allen"
+  },
+  {
+    "fight": "Francisco Prado vs Nikolay Veretennikov",
+    "fighter1": "Francisco Prado",
+    "fighter2": "Nikolay Veretennikov"
+  },
+  {
+    "fight": "Ateba Gautier vs Robert Valentin",
+    "fighter1": "Ateba Gautier",
+    "fighter2": "Robert Valentin"
+  },
+  {
+    "fight": "Adam Fugitt vs Islam Dulatov",
+    "fighter1": "Adam Fugitt",
+    "fighter2": "Islam Dulatov"
+  },
+  {
+    "fight": "Jimmy Crute vs Marcin Prachnio",
+    "fighter1": "Jimmy Crute",
+    "fighter2": "Marcin Prachnio"
+  },
+  {
+    "fight": "Ryan Spann vs Lukasz Brzeski",
+    "fighter1": "Ryan Spann",
+    "fighter2": "Lukasz Brzeski"
+  },
+  {
+    "fight": "Brunno Ferreira vs Jackson McVey",
+    "fighter1": "Brunno Ferreira",
+    "fighter2": "Jackson McVey"
+  },
+  {
+    "fight": "Carli Judice vs Nicolle Caliari",
+    "fighter1": "Carli Judice",
+    "fighter2": "Nicolle Caliari"
   }
-  { "fight": "Max Holloway vs Dustin Poirier", "fighter1": "Max Holloway", "fighter2": "Dustin Poirier" },
-  { "fight": "Paulo Costa vs Roman Kopylov", "fighter1": "Paulo Costa", "fighter2": "Roman Kopylov" },
-  { "fight": "Kevin Holland vs Daniel Rodriguez", "fighter1": "Kevin Holland", "fighter2": "Daniel Rodriguez" },
-  { "fight": "Dan Ige vs Patricio Pitbull", "fighter1": "Dan Ige", "fighter2": "Patricio Pitbull" },
-  { "fight": "Michael Johnson vs Daniel Zellhuber", "fighter1": "Michael Johnson", "fighter2": "Daniel Zellhuber" },
-
-  { "fight": "Kyler Phillips vs Vinicius Oliveira", "fighter1": "Kyler Phillips", "fighter2": "Vinicius Oliveira" },
-  { "fight": "Marvin Vettori vs Brendan Allen", "fighter1": "Marvin Vettori", "fighter2": "Brendan Allen" },
-  { "fight": "Francisco Prado vs Nikolay Veretennikov", "fighter1": "Francisco Prado", "fighter2": "Nikolay Veretennikov" },
-  { "fight": "Ateba Gautier vs Robert Valentin", "fighter1": "Ateba Gautier", "fighter2": "Robert Valentin" },
-
-  { "fight": "Adam Fugitt vs Islam Dulatov", "fighter1": "Adam Fugitt", "fighter2": "Islam Dulatov" },
-  { "fight": "Jimmy Crute vs Marcin Prachnio", "fighter1": "Jimmy Crute", "fighter2": "Marcin Prachnio" },
-  { "fight": "Ryan Spann vs Lukasz Brzeski", "fighter1": "Ryan Spann", "fighter2": "Lukasz Brzeski" },
-  { "fight": "Brunno Ferreira vs Jackson McVey", "fighter1": "Brunno Ferreira", "fighter2": "Jackson McVey" },
-  { "fight": "Carli Judice vs Nicolle Caliari", "fighter1": "Carli Judice", "fighter2": "Nicolle Caliari" }
-
-
-
-
-
+]
