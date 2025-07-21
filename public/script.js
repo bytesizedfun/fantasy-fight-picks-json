@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.appendChild(div);
         });
 
-        // Disable round if Decision is selected
+        // Disable round if method is Decision
         document.querySelectorAll("select[name$='-method']").forEach(methodSelect => {
           methodSelect.addEventListener("change", () => {
             const fight = methodSelect.name.split("-method")[0];
@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ action: "getUserPicks", username })
     })
       .then(res => res.json())
       .then(data => {
