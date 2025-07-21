@@ -26,53 +26,73 @@ document.addEventListener("DOMContentLoaded", () => {
     loadMyPicks();
   }
 
-  function loadFights() {
-    fetch("/api/fights")
-      .then(res => res.json())
-      .then(data => {
-        fightList.innerHTML = ""; // 🧼 Always reset fight list
+function loadFights() {
+  fetch("/api/fights")
+    .then(res => res.json())
+    .then(data => {
+      fightList.innerHTML = ""; // Fully clear form every time
 
-        data.forEach(({ fight, fighter1, fighter2 }) => {
-          const div = document.createElement("div");
-          div.className = "fight";
-          const fightId = fight.replace(/\s+/g, "-");
-          div.innerHTML = `
-            <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
-            <select name="${fight}-method" class="method">
-              <option value="Decision">Decision</option>
-              <option value="KO/TKO">KO/TKO</option>
-              <option value="Submission">Submission</option>
-            </select>
-            <select name="${fight}-round" class="round">
-              <option value="">Round</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-            </select>
-          `;
-          fightList.appendChild(div);
+      data.forEach(({ fight, fighter1, fighter2 }) => {
+        const div = document.createElement("div");
+        div.className = "fight";
 
-          const methodSelect = div.querySelector(`select[name="${fight}-method"]`);
-          const roundSelect = div.querySelector(`select[name="${fight}-round"]`);
+        const fightTitle = document.createElement("h3");
+        fightTitle.textContent = fight;
+        div.appendChild(fightTitle);
 
-          methodSelect.addEventListener("change", () => {
-            if (methodSelect.value === "Decision") {
-              roundSelect.setAttribute("disabled", "disabled");
-              roundSelect.value = "";
-            } else {
-              roundSelect.removeAttribute("disabled");
-            }
-          });
+        // Create fighter radio buttons
+        [fighter1, fighter2].forEach(fighter => {
+          const label = document.createElement("label");
+          const input = document.createElement("input");
+          input.type = "radio";
+          input.name = `${fight}-winner`;
+          input.value = fighter;
+          label.appendChild(input);
+          label.append(` ${fighter}`);
+          div.appendChild(label);
         });
 
-        fightList.style.display = "block";
-        submitBtn.style.display = "block";
+        // Create method dropdown
+        const methodSelect = document.createElement("select");
+        methodSelect.name = `${fight}-method`;
+        methodSelect.className = "method";
+        ["Decision", "KO/TKO", "Submission"].forEach(method => {
+          const option = document.createElement("option");
+          option.value = method;
+          option.textContent = method;
+          methodSelect.appendChild(option);
+        });
+        div.appendChild(methodSelect);
+
+        // Create round dropdown
+        const roundSelect = document.createElement("select");
+        roundSelect.name = `${fight}-round`;
+        roundSelect.className = "round";
+        ["", "1", "2", "3", "4", "5"].forEach(r => {
+          const option = document.createElement("option");
+          option.value = r;
+          option.textContent = r === "" ? "Round" : r;
+          roundSelect.appendChild(option);
+        });
+        div.appendChild(roundSelect);
+
+        // Disable round if method is Decision
+        methodSelect.addEventListener("change", () => {
+          if (methodSelect.value === "Decision") {
+            roundSelect.setAttribute("disabled", "disabled");
+            roundSelect.value = "";
+          } else {
+            roundSelect.removeAttribute("disabled");
+          }
+        });
+
+        fightList.appendChild(div);
       });
-  }
+
+      fightList.style.display = "block";
+      submitBtn.style.display = "block";
+    });
+}
 
   function submitPicks() {
     const picks = [];
