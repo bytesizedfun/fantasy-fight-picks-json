@@ -195,16 +195,37 @@ h2::after {
 /* ✅ Clean red welcome message (no glow) */
 #welcome {
   font-size: 1.2rem;
-  color: #e50914; /* UFC Red */
+  color: #e50914;
   text-align: center;
   margin: 20px 0;
   letter-spacing: 0.5px;
 }
 
-/* My Picks */
+/* 👤 My Picks display */
 #myPicks p {
   margin: 4px 0;
   font-size: 0.95rem;
+}
+
+/* 🆕 Styled pick output */
+.fight-name {
+  font-weight: bold;
+  color: #e50914;
+}
+
+.user-pick {
+  margin-left: 10px;
+  color: #9be7ff;
+  font-style: italic;
+}
+
+/* ⚠️ Submit warning */
+#submitNotice {
+  text-align: center;
+  color: #ffcc00;
+  margin-top: 5px;
+  font-size: 0.9rem;
+  letter-spacing: 0.3px;
 }
 
 /* Responsive tweaks */
