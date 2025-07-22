@@ -3,14 +3,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
+  const usernameInput = document.getElementById("usernameInput");
   const myPicks = document.getElementById("myPicks");
 
   let username = localStorage.getItem("username");
 
-  // Hide "Leaderboard" h2 label (2nd h2 on the page)
-  document.querySelectorAll("h2")[1].style.display = "none";
+  // 👑 Remove "Leaderboard" text if script ever injects it
+  const leaderboardTitle = document.querySelector("#leaderboardTitle");
+  if (leaderboardTitle) leaderboardTitle.style.display = "none";
 
-  // Add countdown timer
+  // ⏳ COUNTDOWN
   const countdownEl = document.createElement("div");
   countdownEl.id = "countdown";
   countdownEl.style.textAlign = "center";
@@ -19,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   countdownEl.style.color = "#FFD700";
   document.getElementById("app").insertBefore(countdownEl, fightList);
 
-  const eventTime = new Date("2025-07-26T15:00:00"); // 3PM EST
+  const eventTime = new Date("2025-07-26T15:00:00");
   setInterval(() => {
     const now = new Date();
     const diff = eventTime - now;
@@ -39,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.querySelector("button").addEventListener("click", () => {
-    const input = document.getElementById("usernameInput").value.trim();
+    const input = usernameInput.value.trim();
     if (!input) {
       alert("Please enter your name.");
       return;
@@ -85,6 +87,20 @@ document.addEventListener("DOMContentLoaded", () => {
               <option value="5">Round 5</option>
             </select>
           `;
+
+          // Disable round if method is "Decision"
+          const methodSelect = div.querySelector(`select[name="${fight}-method"]`);
+          const roundSelect = div.querySelector(`select[name="${fight}-round"]`);
+          methodSelect.addEventListener("change", () => {
+            if (methodSelect.value === "Decision") {
+              roundSelect.disabled = true;
+              roundSelect.value = "N/A";
+            } else {
+              roundSelect.disabled = false;
+              roundSelect.value = "";
+            }
+          });
+
           fightList.appendChild(div);
         });
         fightList.style.display = "block";
@@ -101,8 +117,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const method = fight.querySelector(`select[name="${fightName}-method"]`).value;
       const round = fight.querySelector(`select[name="${fightName}-round"]`).value;
 
-      if (!winner || !method || !round) {
-        alert("Please complete all picks before submitting.");
+      if (!winner || !method || (!round && method !== "Decision")) {
+        alert(`Please complete all picks for: ${fightName}`);
         return;
       }
 
@@ -110,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
         fight: fightName,
         winner: winner.value,
         method,
-        round
+        round: method === "Decision" ? "N/A" : round
       });
     }
 
@@ -139,9 +155,10 @@ document.addEventListener("DOMContentLoaded", () => {
       body: JSON.stringify({ username })
     })
       .then(res => res.json())
-      .then(picks => {
+      .then(data => {
+        if (!data.success) return;
         myPicks.innerHTML = "<h3>Your Picks:</h3>";
-        picks.forEach(p => {
+        data.picks.forEach(p => {
           const pEl = document.createElement("p");
           pEl.textContent = `${p.fight}: ${p.winner} by ${p.method} in Round ${p.round}`;
           myPicks.appendChild(pEl);
@@ -152,12 +169,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadLeaderboard() {
     fetch("/api/getLeaderboard")
       .then(res => res.json())
-      .then(scores => {
+      .then(data => {
         const leaderboard = document.getElementById("leaderboard");
         leaderboard.innerHTML = "";
-        scores.forEach(entry => {
+        Object.entries(data.scores).forEach(([user, score]) => {
           const li = document.createElement("li");
-          li.textContent = `${entry.username}: ${entry.score} pts`;
+          li.textContent = `${user}: ${score} pts`;
           leaderboard.appendChild(li);
         });
       });
