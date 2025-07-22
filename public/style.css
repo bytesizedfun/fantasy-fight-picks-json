@@ -106,18 +106,18 @@ button:hover {
   background-color: #d62828;
 }
 
-h2 {
+h2, .leader-title {
   font-size: 1.8rem;
   color: #FFD700;
   text-align: center;
   margin-top: 40px;
   letter-spacing: 1px;
   text-shadow: 0 0 10px #FFD700, 0 0 20px #ffc400, 0 0 28px #ffea00;
-  position: relative;
   text-transform: uppercase;
+  position: relative;
 }
 
-h2::after {
+h2::after, .leader-title::after {
   content: "";
   display: block;
   width: 60px;
@@ -131,25 +131,25 @@ h2::after {
   min-height: 100px;
   padding: 16px;
   margin-top: 20px;
-  background: linear-gradient(to right, #1e1e1e, #2a2a2a);
-  border-radius: 8px;
-  border: 1px solid #FFD700;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  background: #1a1a1a;
+  border-radius: 10px;
+  border: 2px solid #FFD700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
   list-style: none;
 }
 
 #leaderboard li {
-  background: linear-gradient(to right, #1f1f1f, #292929);
-  padding: 10px 10px 10px 40px;
-  margin: 8px 0;
+  background: linear-gradient(to right, #202020, #2a2a2a);
+  padding: 12px 16px;
+  margin: 10px 0;
   border-radius: 6px;
-  border-left: 4px solid #FFD700;
-  font-weight: 600;
+  font-weight: bold;
+  color: #f0f0f0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  position: relative;
-  transition: transform 0.2s ease, background 0.3s ease;
+  justify-content: space-between;
+  border-left: 4px solid #FFD700;
+  transition: background 0.3s ease, transform 0.2s ease;
   font-size: 1rem;
 }
 
@@ -158,44 +158,51 @@ h2::after {
   background-color: #2c2c2c;
 }
 
-@keyframes crownBounce {
-  0%, 100% {
-    transform: translateY(-50%) scale(1);
-    text-shadow: 0 0 8px #FFD700, 0 0 12px #ffc400;
-  }
-  50% {
-    transform: translateY(-55%) scale(1.15);
-    text-shadow: 0 0 12px #FFD700, 0 0 18px #ffdf00;
-  }
-}
-
 #leaderboard li:first-child {
   background: #2c2c2c;
   color: #FFD700;
-  font-weight: bold;
 }
 
 #leaderboard li:first-child::before {
   content: "👑";
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  font-size: 1.3rem;
-  animation: crownBounce 1.8s infinite ease-in-out;
-  transform: translateY(-50%);
+  margin-right: 10px;
+  animation: crownBounce 1.5s infinite ease-in-out;
+}
+
+@keyframes crownBounce {
+  0%, 100% {
+    transform: translateY(0);
+    text-shadow: 0 0 6px #FFD700;
+  }
+  50% {
+    transform: translateY(-4px);
+    text-shadow: 0 0 12px #ffdf00;
+  }
 }
 
 #welcome {
   font-size: 1.2rem;
-  color: #e50914;
+  color: #fce303;
   text-align: center;
   margin: 20px 0;
   letter-spacing: 0.5px;
 }
 
+/* My Picks area */
+#myPicks h3 {
+  color: #e50914;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
 #myPicks p {
-  margin: 4px 0;
+  background-color: #2a2a2a;
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-left: 4px solid #e50914;
+  border-radius: 4px;
   font-size: 0.95rem;
+  line-height: 1.4;
 }
 
 @media (max-width: 600px) {
