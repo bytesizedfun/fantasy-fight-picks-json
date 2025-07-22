@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Anton&display=swap');
 
 body {
   font-family: 'Oswald', sans-serif;
@@ -8,20 +8,12 @@ body {
   margin: 0;
 }
 
-/* 👊 Pulsing fist (logo removed now, but style retained in case reused) */
-.fist {
-  display: inline-block;
-  margin-right: 0.4rem;
-  animation: pulse 1.5s infinite ease-in-out;
-  transform-origin: center;
-  font-size: 1.4rem;
-}
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
+.logo-banner {
+  max-width: 240px;
+  display: block;
+  margin: 0 auto 10px;
 }
 
-/* Container */
 #app {
   max-width: 540px;
   margin: 0 auto;
@@ -31,26 +23,30 @@ body {
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
-/* Fight pick layout — DO NOT TOUCH */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
-  border: 1px solid #333;
   border-radius: 6px;
   background-color: #1e1e1e;
+  border: 1px solid #661010;
+  box-shadow: 0 0 6px rgba(229, 9, 20, 0.5);
 }
-.fight h3 { margin-top: 0; color: #ffffff; }
+
+.fight h3 { color: #fff; margin-top: 0; }
+
 .fight label {
   display: block;
   margin: 6px 0;
   font-size: 0.95rem;
   cursor: pointer;
 }
+
 .fight input[type="radio"] {
   margin-right: 8px;
   vertical-align: middle;
   transform: scale(1.2);
 }
+
 input[type="text"], select {
   width: 100%;
   padding: 8px;
@@ -61,9 +57,8 @@ input[type="text"], select {
   color: #fff;
 }
 
-/* Button */
 button {
-  background-color: #c9184a;
+  background-color: #e50914;
   color: white;
   padding: 10px 16px;
   border: none;
@@ -74,11 +69,11 @@ button {
   margin-top: 10px;
   font-family: 'Oswald', sans-serif;
 }
+
 button:hover {
-  background-color: #a70c36;
+  background-color: #cc0812;
 }
 
-/* Welcome name intro */
 #welcome {
   font-size: 1.4rem;
   color: #ffffff;
@@ -89,25 +84,6 @@ button:hover {
   text-transform: uppercase;
 }
 
-/* Your Picks Section */
-#myPicks h3 {
-  color: #ffffff;
-  margin-bottom: 10px;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-#myPicks p {
-  background-color: #2a2a2a;
-  padding: 8px 10px;
-  margin: 6px 0;
-  border-left: 4px solid #c9184a;
-  border-radius: 4px;
-  font-size: 0.95rem;
-  line-height: 1.4;
-}
-
-/* Submit warning: one click only */
 .submit-warning {
   text-align: center;
   color: #f0f0f0;
@@ -121,21 +97,50 @@ button:hover {
   100% { opacity: 0.7; transform: scale(1.02); }
 }
 
-/* LEADERBOARD SECTION */
+/* Picks */
+#myPicks h3 {
+  color: #e50914;
+  margin-bottom: 10px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#myPicks p {
+  background-color: #2a2a2a;
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-left: 4px solid #e50914;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* Scoring */
+.scoring-box {
+  font-size: 0.9rem;
+  text-align: center;
+  color: #eee;
+  background: none;
+  padding: 10px 0;
+  margin-bottom: 10px;
+  border: none;
+}
+
+/* Leaderboard Title */
 .leader-title {
+  font-family: 'Anton', sans-serif;
   font-size: 2rem;
-  font-weight: bold;
   color: #FFD700;
   text-align: center;
   margin-top: 40px;
   letter-spacing: 2px;
   border-bottom: 2px solid #FFD700;
   padding-bottom: 8px;
-  text-transform: uppercase;
-  text-shadow: 0 0 10px #FFD700, 0 0 20px #e6c200, 0 0 30px #ffea00;
+  text-shadow: 0 0 10px #FFD700, 0 0 20px #e6c200, 0 0 28px #ffea00;
 }
 
-/* Leaderboard container with full gold shimmer */
+/* Leaderboard Container */
 #leaderboard {
   min-height: 100px;
   padding: 16px;
@@ -143,29 +148,17 @@ button:hover {
   background: #1a1a1a;
   border-radius: 12px;
   border: 3px solid #FFD700;
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+  animation: pulse-border 2s infinite;
   list-style: none;
-
-  box-shadow:
-    0 0 10px #FFD700,
-    0 0 20px #e6c200,
-    0 0 30px #ffea00;
-
-  animation: pulse-gold 2s infinite;
 }
 
-@keyframes pulse-gold {
-  0% {
-    box-shadow: 0 0 10px #FFD700, 0 0 20px #e6c200, 0 0 30px #ffea00;
-  }
-  50% {
-    box-shadow: 0 0 20px #ffea00, 0 0 30px #fff000, 0 0 40px #FFD700;
-  }
-  100% {
-    box-shadow: 0 0 10px #FFD700, 0 0 20px #e6c200, 0 0 30px #ffea00;
-  }
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 10px #FFD700; }
+  50% { box-shadow: 0 0 30px #ffe600; }
+  100% { box-shadow: 0 0 10px #FFD700; }
 }
 
-/* Leaderboard list */
 #leaderboard li {
   background: #1e1e1e;
   padding: 12px 16px;
@@ -181,27 +174,21 @@ button:hover {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   transition: all 0.3s ease;
+  font-family: 'Anton', sans-serif;
 }
+
 #leaderboard li:hover {
   background-color: #292929;
   transform: scale(1.02);
 }
+
 #leaderboard li:first-child::before {
   content: "👑";
   margin-right: 10px;
   animation: crownBounce 1.5s infinite ease-in-out;
 }
+
 @keyframes crownBounce {
   0%, 100% { transform: translateY(0); text-shadow: 0 0 6px #FFD700; }
   50% { transform: translateY(-4px); text-shadow: 0 0 12px #ffdf00; }
-}
-
-/* Responsive tweaks */
-@media (max-width: 600px) {
-  h1 { font-size: 1.8rem; padding: 0 10px; }
-  .leader-title { font-size: 1.5rem; }
-  #app { padding: 15px; }
-  .fight label { font-size: 1rem; }
-  button { font-size: 1rem; padding: 12px; }
-  .fight { padding: 12px; }
 }
