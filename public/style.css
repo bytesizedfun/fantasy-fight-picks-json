@@ -29,7 +29,7 @@ h1 {
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
-  text-shadow: 0 0 10px #FFD700, 0 0 20px #e6c200, 0 0 28px #ffea00;
+  /* 🔥 Removed glow from title */
 }
 
 #app {
@@ -117,6 +117,20 @@ button:hover {
   line-height: 1.4;
 }
 
+/* Submit warning: one click only */
+.submit-warning {
+  text-align: center;
+  color: #f0f0f0;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-top: 6px;
+  animation: fadePop 2s infinite alternate;
+}
+@keyframes fadePop {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.7; transform: scale(1.02); }
+}
+
 /* Leaderboard title */
 .leader-title {
   font-size: 2rem;
@@ -127,6 +141,7 @@ button:hover {
   border-bottom: 2px solid #FFD700;
   padding-bottom: 8px;
   text-transform: uppercase;
+  text-shadow: 0 0 10px #FFD700, 0 0 20px #e6c200, 0 0 28px #ffea00; /* ✅ Only glow here */
 }
 
 /* Leaderboard container */
