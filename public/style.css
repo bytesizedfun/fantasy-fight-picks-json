@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap');
 
 body {
@@ -30,6 +29,7 @@ h1 {
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
+  /* glow removed */
 }
 
 #app {
@@ -106,6 +106,7 @@ button:hover {
   text-transform: uppercase;
   letter-spacing: 1px;
 }
+
 #myPicks p {
   background-color: #2a2a2a;
   padding: 8px 10px;
@@ -116,18 +117,31 @@ button:hover {
   line-height: 1.4;
 }
 
+/* Submit warning: one click only */
+.submit-warning {
+  text-align: center;
+  color: #f0f0f0;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-top: 6px;
+  animation: fadePop 2s infinite alternate;
+}
+@keyframes fadePop {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.7; transform: scale(1.02); }
+}
+
 /* Leaderboard title */
 .leader-title {
-  font-size: 2.2rem;
+  font-size: 2rem;
   color: #FFD700;
   text-align: center;
   margin-top: 40px;
   letter-spacing: 2px;
+  border-bottom: 2px solid #FFD700;
   padding-bottom: 8px;
   text-transform: uppercase;
-  animation: flicker 2.5s infinite alternate;
-  font-family: 'Bebas Neue', cursive, sans-serif;
-  text-shadow: 0 0 5px #FFD700, 0 0 10px #f5e663, 0 0 20px #ffea00;
+  text-shadow: 0 0 10px #FFD700, 0 0 20px #e6c200, 0 0 28px #ffea00;
 }
 
 /* Leaderboard container */
@@ -177,19 +191,6 @@ button:hover {
 @keyframes crownBounce {
   0%, 100% { transform: translateY(0); text-shadow: 0 0 6px #FFD700; }
   50% { transform: translateY(-4px); text-shadow: 0 0 12px #ffdf00; }
-}
-
-/* Clear injected header */
-#leaderboard:before {
-  content: "";
-}
-
-/* Submit warning */
-.submit-warning {
-  text-align: center;
-  color: #aaa;
-  font-size: 0.9rem;
-  margin-top: 12px;
 }
 
 /* Responsive tweaks */
