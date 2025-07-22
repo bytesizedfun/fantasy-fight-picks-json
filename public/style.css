@@ -98,6 +98,7 @@ button:hover {
   margin-top: 6px;
   animation: fadePop 2s infinite alternate;
 }
+
 @keyframes fadePop {
   0% { opacity: 1; transform: scale(1); }
   100% { opacity: 0.7; transform: scale(1.02); }
@@ -121,7 +122,7 @@ button:hover {
   font-size: 1rem;
   line-height: 1.5;
   font-family: 'Teko', sans-serif;
-  color: initial;
+  color: #ffffff; /* 👈 default text now white */
 }
 
 #myPicks p .fight-name {
@@ -135,7 +136,7 @@ button:hover {
 
 #myPicks p .user-pick {
   font-style: italic;
-  color: #bbbbbb;
+  color: #bbbbbb; /* 👈 light gray for picks */
   font-size: 0.95rem;
   letter-spacing: 0.3px;
 }
