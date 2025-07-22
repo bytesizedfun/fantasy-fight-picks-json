@@ -8,7 +8,6 @@ body {
   margin: 0;
 }
 
-/* 👊 Pulsing fist emoji */
 .fist {
   display: inline-block;
   margin-right: 0.4rem;
@@ -26,7 +25,6 @@ body {
   }
 }
 
-/* Title */
 h1 {
   color: #f5f5f5;
   text-align: center;
@@ -36,7 +34,6 @@ h1 {
   text-transform: uppercase;
 }
 
-/* App container */
 #app {
   max-width: 540px;
   margin: 0 auto;
@@ -46,7 +43,6 @@ h1 {
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
-/* Fight cards */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
@@ -110,7 +106,6 @@ button:hover {
   background-color: #d62828;
 }
 
-/* 🥇 Leaderboard Heading — strong gold glow */
 h2 {
   font-size: 1.8rem;
   color: #FFD700;
@@ -132,7 +127,6 @@ h2::after {
   border-radius: 2px;
 }
 
-/* Leaderboard box */
 #leaderboard {
   min-height: 100px;
   padding: 16px;
@@ -144,27 +138,26 @@ h2::after {
   list-style: none;
 }
 
-/* Leaderboard entries */
 #leaderboard li {
-  background: #1e1e1e;
+  background: linear-gradient(to right, #1f1f1f, #292929);
   padding: 10px 10px 10px 40px;
   margin: 8px 0;
-  border-radius: 4px;
-  border-left: 3px solid #FFD700;
-  font-weight: 500;
+  border-radius: 6px;
+  border-left: 4px solid #FFD700;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 10px;
   position: relative;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, background 0.3s ease;
+  font-size: 1rem;
 }
 
 #leaderboard li:hover {
-  transform: scale(1.02);
-  background-color: #2a2a2a;
+  transform: scale(1.03);
+  background-color: #2c2c2c;
 }
 
-/* 👑 Crown for 1st place */
 @keyframes crownBounce {
   0%, 100% {
     transform: translateY(-50%) scale(1);
@@ -192,22 +185,19 @@ h2::after {
   transform: translateY(-50%);
 }
 
-/* ✅ Clean red welcome message (no glow) */
 #welcome {
   font-size: 1.2rem;
-  color: #e50914; /* UFC Red */
+  color: #e50914;
   text-align: center;
   margin: 20px 0;
   letter-spacing: 0.5px;
 }
 
-/* My Picks */
 #myPicks p {
   margin: 4px 0;
   font-size: 0.95rem;
 }
 
-/* Responsive tweaks */
 @media (max-width: 600px) {
   h1 {
     font-size: 1.8rem;
