@@ -62,9 +62,10 @@
       });
 
       const observer = new MutationObserver(() => {
-        if (document.getElementById("myPicks").innerHTML.includes("Your Picks:")) {
-          document.getElementById("submitNote").style.display = "none";
-        }
+       if (document.getElementById("myPicks").innerText.includes("Your Picks")) {
+  document.getElementById("submitNote").style.display = "none";
+}
+
       });
       observer.observe(document.getElementById("myPicks"), { childList: true, subtree: true });
     });
