@@ -1,5 +1,3 @@
-public/script.js
-
 document.addEventListener("DOMContentLoaded", () => {
   const welcome = document.getElementById("welcome");
   const fightList = document.getElementById("fightList");
@@ -29,9 +27,17 @@ document.addEventListener("DOMContentLoaded", () => {
     usernamePrompt.style.display = "none";
     welcome.innerText = `Welcome, ${name}!`;
     welcome.style.display = "block";
-    loadFights();
+
+    // ⛔ Don’t load fight selection if already submitted
+    if (localStorage.getItem("submitted") !== "true") {
+      loadFights();
+    } else {
+      fightList.style.display = "none";
+      submitBtn.style.display = "none";
+    }
+
     loadMyPicks();
-    loadLeaderboard(); // ✅ Called once
+    loadLeaderboard();
   }
 
   function loadFights() {
@@ -117,9 +123,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.success) {
           punchSound.play();
           alert("Picks submitted!");
-          loadMyPicks();
-          fightList.innerHTML = "";
+          localStorage.setItem("submitted", "true"); // ✅ Remember it's been submitted
+          fightList.style.display = "none";
           submitBtn.style.display = "none";
+          loadMyPicks();
         } else {
           alert(data.error || "Something went wrong.");
         }
@@ -154,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
-      
+        board.innerHTML = "<ul>"; // ✅ Removed injected "Leaderboard:" title
         Object.entries(data.scores).forEach(([user, score]) => {
           board.innerHTML += `<li>${user}: ${score} pts</li>`;
         });
