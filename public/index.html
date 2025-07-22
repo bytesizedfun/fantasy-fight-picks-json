@@ -5,40 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fantasy Fight Picks</title>
 
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎤</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1><span class="fist">👊</span> Fantasy Fight Picks</h1>
+  <h1><span class="fist">🎤</span> Fantasy Fight Picks</h1>
 
   <div id="app">
-    <!-- Username Prompt -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
       <button onclick="lockUsername()">Lock In</button>
     </div>
 
-    <!-- Welcome -->
     <h2 id="welcome" style="display: none;"></h2>
 
-    <!-- Scoring System -->
     <div id="scoringRules" style="display: none; text-align: center; font-size: 0.9rem; color: #ccc; margin-bottom: 15px;">
-      🧠 Scoring: 1pt for correct fighter, 1pt for correct method (<strong>2pts if decision</strong>), 1pt for correct round,<br>
+      Scoring: 1pt for correct fighter, 1pt for correct method (<strong>2pts if decision</strong>), 1pt for correct round,<br>
       +1 bonus for perfect pick, +1 bonus for underdog win 🐶
     </div>
 
-    <!-- Fight Picks -->
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
     <p id="submitNote" style="display: none; text-align:center; color:#aaa; font-size: 0.9rem;">⚠️ Click once and be patient…</p>
 
-    <!-- My Picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
 
-    <!-- Leaderboard -->
-    <h2 class="leader-title">Top Scorers</h2>
+    <h2 class="leader-title">LEADERBOARD</h2>
     <ul id="leaderboard"></ul>
   </div>
 
@@ -49,7 +43,7 @@
       if (stored) {
         document.getElementById("scoringRules").style.display = "block";
         document.getElementById("submitNote").style.display = "block";
-        document.getElementById("welcome").innerText = `👋 Let's Go, ${stored}!`;
+        document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!`;
         document.getElementById("welcome").style.display = "block";
       }
 
@@ -59,19 +53,18 @@
           if (name) {
             document.getElementById("scoringRules").style.display = "block";
             document.getElementById("submitNote").style.display = "block";
-            document.getElementById("welcome").innerText = `👋 Let's Go, ${name}!`;
+            document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
             document.getElementById("welcome").style.display = "block";
           }
         }, 100);
       });
 
-      // Hide note if "Your Picks" is showing
+      // Hide warning on pick summary view
       const observer = new MutationObserver(() => {
         if (document.getElementById("myPicks").innerHTML.includes("Your Picks:")) {
           document.getElementById("submitNote").style.display = "none";
         }
       });
-
       observer.observe(document.getElementById("myPicks"), { childList: true, subtree: true });
     });
   </script>
