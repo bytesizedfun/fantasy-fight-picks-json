@@ -103,7 +103,7 @@ button:hover {
   100% { opacity: 0.7; transform: scale(1.02); }
 }
 
-/* Picks */
+/* Picks Display */
 #myPicks h3 {
   color: #C43228;
   margin-bottom: 10px;
@@ -114,14 +114,32 @@ button:hover {
 
 #myPicks p {
   background-color: #2c2c2c;
-  padding: 8px 10px;
-  margin: 6px 0;
+  padding: 10px 12px;
+  margin: 8px 0;
   border-left: 4px solid #C43228;
   border-radius: 4px;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-family: 'Teko', sans-serif;
 }
 
-/* Scoring */
+#myPicks p .fight-name {
+  font-weight: 700;
+  color: #ffffff;
+  display: block;
+  margin-bottom: 2px;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+
+#myPicks p .user-pick {
+  font-style: italic;
+  color: #bbbbbb;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+/* Scoring Box */
 .scoring-box {
   font-size: 0.95rem;
   text-align: center;
