@@ -1,1 +1,12 @@
-{}
+{
+  "jb": {
+    "1": {
+      "winner": "Max Holloway",
+      "method": "KO"
+    },
+    "2": {
+      "winner": "Merab Dvalishvili",
+      "method": "Submission"
+    }
+  }
+}
