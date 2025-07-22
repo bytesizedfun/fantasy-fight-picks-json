@@ -171,12 +171,27 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "<ul>";
-        Object.entries(data.scores).forEach(([user, score]) => {
+        const scores = Object.entries(data.scores);
+        if (scores.length === 0) {
+          board.innerHTML += "<li>No leaderboard data available.</li></ul>";
+          return;
+        }
+
+        // Sort users by score descending
+        scores.sort((a, b) => b[1] - a[1]);
+
+        // Find highest score
+        const topScore = scores[0][1];
+        const topUsers = scores.filter(([_, score]) => score === topScore).map(([user]) => user);
+
+        scores.forEach(([user, score]) => {
           board.innerHTML += `<li>${user}: ${score} pts</li>`;
         });
-        if (data.champ) {
-          board.innerHTML += `<li><strong>🏆 Champion of the Week: ${data.champ}</strong></li>`;
-        }
+
+        const championLine = topUsers.length > 1
+          ? `🏆 Champions of the Week: ${topUsers.join(", ")}`
+          : `🏆 Champion of the Week: ${topUsers[0]}`;
+        board.innerHTML += `<li><strong>${championLine}</strong></li>`;
         board.innerHTML += "</ul>";
       });
   }
