@@ -23,22 +23,36 @@ document.addEventListener("DOMContentLoaded", () => {
     finalizeLogin(username);
   });
 
-  function finalizeLogin(name) {
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `Welcome, ${name}!`;
-    welcome.style.display = "block";
+function finalizeLogin(name) {
+  usernamePrompt.style.display = "none";
+  welcome.innerText = `Welcome, ${name}!`;
+  welcome.style.display = "block";
 
-    // ⛔ Don’t load fight selection if already submitted
-    if (localStorage.getItem("submitted") !== "true") {
-      loadFights();
-    } else {
-      fightList.style.display = "none";
-      submitBtn.style.display = "none";
-    }
+  // First check if picks exist on the backend
+  fetch("/api/picks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: name })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.picks.length > 0) {
+        // Picks do exist — hide pick form, load picks
+        localStorage.setItem("submitted", "true");
+        fightList.style.display = "none";
+        submitBtn.style.display = "none";
+        loadMyPicks();
+      } else {
+        // No picks in the sheet — allow re-submission
+        localStorage.removeItem("submitted");
+        loadFights();
+        submitBtn.style.display = "block";
+      }
 
-    loadMyPicks();
-    loadLeaderboard();
-  }
+      loadLeaderboard();
+    });
+}
+
 
   function loadFights() {
     fetch("/api/fights")
