@@ -23,36 +23,32 @@ document.addEventListener("DOMContentLoaded", () => {
     finalizeLogin(username);
   });
 
-function finalizeLogin(name) {
-  usernamePrompt.style.display = "none";
-  welcome.innerText = `Welcome, ${name}!`;
-  welcome.style.display = "block";
+  function finalizeLogin(name) {
+    usernamePrompt.style.display = "none";
+    welcome.innerText = `Welcome, ${name}!`;
+    welcome.style.display = "block";
 
-  // First check if picks exist on the backend
-  fetch("/api/picks", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: name })
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success && data.picks.length > 0) {
-        // Picks do exist — hide pick form, load picks
-        localStorage.setItem("submitted", "true");
-        fightList.style.display = "none";
-        submitBtn.style.display = "none";
-        loadMyPicks();
-      } else {
-        // No picks in the sheet — allow re-submission
-        localStorage.removeItem("submitted");
-        loadFights();
-        submitBtn.style.display = "block";
-      }
+    fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: name })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.picks.length > 0) {
+          localStorage.setItem("submitted", "true");
+          fightList.style.display = "none";
+          submitBtn.style.display = "none";
+        } else {
+          localStorage.removeItem("submitted");
+          loadFights();
+          submitBtn.style.display = "block";
+        }
 
-      loadLeaderboard();
-    });
-}
-
+        loadMyPicks();      // ✅ Always show user's picks (even if none)
+        loadLeaderboard();
+      });
+  }
 
   function loadFights() {
     fetch("/api/fights")
@@ -82,7 +78,6 @@ function finalizeLogin(name) {
           fightList.appendChild(div);
         });
 
-        // Auto-disable round if method is Decision
         document.querySelectorAll(".fight").forEach(fight => {
           const methodSelect = fight.querySelector(`select[name$="-method"]`);
           const roundSelect = fight.querySelector(`select[name$="-round"]`);
@@ -137,7 +132,7 @@ function finalizeLogin(name) {
         if (data.success) {
           punchSound.play();
           alert("Picks submitted!");
-          localStorage.setItem("submitted", "true"); // ✅ Remember it's been submitted
+          localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
           loadMyPicks();
@@ -175,7 +170,7 @@ function finalizeLogin(name) {
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
-        board.innerHTML = "<ul>"; // ✅ Removed injected "Leaderboard:" title
+        board.innerHTML = "<ul>";
         Object.entries(data.scores).forEach(([user, score]) => {
           board.innerHTML += `<li>${user}: ${score} pts</li>`;
         });
