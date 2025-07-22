@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const punchSound = new Audio("punch.mp3");
-  const countdownBox = document.getElementById("countdown");
 
   let username = localStorage.getItem("username") || "";
 
@@ -46,9 +45,8 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "block";
         }
 
-        loadMyPicks();
+        loadMyPicks();      // ✅ Always show user's picks (even if none)
         loadLeaderboard();
-        startCountdown();
       });
   }
 
@@ -162,11 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `
-            <div>
-              <strong>${fight}</strong><br/>
-              ${winner} by ${method} ${roundText}
-            </div>`;
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
         });
       });
   }
@@ -177,50 +171,13 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "<ul>";
-
-        const scores = Object.entries(data.scores);
-        if (scores.length === 0) {
-          board.innerHTML += "<li>No scores yet.</li></ul>";
-          return;
-        }
-
-        scores.sort((a, b) => b[1] - a[1]);
-        const topScore = scores[0][1];
-        const champs = scores.filter(([_, score]) => score === topScore).map(([user]) => user);
-
-        scores.forEach(([user, score]) => {
+        Object.entries(data.scores).forEach(([user, score]) => {
           board.innerHTML += `<li>${user}: ${score} pts</li>`;
         });
-
-        const champMsg = champs.length > 1
-          ? `🏆 Champions of the Week: ${champs.join(", ")}`
-          : `🏆 Champion of the Week: ${champs[0]}`;
-        board.innerHTML += `<li><strong>${champMsg}</strong></li>`;
+        if (data.champ) {
+          board.innerHTML += `<li><strong>🏆 Champion of the Week: ${data.champ}</strong></li>`;
+        }
         board.innerHTML += "</ul>";
       });
-  }
-
-  function startCountdown() {
-    const target = new Date("2025-07-26T15:00:00-04:00").getTime();
-
-    function update() {
-      const now = new Date().getTime();
-      const diff = target - now;
-
-      if (diff <= 0) {
-        countdownBox.innerHTML = `<strong>🟢 Event is Live!</strong>`;
-        return;
-      }
-
-      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((diff % (1000 * 60)) / 1000);
-
-      countdownBox.innerHTML = `<strong>⏳ Countdown:</strong> ${d}d ${h}h ${m}m ${s}s`;
-    }
-
-    update();
-    setInterval(update, 1000);
   }
 });
