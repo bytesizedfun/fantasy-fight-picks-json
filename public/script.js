@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const punchSound = new Audio("punch.mp3");
+  const countdownBox = document.getElementById("countdown");
 
   let username = localStorage.getItem("username") || "";
 
@@ -45,8 +46,9 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "block";
         }
 
-        loadMyPicks();      // ✅ Always show user's picks (even if none)
+        loadMyPicks();
         loadLeaderboard();
+        startCountdown();
       });
   }
 
@@ -160,7 +162,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
+          myPicksDiv.innerHTML += `
+            <div>
+              <strong>${fight}</strong><br/>
+              ${winner} by ${method} ${roundText}
+            </div>`;
         });
       });
   }
@@ -171,28 +177,50 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "<ul>";
+
         const scores = Object.entries(data.scores);
         if (scores.length === 0) {
-          board.innerHTML += "<li>No leaderboard data available.</li></ul>";
+          board.innerHTML += "<li>No scores yet.</li></ul>";
           return;
         }
 
-        // Sort users by score descending
         scores.sort((a, b) => b[1] - a[1]);
-
-        // Find highest score
         const topScore = scores[0][1];
-        const topUsers = scores.filter(([_, score]) => score === topScore).map(([user]) => user);
+        const champs = scores.filter(([_, score]) => score === topScore).map(([user]) => user);
 
         scores.forEach(([user, score]) => {
           board.innerHTML += `<li>${user}: ${score} pts</li>`;
         });
 
-        const championLine = topUsers.length > 1
-          ? `🏆 Champions of the Week: ${topUsers.join(", ")}`
-          : `🏆 Champion of the Week: ${topUsers[0]}`;
-        board.innerHTML += `<li><strong>${championLine}</strong></li>`;
+        const champMsg = champs.length > 1
+          ? `🏆 Champions of the Week: ${champs.join(", ")}`
+          : `🏆 Champion of the Week: ${champs[0]}`;
+        board.innerHTML += `<li><strong>${champMsg}</strong></li>`;
         board.innerHTML += "</ul>";
       });
+  }
+
+  function startCountdown() {
+    const target = new Date("2025-07-26T15:00:00-04:00").getTime();
+
+    function update() {
+      const now = new Date().getTime();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        countdownBox.innerHTML = `<strong>🟢 Event is Live!</strong>`;
+        return;
+      }
+
+      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+      countdownBox.innerHTML = `<strong>⏳ Countdown:</strong> ${d}d ${h}h ${m}m ${s}s`;
+    }
+
+    update();
+    setInterval(update, 1000);
   }
 });
