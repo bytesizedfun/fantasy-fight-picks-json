@@ -27,9 +27,15 @@
     <!-- Welcome message -->
     <h2 id="welcome" style="display: none;"></h2>
 
+    <!-- Scoring system info -->
+    <div id="scoringRules" style="display: none; text-align: center; font-size: 0.9rem; color: #ccc; margin-bottom: 15px;">
+      Scoring: 1pt for correct fighter, 1pt for method (<strong>2pts if decision</strong>), 1pt for round, +1 bonus for perfect pick, +1 bonus for underdog win 🐶
+    </div>
+
     <!-- Fight picks area -->
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <p id="submitNote" style="display: none; text-align:center; color:#aaa; font-size: 0.9rem;">Click once and be patient…</p>
 
     <!-- Your picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
@@ -39,9 +45,23 @@
     <ul id="leaderboard"></ul>
   </div>
 
-  <!-- Optional punch sound (if added later) -->
-  <!-- <audio id="punchSound" src="punch.mp3" preload="auto"></audio> -->
-
   <script src="script.js"></script>
+  <script>
+    // Show rules and note after login
+    document.addEventListener("DOMContentLoaded", () => {
+      const stored = localStorage.getItem("username");
+      if (stored) {
+        document.getElementById("scoringRules").style.display = "block";
+        document.getElementById("submitNote").style.display = "block";
+      }
+
+      document.querySelector("button").addEventListener("click", () => {
+        setTimeout(() => {
+          document.getElementById("scoringRules").style.display = "block";
+          document.getElementById("submitNote").style.display = "block";
+        }, 100);
+      });
+    });
+  </script>
 </body>
 </html>
