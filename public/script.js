@@ -140,10 +140,12 @@ document.addEventListener("DOMContentLoaded", () => {
           myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
           return;
         }
-       data.picks.forEach(({ fight, winner, method, round }) => {
-  const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-  myPicksDiv.innerHTML += `<p><span class="fight-name">${fight}</span><span class="user-pick">You picked: ${winner} by ${method} ${roundText}</span></p>`;
-});
+        data.picks.forEach(({ fight, winner, method, round }) => {
+          const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
+        });
+      });
+  }
 
   function loadLeaderboard() {
     fetch("/api/leaderboard")
