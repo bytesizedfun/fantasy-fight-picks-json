@@ -1,68 +1,96 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap');
 
 body {
-  font-family: 'Teko', sans-serif;
-  background-color: #0f0f0f;
-  color: #f2f2f2;
+  font-family: 'Oswald', sans-serif;
+  background-color: #121212;
+  color: #f0f0f0;
   padding: 20px;
   margin: 0;
 }
 
-.logo-banner {
-  max-width: 220px;
-  display: block;
-  margin: 0 auto 10px;
+/* 👊 Pulsing fist emoji */
+.fist {
+  display: inline-block;
+  margin-right: 0.4rem;
+  animation: pulse 1.5s infinite ease-in-out;
+  transform-origin: center;
+  font-size: 1.4rem;
 }
 
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Header */
+h1 {
+  color: #f5f5f5;
+  text-align: center;
+  margin-bottom: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* App container */
 #app {
   max-width: 540px;
   margin: 0 auto;
   padding: 20px;
   background-color: #1a1a1a;
   border-radius: 10px;
-  box-shadow: 0 0 12px rgba(0,0,0,0.6);
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
-/* Fight Cards */
+/* Fight card */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
+  border: 1px solid #333;
   border-radius: 6px;
-  background-color: #232323;
-  border: 2px solid #C43228;
-  box-shadow: 0 0 10px rgba(196, 50, 40, 0.5);
+  background-color: #1e1e1e;
 }
 
 .fight h3 {
-  color: #f2f2f2;
   margin-top: 0;
+  color: #ffffff;
 }
 
 .fight label {
   display: block;
   margin: 6px 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   cursor: pointer;
 }
 
 .fight input[type="radio"] {
   margin-right: 8px;
-  transform: scale(1.2);
   vertical-align: middle;
+  transform: scale(1.2);
 }
 
-input[type="text"], select {
+input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  margin: 8px 0;
+  border-radius: 4px;
+  border: none;
+  background-color: #2a2a2a;
+  color: #fff;
+}
+
+select {
   width: 100%;
   padding: 8px;
   margin: 6px 0;
   border-radius: 4px;
   border: none;
-  background-color: #333;
+  background-color: #2a2a2a;
   color: #fff;
 }
 
 button {
-  background-color: #C43228;
+  background-color: #e63946;
   color: white;
   padding: 10px 16px;
   border: none;
@@ -71,147 +99,137 @@ button {
   width: 100%;
   font-weight: bold;
   margin-top: 10px;
-  font-family: 'Teko', sans-serif;
-  font-size: 1.2rem;
-  letter-spacing: 1px;
+  font-family: 'Oswald', sans-serif;
 }
 
 button:hover {
-  background-color: #a12a21;
+  background-color: #d62828;
 }
 
-#welcome {
-  font-size: 1.5rem;
-  color: #f2f2f2;
-  text-align: center;
-  margin: 20px 0;
-  font-weight: bold;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.submit-warning {
-  text-align: center;
-  color: #f2f2f2;
-  font-size: 0.9rem;
-  font-style: italic;
-  margin-top: 6px;
-  animation: fadePop 2s infinite alternate;
-}
-
-@keyframes fadePop {
-  0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0.7; transform: scale(1.02); }
-}
-
-/* Picks Display */
-#myPicks h3 {
-  color: #C43228;
-  margin-bottom: 10px;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-#myPicks p {
-  background-color: #2c2c2c;
-  padding: 10px 12px;
-  margin: 8px 0;
-  border-left: 4px solid #C43228;
-  border-radius: 4px;
-  font-size: 1rem;
-  line-height: 1.5;
-  font-family: 'Teko', sans-serif;
-  color: #ffffff; /* 👈 default text now white */
-}
-
-#myPicks p .fight-name {
-  font-weight: 700;
-  color: #ffffff;
-  display: block;
-  margin-bottom: 2px;
-  font-size: 1.1rem;
-  letter-spacing: 0.5px;
-}
-
-#myPicks p .user-pick {
-  font-style: italic;
-  color: #bbbbbb; /* 👈 light gray for picks */
-  font-size: 0.95rem;
-  letter-spacing: 0.3px;
-}
-
-/* Scoring Box */
-.scoring-box {
-  font-size: 0.95rem;
-  text-align: center;
-  color: #f2f2f2;
-  background: none;
-  padding: 10px 0;
-  margin-bottom: 10px;
-}
-
-/* Leaderboard Title */
-.leader-title {
-  font-family: 'Anton', sans-serif;
-  font-size: 2.2rem;
-  color: #f2f2f2;
+/* Leaderboard heading */
+h2 {
+  font-size: 1.8rem;
+  color: #FFD700;
   text-align: center;
   margin-top: 40px;
-  letter-spacing: 2px;
-  border-bottom: 2px solid #C43228;
-  padding-bottom: 8px;
-  text-shadow: 0 0 6px #C43228;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px #FFD700, 0 0 20px #ffc400, 0 0 28px #ffea00;
+  text-transform: uppercase;
 }
 
-/* Leaderboard List */
+h2::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: #FFD700;
+  margin: 8px auto 0;
+  border-radius: 2px;
+}
+
+/* Leaderboard box */
 #leaderboard {
+  min-height: 100px;
   padding: 16px;
   margin-top: 20px;
-  background: #1c1c1c;
-  border-radius: 12px;
-  border: 3px solid #C43228;
-  box-shadow: 0 0 20px rgba(196, 50, 40, 0.5);
-  animation: pulse-border 2s infinite;
+  background: linear-gradient(to right, #1e1e1e, #2a2a2a);
+  border-radius: 8px;
+  border: 1px solid #FFD700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
   list-style: none;
 }
 
-@keyframes pulse-border {
-  0% { box-shadow: 0 0 10px #C43228; }
-  50% { box-shadow: 0 0 30px #D9483B; }
-  100% { box-shadow: 0 0 10px #C43228; }
-}
-
+/* Leaderboard items */
 #leaderboard li {
-  background: #2a2a2a;
-  padding: 12px 16px;
+  background: #1e1e1e;
+  padding: 10px 10px 10px 40px;
   margin: 8px 0;
-  border-radius: 6px;
-  font-weight: bold;
+  border-radius: 4px;
+  font-weight: 500;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-left: 5px solid #C43228;
-  color: #f2f2f2;
-  font-size: 1.1rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: 'Anton', sans-serif;
-  transition: all 0.3s ease;
+  gap: 10px;
+  position: relative;
+  transition: transform 0.2s ease;
+  border-left: 3px solid #FFD700;
 }
 
+/* 🥇🥈🥉 Icons */
+#leaderboard li:nth-child(1)::before {
+  content: "🏆";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  font-size: 1.3rem;
+  transform: translateY(-50%);
+}
+
+#leaderboard li:nth-child(2)::before {
+  content: "🥈";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  font-size: 1.3rem;
+  transform: translateY(-50%);
+}
+
+#leaderboard li:nth-child(3)::before {
+  content: "🥉";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  font-size: 1.3rem;
+  transform: translateY(-50%);
+}
+
+/* Hover effect */
 #leaderboard li:hover {
-  background-color: #383838;
   transform: scale(1.02);
+  background-color: #2a2a2a;
 }
 
-#leaderboard li:first-child::before {
-  content: "👑";
-  margin-right: 10px;
-  animation: crownBounce 1.5s infinite ease-in-out;
+/* Clean red welcome */
+#welcome {
+  font-size: 1.2rem;
+  color: #e50914;
+  text-align: center;
+  margin: 20px 0;
 }
 
-@keyframes crownBounce {
-  0%, 100% { transform: translateY(0); text-shadow: 0 0 6px #fff; }
-  50% { transform: translateY(-4px); text-shadow: 0 0 12px #fff; }
+/* Picks Section — improved visibility */
+#myPicks h3 {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+  color: #FFD700;
+}
+
+#myPicks p {
+  margin: 4px 0;
+  font-size: 0.95rem;
+  padding: 6px;
+  background-color: #1e1e1e;
+  border-left: 4px solid #e63946;
+  border-radius: 4px;
+}
+
+/* Countdown box */
+.countdown-box {
+  font-size: 1.1rem;
+  text-align: center;
+  margin-bottom: 20px;
+  background-color: #1e1e1e;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #FFD700;
+  box-shadow: 0 0 6px #FFD70055;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  h1 { font-size: 1.8rem; padding: 0 10px; }
+  h2 { font-size: 1.5rem; }
+  #app { padding: 15px; }
+  .fight label { font-size: 1rem; }
+  button { font-size: 1rem; padding: 12px; }
+  .fight { padding: 12px; }
 }
