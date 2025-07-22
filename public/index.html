@@ -4,19 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fantasy Fight Picks</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <!-- Logo Banner -->
-  <div class="logo-container">
-    <img src="logo.png" alt="Fantasy Fight Picks Logo" class="logo-banner" />
-  </div>
-
-  <h1><span class="fist">👊</span> Fantasy Fight Picks</h1>
-
   <div id="app">
+    <img src="logo.png" alt="Fantasy Fight Picks" class="banner" />
+
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
@@ -25,26 +20,23 @@
 
     <h2 id="welcome" style="display: none;"></h2>
 
-    <div id="scoringRules" style="display: none;" class="scoring-block">
+    <div id="scoringRules" style="display: none;" class="score-box">
       🧠 <strong>Scoring Rules:</strong><br>
       ✅ 1 point for correct fighter<br>
-      ✅ 1 point for correct method<br>
-      (💡 2 points if the fight ends by Decision)<br>
+      ✅ 1 point for correct method (💡 2 points if Decision)<br>
       ✅ 1 point for correct round<br>
-      🌟 +1 bonus point for a perfect pick (all 3 correct)<br>
-      🐶 +1 bonus point for picking the underdog
+      🌟 +1 for perfect pick 🐶 +1 for underdog win
     </div>
 
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
-
     <p id="submitNote" class="submit-warning" style="display: none;">
       👆 One click is all it takes — don’t ground and pound the button.
     </p>
 
     <div id="myPicks" style="margin-top: 20px;"></div>
 
-    <h2 class="leader-title">LEADERBOARD</h2>
+    <h2 class="leader-title">Leaderboard</h2>
     <ul id="leaderboard"></ul>
   </div>
 
@@ -81,4 +73,3 @@
   </script>
 </body>
 </html>
-
