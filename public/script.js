@@ -184,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Determine ranking tiers with tie handling
         const scoresSeen = [];
         const placeMap = {};
-        const rankIcons = ["👑", "👑", "👑"];
+        const rankIcons = ["👑", "🥈", "🥉"];
 
         let lastScore = null;
         let placeIndex = 0;
