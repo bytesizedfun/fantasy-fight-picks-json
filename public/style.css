@@ -1,95 +1,63 @@
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Teko:wght@500;600;700&display=swap');
 
 body {
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Teko', sans-serif;
   background-color: #121212;
-  color: #f0f0f0;
+  color: #fdf5e6;
   padding: 20px;
   margin: 0;
 }
 
-/* 👊 Pulsing fist emoji */
-.fist {
-  display: inline-block;
-  margin-right: 0.4rem;
-  animation: pulse 1.5s infinite ease-in-out;
-  transform-origin: center;
-  font-size: 1.4rem;
+.logo-banner {
+  max-width: 240px;
+  display: block;
+  margin: 0 auto 12px;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-}
-
-/* Title */
-h1 {
-  color: #f5f5f5;
-  text-align: center;
-  margin-bottom: 20px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-/* App container */
 #app {
   max-width: 540px;
   margin: 0 auto;
   padding: 20px;
   background-color: #1a1a1a;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  border-radius: 12px;
+  box-shadow: 0 0 18px rgba(255, 0, 0, 0.4);
 }
 
-/* Fight cards */
+/* Fight Cards */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
-  border: 1px solid #333;
   border-radius: 6px;
-  background-color: #1e1e1e;
+  background-color: #222;
+  border: 2px solid #e63946;
+  box-shadow: 0 0 10px rgba(230, 57, 70, 0.5);
 }
 
 .fight h3 {
-  margin-top: 0;
   color: #ffffff;
+  margin-top: 0;
 }
 
 .fight label {
   display: block;
   margin: 6px 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
 }
 
 .fight input[type="radio"] {
   margin-right: 8px;
-  vertical-align: middle;
   transform: scale(1.2);
+  vertical-align: middle;
 }
 
-input[type="text"] {
-  width: 100%;
-  padding: 8px;
-  margin: 8px 0;
-  border-radius: 4px;
-  border: none;
-  background-color: #2a2a2a;
-  color: #fff;
-}
-
-select {
+input[type="text"], select {
   width: 100%;
   padding: 8px;
   margin: 6px 0;
   border-radius: 4px;
   border: none;
-  background-color: #2a2a2a;
+  background-color: #333;
   color: #fff;
 }
 
@@ -103,135 +71,121 @@ button {
   width: 100%;
   font-weight: bold;
   margin-top: 10px;
-  font-family: 'Oswald', sans-serif;
+  font-size: 1.2rem;
+  font-family: 'Teko', sans-serif;
+  letter-spacing: 1px;
 }
 
 button:hover {
-  background-color: #d62828;
+  background-color: #b22a36;
 }
 
-/* 🥇 Leaderboard Heading — strong gold glow */
-h2 {
-  font-size: 1.8rem;
-  color: #FFD700;
+#welcome {
+  font-size: 1.7rem;
+  color: #fdf5e6;
+  text-align: center;
+  margin: 20px 0;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.submit-warning {
+  text-align: center;
+  color: #fdf5e6;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-top: 6px;
+  animation: fadePop 2s infinite alternate;
+}
+@keyframes fadePop {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.7; transform: scale(1.02); }
+}
+
+#myPicks h3 {
+  color: #ffcc00;
+  margin-bottom: 10px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#myPicks p {
+  background-color: #111;
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-left: 4px solid #e63946;
+  border-radius: 4px;
+  font-size: 1rem;
+  color: #f7f1d3;
+}
+
+/* Leaderboard */
+.leader-title {
+  font-family: 'Pirata One', cursive;
+  font-size: 2.4rem;
+  color: #ffd700;
   text-align: center;
   margin-top: 40px;
-  letter-spacing: 1px;
-  text-shadow: 0 0 10px #FFD700, 0 0 20px #ffc400, 0 0 28px #ffea00;
-  position: relative;
-  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 2px solid #ffd700;
+  padding-bottom: 8px;
+  text-shadow: 0 0 12px #f39c12, 0 0 18px #f7dc6f;
 }
 
-h2::after {
-  content: "";
-  display: block;
-  width: 60px;
-  height: 3px;
-  background: #FFD700;
-  margin: 8px auto 0;
-  border-radius: 2px;
-}
-
-/* Leaderboard box */
 #leaderboard {
-  min-height: 100px;
   padding: 16px;
   margin-top: 20px;
-  background: linear-gradient(to right, #1e1e1e, #2a2a2a);
-  border-radius: 8px;
-  border: 1px solid #FFD700;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  background: #1c1c1c;
+  border-radius: 12px;
+  border: 3px solid #ffd700;
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+  animation: pulse-border 2s infinite;
   list-style: none;
 }
 
-/* Leaderboard entries */
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 10px #ffd700; }
+  50% { box-shadow: 0 0 30px #f7e79f; }
+  100% { box-shadow: 0 0 10px #ffd700; }
+}
+
 #leaderboard li {
-  background: #1e1e1e;
-  padding: 10px 10px 10px 40px;
+  background: #2a2a2a;
+  padding: 12px 16px;
   margin: 8px 0;
-  border-radius: 4px;
-  border-left: 3px solid #FFD700;
-  font-weight: 500;
+  border-radius: 6px;
+  font-weight: bold;
   display: flex;
   align-items: center;
-  gap: 10px;
-  position: relative;
-  transition: transform 0.2s ease;
+  justify-content: space-between;
+  color: #ffd700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'Teko', sans-serif;
+  transition: all 0.3s ease;
+}
+
+#leaderboard li.ranked::before {
+  content: "";
+  display: inline-block;
+  margin-right: 10px;
 }
 
 #leaderboard li:hover {
+  background-color: #383838;
   transform: scale(1.02);
-  background-color: #2a2a2a;
 }
 
-/* 👑 Crown for 1st place */
-@keyframes crownBounce {
-  0%, 100% {
-    transform: translateY(-50%) scale(1);
-    text-shadow: 0 0 8px #FFD700, 0 0 12px #ffc400;
-  }
-  50% {
-    transform: translateY(-55%) scale(1.15);
-    text-shadow: 0 0 12px #FFD700, 0 0 18px #ffdf00;
-  }
-}
-
-#leaderboard li:first-child {
-  background: #2c2c2c;
-  color: #FFD700;
-  font-weight: bold;
-}
-
-#leaderboard li:first-child::before {
+#leaderboard li.ranked::before {
+  animation: crownBounce 1.5s infinite ease-in-out;
   content: "👑";
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  font-size: 1.3rem;
-  animation: crownBounce 1.8s infinite ease-in-out;
-  transform: translateY(-50%);
+  text-shadow: 0 0 6px #FFD700;
 }
 
-/* ✅ Clean red welcome message (no glow) */
-#welcome {
-  font-size: 1.2rem;
-  color: #e50914; /* UFC Red */
-  text-align: center;
-  margin: 20px 0;
-  letter-spacing: 0.5px;
-}
-
-/* My Picks */
-#myPicks p {
-  margin: 4px 0;
-  font-size: 0.95rem;
-}
-
-/* Responsive tweaks */
-@media (max-width: 600px) {
-  h1 {
-    font-size: 1.8rem;
-    padding: 0 10px;
-  }
-
-  h2 {
-    font-size: 1.5rem;
-  }
-
-  #app {
-    padding: 15px;
-  }
-
-  .fight label {
-    font-size: 1rem;
-  }
-
-  button {
-    font-size: 1rem;
-    padding: 12px;
-  }
-
-  .fight {
-    padding: 12px;
-  }
+@keyframes crownBounce {
+  0%, 100% { transform: translateY(0); text-shadow: 0 0 6px #FFD700; }
+  50% { transform: translateY(-4px); text-shadow: 0 0 12px #ffdf00; }
 }
