@@ -51,6 +51,7 @@
   <script>
     const countdownDiv = document.getElementById("countdown");
     const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
+
     function updateCountdown() {
       const now = new Date().getTime();
       const distance = eventTime - now;
@@ -64,8 +65,38 @@
       const seconds = Math.floor((distance % (1000 * 60)) / 1000);
       countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Whittaker vs de Ridder — ${days}d ${hours}h ${minutes}m ${seconds}s`;
     }
+
     setInterval(updateCountdown, 1000);
     updateCountdown();
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const stored = localStorage.getItem("username");
+      if (stored) {
+        document.getElementById("scoringRules").style.display = "block";
+        document.getElementById("submitNote").style.display = "block";
+        document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!`;
+        document.getElementById("welcome").style.display = "block";
+      }
+
+      document.querySelector("button").addEventListener("click", () => {
+        setTimeout(() => {
+          const name = document.getElementById("usernameInput").value.trim();
+          if (name) {
+            document.getElementById("scoringRules").style.display = "block";
+            document.getElementById("submitNote").style.display = "block";
+            document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+            document.getElementById("welcome").style.display = "block";
+          }
+        }, 100);
+      });
+
+      const observer = new MutationObserver(() => {
+        if (document.getElementById("myPicks").innerText.includes("Your Picks")) {
+          document.getElementById("submitNote").style.display = "none";
+        }
+      });
+      observer.observe(document.getElementById("myPicks"), { childList: true, subtree: true });
+    });
   </script>
 </body>
 </html>
