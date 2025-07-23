@@ -160,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
+          myPicksDiv.innerHTML += `<p><span class="fight-name">${fight}</span><span class="user-pick">${winner} by ${method} ${roundText}</span></p>`;
         });
       });
   }
@@ -170,41 +170,32 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
-        board.innerHTML = "<ul>";
+        board.innerHTML = "";
 
-        const entries = Object.entries(data.scores);
-        if (entries.length === 0) {
-          board.innerHTML += "<li>No scores yet.</li></ul>";
-          return;
-        }
+        const scores = Object.entries(data.scores);
+        scores.sort((a, b) => b[1] - a[1]);
 
-        // Sort scores descending
-        entries.sort((a, b) => b[1] - a[1]);
-
-        // Determine ranking tiers with tie handling
-        const scoresSeen = [];
-        const placeMap = {};
-        const rankIcons = ["👑", "🥈", "🥉"];
-
+        let ranks = {};
+        let currentRank = 1;
         let lastScore = null;
-        let placeIndex = 0;
 
-        for (const [user, score] of entries) {
-          if (!scoresSeen.includes(score)) {
-            if (placeIndex < 3) {
-              placeMap[score] = rankIcons[placeIndex];
-              placeIndex++;
-            }
-            scoresSeen.push(score);
-          }
+        for (let i = 0; i < scores.length; i++) {
+          const [user, score] = scores[i];
+          if (score !== lastScore) currentRank = i + 1;
+          ranks[user] = currentRank;
+          lastScore = score;
         }
 
-        for (const [user, score] of entries) {
-          const icon = placeMap[score] || "";
-          board.innerHTML += `<li class="ranked">${icon} ${user}: ${score} pts</li>`;
-        }
+        scores.forEach(([user, score]) => {
+          const li = document.createElement("li");
+          li.innerText = `${user}: ${score} pts`;
+          if (ranks[user] === 1) li.setAttribute("data-icon", "👑");
+          board.appendChild(li);
+        });
 
-        board.innerHTML += "</ul>";
+        if (data.champ) {
+          board.innerHTML += `<li><strong>👑 Champion of the Week: ${data.champ}</strong></li>`;
+        }
       });
   }
 });
