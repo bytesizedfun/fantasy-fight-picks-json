@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const punchSound = new Audio("punch.mp3");
+  punchSound.volume = 1.0;
 
   let username = localStorage.getItem("username") || "";
 
@@ -79,8 +80,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector(`select[name$="-method"]`);
-          const roundSelect = fight.querySelector(`select[name$="-round"]`);
+          const methodSelect = fight.querySelector('select[name$="-method"]');
+          const roundSelect = fight.querySelector('select[name$="-round"]');
 
           methodSelect.addEventListener("change", () => {
             if (methodSelect.value === "Decision") {
