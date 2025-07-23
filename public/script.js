@@ -5,6 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const punchSound = new Audio("punch.mp3");
+  const submitNote = document.getElementById("submitNote");
+
   punchSound.volume = 1.0;
 
   let username = localStorage.getItem("username") || "";
@@ -40,10 +42,12 @@ document.addEventListener("DOMContentLoaded", () => {
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
+          submitNote.style.display = "none";
         } else {
           localStorage.removeItem("submitted");
           loadFights();
           submitBtn.style.display = "block";
+          submitNote.style.display = "block";
         }
 
         loadMyPicks();
@@ -101,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         fightList.style.display = "block";
         submitBtn.style.display = "block";
+        submitNote.style.display = "block";
       });
   }
 
@@ -136,6 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
+          submitNote.style.display = "none";
           loadMyPicks();
         } else {
           alert(data.error || "Something went wrong.");
