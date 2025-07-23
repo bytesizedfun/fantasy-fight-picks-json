@@ -49,27 +49,21 @@
 
   <script src="script.js"></script>
   <script>
-    // Countdown Timer
     const countdownDiv = document.getElementById("countdown");
     const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
-
     function updateCountdown() {
       const now = new Date().getTime();
       const distance = eventTime - now;
-
       if (distance < 0) {
         countdownDiv.innerHTML = "🔥 UFC Fight Night has started!";
         return;
       }
-
       const days = Math.floor(distance / (1000 * 60 * 60 * 24));
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
       countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Whittaker vs de Ridder — ${days}d ${hours}h ${minutes}m ${seconds}s`;
     }
-
     setInterval(updateCountdown, 1000);
     updateCountdown();
   </script>
