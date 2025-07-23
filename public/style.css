@@ -32,6 +32,7 @@ body {
   box-shadow: 0 0 12px rgba(0,0,0,0.6);
 }
 
+/* Fight Cards */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
@@ -112,6 +113,7 @@ button:hover {
   100% { opacity: 0.7; transform: scale(1.02); }
 }
 
+/* Picks Display */
 #myPicks h3 {
   color: #C43228;
   margin-bottom: 10px;
@@ -148,6 +150,7 @@ button:hover {
   letter-spacing: 0.5px;
 }
 
+/* Scoring Box */
 .scoring-box {
   font-size: 0.95rem;
   text-align: center;
@@ -157,6 +160,7 @@ button:hover {
   margin-bottom: 10px;
 }
 
+/* Leaderboard Title */
 .leader-title {
   font-family: 'Anton', sans-serif;
   font-size: 2.2rem;
@@ -169,6 +173,7 @@ button:hover {
   text-shadow: 0 0 6px #C43228;
 }
 
+/* Leaderboard List */
 #leaderboard {
   padding: 16px;
   margin-top: 20px;
