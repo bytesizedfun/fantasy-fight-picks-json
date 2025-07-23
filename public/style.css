@@ -18,8 +18,12 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
 }
 
 /* Title */
@@ -197,31 +201,10 @@ h2::after {
   letter-spacing: 0.5px;
 }
 
-/* My Picks formatting */
-#myPicks h3 {
-  color: #FFD700;
-  margin-bottom: 8px;
-}
-
-#myPicks div {
-  padding: 8px;
-  background-color: #181818;
-  margin: 6px 0;
-  border-left: 4px solid #e63946;
-  border-radius: 4px;
+/* My Picks */
+#myPicks p {
+  margin: 4px 0;
   font-size: 0.95rem;
-}
-
-/* Countdown timer */
-.countdown-box {
-  font-size: 1.1rem;
-  text-align: center;
-  margin-bottom: 20px;
-  background-color: #1e1e1e;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #FFD700;
-  box-shadow: 0 0 6px #FFD70055;
 }
 
 /* Responsive tweaks */
