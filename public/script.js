@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "block";
         }
 
-        loadMyPicks();      // ✅ Always show user's picks (even if none)
+        loadMyPicks();
         loadLeaderboard();
       });
   }
@@ -171,12 +171,39 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "<ul>";
-        Object.entries(data.scores).forEach(([user, score]) => {
-          board.innerHTML += `<li>${user}: ${score} pts</li>`;
-        });
-        if (data.champ) {
-          board.innerHTML += `<li><strong>🏆 Champion of the Week: ${data.champ}</strong></li>`;
+
+        const entries = Object.entries(data.scores);
+        if (entries.length === 0) {
+          board.innerHTML += "<li>No scores yet.</li></ul>";
+          return;
         }
+
+        // Sort scores descending
+        entries.sort((a, b) => b[1] - a[1]);
+
+        // Determine ranking tiers with tie handling
+        const scoresSeen = [];
+        const placeMap = {};
+        const rankIcons = ["👑", "👑", "👑"];
+
+        let lastScore = null;
+        let placeIndex = 0;
+
+        for (const [user, score] of entries) {
+          if (!scoresSeen.includes(score)) {
+            if (placeIndex < 3) {
+              placeMap[score] = rankIcons[placeIndex];
+              placeIndex++;
+            }
+            scoresSeen.push(score);
+          }
+        }
+
+        for (const [user, score] of entries) {
+          const icon = placeMap[score] || "";
+          board.innerHTML += `<li class="ranked">${icon} ${user}: ${score} pts</li>`;
+        }
+
         board.innerHTML += "</ul>";
       });
   }
