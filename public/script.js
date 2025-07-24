@@ -209,8 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         scores.forEach(([user, score]) => {
           const li = document.createElement("li");
-          li.innerText = `${user}: ${score} pts`;
-          if (ranks[user] === 1) li.setAttribute("data-icon", "👑");
+          li.innerText = `${ranks[user] === 1 ? "👑 " : ""}${user}: ${score} pts`;
           board.appendChild(li);
         });
 
