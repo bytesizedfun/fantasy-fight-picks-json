@@ -210,6 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
         scores.forEach(([user, score]) => {
           const li = document.createElement("li");
           li.innerText = `${ranks[user] === 1 ? "👑 " : ""}${user}: ${score} pts`;
+          if (ranks[user] === 1) li.classList.add("champion");
           board.appendChild(li);
         });
 
