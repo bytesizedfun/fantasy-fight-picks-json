@@ -207,17 +207,15 @@ document.addEventListener("DOMContentLoaded", () => {
           lastScore = score;
         }
 
-        scores.forEach(([user, score], i) => {
+        const firstPlaceScore = scores[0][1];
+        const lastPlaceScore = scores[scores.length - 1][1];
+
+        scores.forEach(([user, score]) => {
+          const isFirst = score === firstPlaceScore;
+          const isLast = score === lastPlaceScore;
           const li = document.createElement("li");
-
-          const isFirst = ranks[user] === 1;
-          const isLast = i === scores.length - 1;
-
           li.innerText = `${isFirst ? "👑 " : isLast ? "💩 " : ""}${user}: ${score} pts`;
-
           if (isFirst) li.classList.add("champion");
-          if (isLast) li.classList.add("last-place");
-
           board.appendChild(li);
         });
 
