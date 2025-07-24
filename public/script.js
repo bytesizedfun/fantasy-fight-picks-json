@@ -110,6 +110,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function submitPicks() {
+    if (submitBtn.disabled) return;
+
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Submitting…";
+
     const picks = [];
     const fights = document.querySelectorAll(".fight");
 
@@ -122,6 +127,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!winner || !method) {
         alert(`Please complete all picks. Missing data for "${fightName}".`);
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Submit Picks";
         return;
       }
 
@@ -137,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         if (data.success) {
           punchSound.play();
-          alert("Picks submitted!");
+          submitBtn.innerText = "✅ Picks Submitted!";
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
@@ -145,7 +152,14 @@ document.addEventListener("DOMContentLoaded", () => {
           loadMyPicks();
         } else {
           alert(data.error || "Something went wrong.");
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Submit Picks";
         }
+      })
+      .catch(err => {
+        alert("Network error. Please try again.");
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Submit Picks";
       });
   }
 
