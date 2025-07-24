@@ -214,16 +214,7 @@ button:hover {
   transform: scale(1.02);
 }
 
-/* REMOVE OLD ::before crown styling — now handled by .champion class */
-/*
-#leaderboard li::before {
-  content: attr(data-icon);
-  margin-right: 10px;
-  animation: crownBounce 1.5s infinite ease-in-out;
-}
-*/
-
-/* New champion crown bounce + glow */
+/* Champion Crown Styles */
 .champion {
   color: gold;
   animation: crownBounce 1.5s infinite ease-in-out;
@@ -233,4 +224,18 @@ button:hover {
 @keyframes crownBounce {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
+}
+
+/* 💩 Last Place Shame Style */
+.last-place {
+  color: #999;
+  opacity: 0.7;
+  font-style: italic;
+  text-decoration: line-through;
+  animation: shamePulse 1.6s infinite ease-in-out;
+}
+
+@keyframes shamePulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 1; }
 }
