@@ -214,13 +214,23 @@ button:hover {
   transform: scale(1.02);
 }
 
+/* REMOVE OLD ::before crown styling — now handled by .champion class */
+/*
 #leaderboard li::before {
   content: attr(data-icon);
   margin-right: 10px;
   animation: crownBounce 1.5s infinite ease-in-out;
 }
+*/
+
+/* New champion crown bounce + glow */
+.champion {
+  color: gold;
+  animation: crownBounce 1.5s infinite ease-in-out;
+  text-shadow: 0 0 6px gold, 0 0 12px gold;
+}
 
 @keyframes crownBounce {
-  0%, 100% { transform: translateY(0); text-shadow: 0 0 6px #fff; }
-  50% { transform: translateY(-4px); text-shadow: 0 0 12px #fff; }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
