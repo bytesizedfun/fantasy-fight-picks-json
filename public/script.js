@@ -193,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "";
 
-        const scores = Object.entries(data.scores);
+        const scores = Object.entries(data.scores || {});
         scores.sort((a, b) => b[1] - a[1]);
 
         let ranks = {};
@@ -207,8 +207,8 @@ document.addEventListener("DOMContentLoaded", () => {
           lastScore = score;
         }
 
-        const firstPlaceScore = scores[0][1];
-        const lastPlaceScore = scores[scores.length - 1][1];
+        const firstPlaceScore = scores[0]?.[1];
+        const lastPlaceScore = scores[scores.length - 1]?.[1];
 
         scores.forEach(([user, score]) => {
           const isFirst = score === firstPlaceScore;
@@ -219,7 +219,8 @@ document.addEventListener("DOMContentLoaded", () => {
           board.appendChild(li);
         });
 
-        if (data.champ) {
+        // ✅ FIXED: Only show champ message if key exists
+        if (typeof data.champ !== "undefined") {
           board.innerHTML += `<li><strong>👑 Champion of the Week: ${data.champ}</strong></li>`;
         }
       });
