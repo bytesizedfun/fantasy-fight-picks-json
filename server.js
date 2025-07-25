@@ -12,7 +12,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW
 
 const lockoutTime = new Date("2025-07-26T15:00:00-04:00");
 
-// ✅ FETCH FIGHTS FROM GOOGLE SHEETS
+// ✅ FETCH UPCOMING FIGHTS FROM GOOGLE SHEETS
 app.get("/api/fights", async (req, res) => {
   try {
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
