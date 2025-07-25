@@ -12,7 +12,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW
 
 const lockoutTime = new Date("2025-07-26T15:00:00-04:00");
 
-// ✅ FETCH UPCOMING FIGHTS FROM GOOGLE SHEETS
+// === GET FIGHTS FROM GOOGLE SHEETS
 app.get("/api/fights", async (req, res) => {
   try {
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
@@ -24,7 +24,7 @@ app.get("/api/fights", async (req, res) => {
   }
 });
 
-// Submit picks
+// === SUBMIT PICKS
 app.post("/api/submit", async (req, res) => {
   if (new Date() >= lockoutTime) {
     return res.status(403).json({ error: "Picks are locked. Fight card has started." });
@@ -42,7 +42,7 @@ app.post("/api/submit", async (req, res) => {
   res.json(result);
 });
 
-// Get user's own picks
+// === GET USER PICKS
 app.post("/api/picks", async (req, res) => {
   const { username } = req.body;
 
@@ -56,11 +56,16 @@ app.post("/api/picks", async (req, res) => {
   res.json(result);
 });
 
-// Get leaderboard
+// === GET LEADERBOARD
 app.get("/api/leaderboard", async (req, res) => {
-  const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`);
-  const data = await response.json();
-  res.json(data);
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error("Error fetching leaderboard:", err);
+    res.status(500).json({ error: "Failed to load leaderboard." });
+  }
 });
 
 app.listen(PORT, () => {
