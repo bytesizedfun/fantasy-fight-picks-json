@@ -8,16 +8,20 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
-// ✅ Correct deployed Apps Script Web App URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-// ✅ Lockout set to July 26, 2025 @ 3:00 PM Eastern Time (EDT)
 const lockoutTime = new Date("2025-07-26T15:00:00-04:00");
 
-// Serve fights.json
-app.get("/api/fights", (req, res) => {
-  const fights = require("./data/fights.json");
-  res.json(fights);
+// ✅ FETCH FIGHTS FROM GOOGLE SHEETS
+app.get("/api/fights", async (req, res) => {
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    const fights = await response.json();
+    res.json(fights);
+  } catch (error) {
+    console.error("Error fetching fights:", error);
+    res.status(500).json({ error: "Failed to load fight data." });
+  }
 });
 
 // Submit picks
