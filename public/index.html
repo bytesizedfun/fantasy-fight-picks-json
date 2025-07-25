@@ -31,15 +31,12 @@
         ✅ 1 point for correct method<br>
         ✅ 1 point for correct round<br>
         🌟 +1 bonus point for perfect pick<br>
-        🐶 +1 bonus point for underdog win
+        🐶 +1 bonus point for an underdog win
       </div>
     </div>
 
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
-    <p id="submitNote" class="submit-warning" style="display: none;">
-      👆 One click is all it takes — don’t ground and pound the button.
-    </p>
 
     <div id="myPicks" style="margin-top: 20px;"></div>
 
@@ -73,7 +70,6 @@
       const stored = localStorage.getItem("username");
       if (stored) {
         document.getElementById("scoringRules").style.display = "block";
-        document.getElementById("submitNote").style.display = "block";
         document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!`;
         document.getElementById("welcome").style.display = "block";
       }
@@ -83,19 +79,11 @@
           const name = document.getElementById("usernameInput").value.trim();
           if (name) {
             document.getElementById("scoringRules").style.display = "block";
-            document.getElementById("submitNote").style.display = "block";
             document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
             document.getElementById("welcome").style.display = "block";
           }
         }, 100);
       });
-
-      const observer = new MutationObserver(() => {
-        if (document.getElementById("myPicks").innerText.includes("Your Picks")) {
-          document.getElementById("submitNote").style.display = "none";
-        }
-      });
-      observer.observe(document.getElementById("myPicks"), { childList: true, subtree: true });
     });
   </script>
 </body>
