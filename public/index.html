@@ -1,223 +1,111 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const welcome = document.getElementById("welcome");
-  const fightList = document.getElementById("fightList");
-  const submitBtn = document.getElementById("submitBtn");
-  const usernamePrompt = document.getElementById("usernamePrompt");
-  const usernameInput = document.getElementById("usernameInput");
-  const punchSound = new Audio("punch.mp3");
-  const submitNote = document.getElementById("submitNote");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fantasy Fight Picks</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="banner-container">
+    <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
+  </div>
 
-  punchSound.volume = 1.0;
+  <div id="countdown" class="countdown-timer"></div>
 
-  let username = localStorage.getItem("username") || "";
+  <div id="app">
+    <div id="usernamePrompt">
+      <label for="usernameInput">Enter your name:</label>
+      <input type="text" id="usernameInput" />
+      <button onclick="lockUsername()">Lock In</button>
+    </div>
 
-  if (username) {
-    finalizeLogin(username);
-  }
+    <h2 id="welcome" style="display: none;"></h2>
 
-  document.querySelector("button").addEventListener("click", () => {
-    const input = usernameInput.value.trim();
-    if (!input) {
-      alert("Please enter your name.");
-      return;
-    }
-    username = input;
-    localStorage.setItem("username", username);
-    finalizeLogin(username);
-  });
+    <div id="scoringRules" style="display: none;">
+      <div class="scoring-box" style="text-align: center;">
+        🧠 <strong>Scoring Rules:</strong><br>
+        ✅ 1 point for correct fighter<br>
+        ✅ 1 point for correct method (only if fighter is correct)<br>
+        ✅ 1 point for correct round (only if fighter is correct)<br>
+        🌟 +1 bonus for a perfect pick;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• correct fighter, method, and round<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• or correct fighter and method = Decision<br>
+        🐶 +1 bonus for an underdog win
+      </div>
+    </div>
 
-  function finalizeLogin(name) {
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `Welcome, ${name}!`;
-    welcome.style.display = "block";
+    <div id="fightList" style="display: none;"></div>
+    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
-    fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: name })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.picks.length > 0) {
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-        } else {
-          localStorage.removeItem("submitted");
-          loadFights();
-          submitBtn.style.display = "block";
-        }
+    <div id="myPicks" style="margin-top: 20px;"></div>
 
-        loadMyPicks();
-        loadLeaderboard();
-      });
-  }
+    <h2 class="leader-title">LEADERBOARD</h2>
+    <ul id="leaderboard"></ul>
 
-  function loadFights() {
-    fetch("/api/fights")
-      .then(res => res.json())
-      .then(data => {
-        fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2 }) => {
-          const div = document.createElement("div");
-          div.className = "fight";
-          div.innerHTML = `
-            <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
-            <select name="${fight}-method">
-              <option value="Decision">Decision</option>
-              <option value="KO/TKO">KO/TKO</option>
-              <option value="Submission">Submission</option>
-            </select>
-            <select name="${fight}-round">
-              <option value="1">Round 1</option>
-              <option value="2">Round 2</option>
-              <option value="3">Round 3</option>
-              <option value="4">Round 4</option>
-              <option value="5">Round 5</option>
-            </select>
-          `;
-          fightList.appendChild(div);
-        });
+    <!-- 🏆 Last Week’s Winners -->
+    <div style="margin-top: 50px; padding: 20px 10px; text-align: center; font-family: 'Teko', sans-serif;">
+      <h3 style="color: gold; font-size: 1.6rem; text-shadow: 0 0 6px gold;">Last Week's Winners</h3>
+      <p style="font-size: 1.3rem; color: #f0f0f0;">
+        👑 Chris &nbsp;&nbsp; 👑 Josh &nbsp;&nbsp; 👑 McMini
+      </p>
+    </div>
 
-        document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector('select[name$="-method"]');
-          const roundSelect = fight.querySelector('select[name$="-round"]');
+    <!-- 💬 Discord Button -->
+    <div style="text-align: center; margin: 30px auto 60px;">
+      <a href="https://discord.gg/Nyn47TxB" target="_blank" style="display: inline-flex; align-items: center; background: #5865F2; color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1rem; font-family: 'Teko', sans-serif; box-shadow: 0 0 12px #5865F2;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 245 240" width="24" height="24" style="margin-right: 10px; fill: white;">
+          <path d="M104.4 104.3c-5.7 0-10.2 5-10.2 11.1 0 6.1 4.6 11.1 10.2 11.1s10.3-5 10.2-11.1c.1-6.2-4.5-11.1-10.2-11.1zm36.2 0c-5.7 0-10.2 5-10.2 11.1 0 6.1 4.6 11.1 10.2 11.1s10.3-5 10.2-11.1c0-6.2-4.5-11.1-10.2-11.1z"/>
+          <path d="M189.5 20h-134C38.2 20 20 38.2 20 60.5v119C20 201.8 38.2 220 60.5 220h114c22.3 0 40.5-18.2 40.5-40.5v-119C230 38.2 211.8 20 189.5 20zM162.8 162s-4.6-5.5-8.4-10.3c16.6-4.7 22.8-15 22.8-15-5.2 3.4-10.1 5.8-14.6 7.5-6.3 2.6-12.3 4.3-18.2 5.3-12 2.3-23 1.7-32.6-.1-7.2-1.4-13.4-3.5-18.5-5.3-2.9-1.1-6-2.4-9.1-4-0.4-0.2-0.8-0.4-1.2-0.6-0.3-0.2-0.5-0.3-0.7-0.4-3.2-1.8-5-3-5-3s6 10 21.9 14.9c-3.8 4.9-8.5 10.6-8.5 10.6-28.1-0.9-38.8-19.4-38.8-19.4 0-41 18.4-74.3 18.4-74.3 18.4-13.8 35.8-13.4 35.8-13.4l1.3 1.5c-23 6.7-33.6 16.9-33.6 16.9s2.8-1.6 7.5-3.8c13.6-6 24.3-7.6 28.7-8 0.7-0.1 1.3-0.2 2-0.2 7.2-1 15.3-1.3 23.6-0.3 11.1 1.3 23 4.6 35.1 11.3 0 0-10.1-9.6-31.9-16.2l1.8-2s17.4-0.4 35.8 13.4c0 0 18.4 33.3 18.4 74.3 0 0-10.8 18.5-38.9 19.4z"/>
+        </svg>
+        Join the Trash Talk
+      </a>
+    </div>
+  </div>
 
-          methodSelect.addEventListener("change", () => {
-            if (methodSelect.value === "Decision") {
-              roundSelect.disabled = true;
-              roundSelect.value = "";
-            } else {
-              roundSelect.disabled = false;
-              roundSelect.value = "1";
-            }
-          });
+  <script src="script.js"></script>
+  <script>
+    const countdownDiv = document.getElementById("countdown");
+    const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
 
-          if (methodSelect.value === "Decision") {
-            roundSelect.disabled = true;
-            roundSelect.value = "";
-          }
-        });
-
-        fightList.style.display = "block";
-        submitBtn.style.display = "block";
-      });
-  }
-
-  function submitPicks() {
-    if (submitBtn.disabled) return;
-
-    submitBtn.disabled = true;
-    submitBtn.innerText = "Submitting…";
-
-    const picks = [];
-    const fights = document.querySelectorAll(".fight");
-
-    for (const fight of fights) {
-      const fightName = fight.querySelector("h3").innerText;
-      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
-      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
-
-      if (!winner || !method) {
-        alert(`Please complete all picks. Missing data for "${fightName}".`);
-        submitBtn.disabled = false;
-        submitBtn.innerText = "Submit Picks";
+    function updateCountdown() {
+      const now = new Date().getTime();
+      const distance = eventTime - now;
+      if (distance < 0) {
+        countdownDiv.innerHTML = "🔥 UFC Fight Night has started!";
         return;
       }
-
-      picks.push({ fight: fightName, winner, method, round });
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      countdownDiv.innerHTML = ⏳ Countdown to UFC Fight Night: Whittaker vs de Ridder — ${days}d ${hours}h ${minutes}m ${seconds}s;
     }
 
-    fetch("/api/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, picks })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          punchSound.play();
-          submitBtn.innerText = "✅ Picks Submitted!";
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-          loadMyPicks();
-        } else {
-          alert(data.error || "Something went wrong.");
-          submitBtn.disabled = false;
-          submitBtn.innerText = "Submit Picks";
-        }
-      })
-      .catch(err => {
-        alert("Network error. Please try again.");
-        submitBtn.disabled = false;
-        submitBtn.innerText = "Submit Picks";
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const stored = localStorage.getItem("username");
+      if (stored) {
+        document.getElementById("scoringRules").style.display = "block";
+        document.getElementById("welcome").innerText = 🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!;
+        document.getElementById("welcome").style.display = "block";
+      }
+
+      document.querySelector("button").addEventListener("click", () => {
+        setTimeout(() => {
+          const name = document.getElementById("usernameInput").value.trim();
+          if (name) {
+            document.getElementById("scoringRules").style.display = "block";
+            document.getElementById("welcome").innerText = 🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!;
+            document.getElementById("welcome").style.display = "block";
+          }
+        }, 100);
       });
-  }
-
-  submitBtn.addEventListener("click", submitPicks);
-
-  function loadMyPicks() {
-    fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
-    })
-      .then(res => res.json())
-      .then(data => {
-        const myPicksDiv = document.getElementById("myPicks");
-        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-        if (!data.success || !data.picks.length) {
-          myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
-          return;
-        }
-        data.picks.forEach(({ fight, winner, method, round }) => {
-          const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><span class="fight-name">${fight}</span><span class="user-pick">${winner} by ${method} ${roundText}</span></p>`;
-        });
-      });
-  }
-
-  function loadLeaderboard() {
-    fetch("/api/leaderboard")
-      .then(res => res.json())
-      .then(data => {
-        const board = document.getElementById("leaderboard");
-        board.innerHTML = "";
-
-        const scores = Object.entries(data.scores || {});
-        scores.sort((a, b) => b[1] - a[1]);
-
-        let ranks = {};
-        let currentRank = 1;
-        let lastScore = null;
-
-        for (let i = 0; i < scores.length; i++) {
-          const [user, score] = scores[i];
-          if (score !== lastScore) currentRank = i + 1;
-          ranks[user] = currentRank;
-          lastScore = score;
-        }
-
-        const firstPlaceScore = scores[0]?.[1];
-        const lastPlaceScore = scores[scores.length - 1]?.[1];
-
-        scores.forEach(([user, score]) => {
-          const isFirst = score === firstPlaceScore;
-          const isLast = score === lastPlaceScore;
-          const li = document.createElement("li");
-          li.innerText = `${isFirst ? "👑 " : isLast ? "💩 " : ""}${user}: ${score} pts`;
-          if (isFirst) li.classList.add("champion");
-          board.appendChild(li);
-        });
-
-        if (typeof data.champ !== "undefined") {
-          board.innerHTML += `<li><strong>👑 Champion of the Week: ${data.champ}</strong></li>`;
-        }
-      });
-  }
-});
+    });
+  </script>
+</body>
+</html>
