@@ -24,43 +24,16 @@
 
     <h2 id="welcome" style="display: none;"></h2>
 
-    <div id="scoringRules" style="display: none; text-align: center; margin-top: 30px;">
-      <h3 style="color: #7CFC00; font-size: 1.3rem;">✅ SCORING RULES IMPLEMENTED:</h3>
-      <div style="display: inline-block; text-align: left; background-color: #1a1a1a; padding: 15px 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);">
-        <table style="width: 100%; color: #f0f0f0; border-collapse: collapse; font-size: 0.95rem;">
-          <thead>
-            <tr style="border-bottom: 1px solid #444;">
-              <th style="text-align: left; padding: 8px;">Rule</th>
-              <th style="text-align: right; padding: 8px;">Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding: 6px;">✅ <strong>Correct winner</strong></td>
-              <td style="text-align: right; padding: 6px;">+1</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px;">✅ <strong>Correct method</strong> <em>(if winner)</em></td>
-              <td style="text-align: right; padding: 6px;">+1</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px;">✅ <strong>Correct round</strong> <em>(if winner + method ≠ Decision)</em></td>
-              <td style="text-align: right; padding: 6px;">+1</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px;">✅ <strong>Perfect pick bonus:</strong><br>
-                <small>• Correct <strong>fighter</strong> and <strong>method</strong>, and EITHER:<br>
-                — Round is correct <em>(if not Decision)</em>, OR<br>
-                — Method is “Decision”</small>
-              </td>
-              <td style="text-align: right; padding: 6px; vertical-align: top;">+1</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px;">✅ <strong>Underdog bonus</strong> <em>(if winner + underdog = "Y")</em></td>
-              <td style="text-align: right; padding: 6px;">+1</td>
-            </tr>
-          </tbody>
-        </table>
+    <div id="scoringRules" style="display: none;">
+      <div class="scoring-box" style="text-align: center;">
+        🧠 <strong>Scoring Rules:</strong><br>
+        ✅ 1 point for correct fighter<br>
+        ✅ 1 point for correct method (only if fighter is correct)<br>
+        ✅ 1 point for correct round (only if fighter is correct)<br>
+        🌟 +1 bonus for a perfect pick;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• correct fighter, method, and round<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• or correct fighter and method = Decision<br>
+        🐶 +1 bonus for an underdog win
       </div>
     </div>
 
@@ -95,7 +68,7 @@
   <script src="script.js"></script>
   <script>
     const countdownDiv = document.getElementById("countdown");
-    const eventTime = new Date("2025-07-26T12:00:00-04:00").getTime();
+    const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
 
     function updateCountdown() {
       const now = new Date().getTime();
