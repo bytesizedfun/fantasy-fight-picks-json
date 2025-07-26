@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 Itttttttt's time! Welcome, ${name}!`;
+    welcome.innerText = `Welcome, ${name}!`;
     welcome.style.display = "block";
 
     fetch("/api/picks", {
@@ -216,9 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (typeof data.champ !== "undefined") {
-          const champions = Array.isArray(data.champ) ? data.champ : [data.champ];
-          const champNames = champions.join(" & ");
-          board.innerHTML += `<li><strong>👑 Champion of the Week: ${champNames}</strong></li>`;
+          board.innerHTML += `<li><strong>👑 Champion of the Week: ${data.champ}</strong></li>`;
         }
       });
   }
