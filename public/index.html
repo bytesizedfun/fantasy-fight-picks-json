@@ -45,7 +45,8 @@
     <h2 class="leader-title">LEADERBOARD</h2>
     <ul id="leaderboard"></ul>
 
-    <!-- 🏆 Last Week’s Winners -->
+    <div id="champion" style="display:none; text-align:center; color:gold; font-size:1.4rem; margin-top:10px;"></div>
+
     <div style="margin-top: 50px; padding: 20px 10px; text-align: center; font-family: 'Teko', sans-serif;">
       <h3 style="color: gold; font-size: 1.6rem; text-shadow: 0 0 6px gold;">Last Week's Winners</h3>
       <p style="font-size: 1.3rem; color: #f0f0f0;">
@@ -53,7 +54,6 @@
       </p>
     </div>
 
-    <!-- 💬 Discord Button -->
     <div style="text-align: center; margin: 30px auto 60px;">
       <a href="https://discord.gg/Nyn47TxB" target="_blank" style="display: inline-flex; align-items: center; background: #5865F2; color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1rem; font-family: 'Teko', sans-serif; box-shadow: 0 0 12px #5865F2;">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 245 240" width="24" height="24" style="margin-right: 10px; fill: white;">
@@ -86,26 +86,6 @@
 
     setInterval(updateCountdown, 1000);
     updateCountdown();
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const stored = localStorage.getItem("username");
-      if (stored) {
-        document.getElementById("scoringRules").style.display = "block";
-        document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!`;
-        document.getElementById("welcome").style.display = "block";
-      }
-
-      document.querySelector("button").addEventListener("click", () => {
-        setTimeout(() => {
-          const name = document.getElementById("usernameInput").value.trim();
-          if (name) {
-            document.getElementById("scoringRules").style.display = "block";
-            document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
-            document.getElementById("welcome").style.display = "block";
-          }
-        }, 100);
-      });
-    });
   </script>
 </body>
 </html>
