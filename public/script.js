@@ -215,8 +215,11 @@ document.addEventListener("DOMContentLoaded", () => {
           board.appendChild(li);
         });
 
-        if (typeof data.champ !== "undefined") {
-          board.innerHTML += `<li><strong>👑 Champion of the Week: ${data.champ}</strong></li>`;
+        // ✅ Updated Champion message logic
+        const champDiv = document.getElementById("champion");
+        if (champDiv && data.champMessage) {
+          champDiv.innerHTML = `<strong>${data.champMessage}</strong>`;
+          champDiv.style.display = "block";
         }
       });
   }
