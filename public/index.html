@@ -2,90 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fantasy Fight Picks</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎤 Fantasy Fight Picks</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:,👊" />
 </head>
 <body>
-  <div class="banner-container">
-    <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
+  <img src="logo.png" alt="Fantasy Fight Picks Logo" class="logo-banner" />
+  <h1 id="welcome" style="text-align: center; display: none;">🎤 Itttttttt's time!</h1>
+
+  <div id="usernamePrompt">
+    <p>Enter your name to get started:</p>
+    <input type="text" id="usernameInput" />
+    <button>Enter</button>
   </div>
 
-  <div id="countdown" class="countdown-timer"></div>
+  <div class="countdown-timer" id="countdown"></div>
 
-  <div id="app">
-    <div id="usernamePrompt">
-      <label for="usernameInput">Enter your name:</label>
-      <input type="text" id="usernameInput" />
-      <button onclick="lockUsername()">Lock In</button>
-    </div>
+  <div class="scoring-rules">
+    <p>🧠 <strong>Scoring:</strong></p>
+    <ul>
+      <li>✅ Correct winner: +1</li>
+      <li>✅ Correct method (if winner): +1</li>
+      <li>✅ Correct round (if winner): +1</li>
+      <li>✅ Perfect pick: Correct fighter, method, and round — or correct fighter by Decision: +1</li>
+      <li>✅ Underdog bonus (if winner is underdog 🐶): +1</li>
+    </ul>
+  </div>
 
-    <h2 id="welcome" style="display: none;"></h2>
+  <div id="fightList"></div>
+  <button id="submitBtn" style="display: none;">Submit Picks</button>
+  <p id="submitNote"></p>
 
-    <div id="scoringRules" style="display: none;">
-      <div class="scoring-box" style="text-align: center;">
-        🧠 <strong>Scoring Rules:</strong><br>
-        ✅ 1 point for correct fighter<br>
-        ✅ 1 point for correct method (only if fighter is correct)<br>
-        ✅ 1 point for correct round (only if fighter is correct)<br>
-        🌟 +1 bonus for a perfect pick;<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;• correct fighter, method, and round<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;• or correct fighter and method = Decision<br>
-        🐶 +1 bonus for an underdog win
-      </div>
-    </div>
-
-    <div id="fightList" style="display: none;"></div>
-    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
-
-    <div id="myPicks" style="margin-top: 20px;"></div>
-
-    <h2 class="leader-title">LEADERBOARD</h2>
+  <div id="myPicks"></div>
+  <div>
+    <h2 class="leaderboard-title">🏆 Leaderboard</h2>
     <ul id="leaderboard"></ul>
-
-    <div id="champion" style="display:none; text-align:center; color:gold; font-size:1.4rem; margin-top:10px;"></div>
-
-    <div style="margin-top: 50px; padding: 20px 10px; text-align: center; font-family: 'Teko', sans-serif;">
-      <h3 style="color: gold; font-size: 1.6rem; text-shadow: 0 0 6px gold;">Last Week's Winners</h3>
-      <p style="font-size: 1.3rem; color: #f0f0f0;">
-        👑 Chris &nbsp;&nbsp; 👑 Josh &nbsp;&nbsp; 👑 McMini
-      </p>
-    </div>
-
-    <div style="text-align: center; margin: 30px auto 60px;">
-      <a href="https://discord.gg/Nyn47TxB" target="_blank" style="display: inline-flex; align-items: center; background: #5865F2; color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1rem; font-family: 'Teko', sans-serif; box-shadow: 0 0 12px #5865F2;">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 245 240" width="24" height="24" style="margin-right: 10px; fill: white;">
-          <path d="M104.4 104.3c-5.7 0-10.2 5-10.2 11.1 0 6.1 4.6 11.1 10.2 11.1s10.3-5 10.2-11.1c.1-6.2-4.5-11.1-10.2-11.1zm36.2 0c-5.7 0-10.2 5-10.2 11.1 0 6.1 4.6 11.1 10.2 11.1s10.3-5 10.2-11.1c0-6.2-4.5-11.1-10.2-11.1z"/>
-          <path d="M189.5 20h-134C38.2 20 20 38.2 20 60.5v119C20 201.8 38.2 220 60.5 220h114c22.3 0 40.5-18.2 40.5-40.5v-119C230 38.2 211.8 20 189.5 20zM162.8 162s-4.6-5.5-8.4-10.3c16.6-4.7 22.8-15 22.8-15-5.2 3.4-10.1 5.8-14.6 7.5-6.3 2.6-12.3 4.3-18.2 5.3-12 2.3-23 1.7-32.6-.1-7.2-1.4-13.4-3.5-18.5-5.3-2.9-1.1-6-2.4-9.1-4-0.4-0.2-0.8-0.4-1.2-0.6-0.3-0.2-0.5-0.3-0.7-0.4-3.2-1.8-5-3-5-3s6 10 21.9 14.9c-3.8 4.9-8.5 10.6-8.5 10.6-28.1-0.9-38.8-19.4-38.8-19.4 0-41 18.4-74.3 18.4-74.3 18.4-13.8 35.8-13.4 35.8-13.4l1.3 1.5c-23 6.7-33.6 16.9-33.6 16.9s2.8-1.6 7.5-3.8c13.6-6 24.3-7.6 28.7-8 0.7-0.1 1.3-0.2 2-0.2 7.2-1 15.3-1.3 23.6-0.3 11.1 1.3 23 4.6 35.1 11.3 0 0-10.1-9.6-31.9-16.2l1.8-2s17.4-0.4 35.8 13.4c0 0 18.4 33.3 18.4 74.3 0 0-10.8 18.5-38.9 19.4z"/>
-        </svg>
-        Join the Trash Talk
-      </a>
-    </div>
+    <div id="champion" style="text-align:center; font-weight:bold;"></div>
   </div>
 
   <script src="script.js"></script>
-  <script>
-    const countdownDiv = document.getElementById("countdown");
-    const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
-
-    function updateCountdown() {
-      const now = new Date().getTime();
-      const distance = eventTime - now;
-      if (distance < 0) {
-        countdownDiv.innerHTML = "🔥 UFC Fight Night has started!";
-        return;
-      }
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-      countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Whittaker vs de Ridder — ${days}d ${hours}h ${minutes}m ${seconds}s`;
-    }
-
-    setInterval(updateCountdown, 1000);
-    updateCountdown();
-  </script>
 </body>
 </html>
