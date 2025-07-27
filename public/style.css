@@ -125,15 +125,35 @@ button:hover {
   color: #ffffff;
 }
 
+.fight-name {
+  font-weight: 700;
+  color: #ffffff;
+  display: block;
+  margin-bottom: 2px;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+
+.user-pick {
+  font-style: italic;
+  color: #bbbbbb;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+/* Scoring Box */
 .scoring-box {
   font-size: 0.95rem;
   text-align: center;
   color: #f2f2f2;
+  background: none;
   padding: 10px 0;
   margin-bottom: 10px;
+  border-top: 2px dotted #C43228;
+  border-bottom: 2px dotted #C43228;
 }
 
-/* Leaderboard */
+/* Leaderboard Title */
 .leader-title {
   font-family: 'Anton', sans-serif;
   font-size: 2.2rem;
@@ -146,6 +166,7 @@ button:hover {
   text-shadow: 0 0 6px #C43228;
 }
 
+/* Leaderboard List */
 #leaderboard {
   padding: 16px;
   margin-top: 20px;
@@ -153,7 +174,14 @@ button:hover {
   border-radius: 12px;
   border: 3px solid #C43228;
   box-shadow: 0 0 20px rgba(196, 50, 40, 0.5);
+  animation: pulse-border 2s infinite;
   list-style: none;
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 10px #C43228; }
+  50% { box-shadow: 0 0 30px #D9483B; }
+  100% { box-shadow: 0 0 10px #C43228; }
 }
 
 #leaderboard li {
@@ -174,26 +202,26 @@ button:hover {
   transition: all 0.3s ease;
 }
 
-/* Crown Animation */
-#leaderboard li.champion {
-  color: gold;
-  animation: crownBounce 1.5s infinite ease-in-out;
-  text-shadow: 0 0 6px gold, 0 0 12px gold;
-}
-@keyframes crownBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+#leaderboard li:hover {
+  background-color: #383838;
+  transform: scale(1.02);
 }
 
-/* 💩 Last Place Shame */
-#leaderboard li.last-place {
-  color: #996633;
-  text-decoration: line-through;
-  opacity: 0.7;
-  font-style: italic;
-  animation: shamePulse 1.6s infinite ease-in-out;
+#leaderboard li.first::before {
+  content: "👑";
+  margin-right: 10px;
+  animation: crownBounce 1.5s infinite ease-in-out;
 }
-@keyframes shamePulse {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.05); opacity: 1; }
+
+@keyframes crownBounce {
+  0%, 100% { transform: translateY(0); text-shadow: 0 0 6px #ffd700; }
+  50% { transform: translateY(-4px); text-shadow: 0 0 12px #ffd700; }
+}
+
+#leaderboard li.last::after {
+  content: " 💩";
+  color: #b87333;
+  text-shadow: 0 0 6px #5a3a22;
+  opacity: 0.7;
+  text-decoration: line-through;
 }
