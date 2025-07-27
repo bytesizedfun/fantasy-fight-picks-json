@@ -5,10 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const punchSound = new Audio("punch.mp3");
-  const lockedMessage = document.getElementById("lockedMessage");
-  const countdown = document.getElementById("countdown");
-
-  punchSound.volume = 1.0;
 
   let username = localStorage.getItem("username") || "";
 
@@ -29,19 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+    welcome.innerText = `Welcome, ${name}!`;
     welcome.style.display = "block";
-
-    fetch("/api/lockout")
-      .then(res => res.json())
-      .then(data => {
-        if (data.locked) {
-          lockedMessage.style.display = "block";
-        } else {
-          loadFights();
-          submitBtn.style.display = "block";
-        }
-      });
 
     fetch("/api/picks", {
       method: "POST",
@@ -56,13 +41,13 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "none";
         } else {
           localStorage.removeItem("submitted");
+          loadFights();
+          submitBtn.style.display = "block";
         }
 
         loadMyPicks();
         loadLeaderboard();
       });
-
-    startCountdown();
   }
 
   function loadFights() {
@@ -70,16 +55,13 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
-          const isUnderdog1 = underdog === fighter1 ? "🐶" : "";
-          const isUnderdog2 = underdog === fighter2 ? "🐶" : "";
-
+        data.forEach(({ fight, fighter1, fighter2 }) => {
           const div = document.createElement("div");
           div.className = "fight";
           div.innerHTML = `
             <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1} ${isUnderdog1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2} ${isUnderdog2}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
             <select name="${fight}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
@@ -117,10 +99,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         fightList.style.display = "block";
+        submitBtn.style.display = "block";
       });
   }
 
-  submitBtn.addEventListener("click", () => {
+  function submitPicks() {
     const picks = [];
     const fights = document.querySelectorAll(".fight");
 
@@ -157,7 +140,9 @@ document.addEventListener("DOMContentLoaded", () => {
           alert(data.error || "Something went wrong.");
         }
       });
-  });
+  }
+
+  submitBtn.addEventListener("click", submitPicks);
 
   function loadMyPicks() {
     fetch("/api/picks", {
@@ -175,59 +160,39 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><strong class="fight-name">${fight}</strong><span class="user-pick">${winner} by ${method} ${roundText}</span></p>`;
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
         });
       });
   }
 
   function loadLeaderboard() {
     fetch("/api/leaderboard", {
-      method: "POST"
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
     })
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
-        const scores = data.scores || {};
-        const max = Math.max(...Object.values(scores));
-        const min = Math.min(...Object.values(scores));
+        board.innerHTML = "";
 
-        board.innerHTML = "<ul>";
-        Object.entries(scores).forEach(([user, score]) => {
-          const isFirst = score === max;
-          const isLast = score === min && Object.values(scores).length > 1;
-          const crown = isFirst ? `<span class="crown">👑</span>` : "";
-          const poop = isLast ? `<span class="poop">💩</span>` : "";
-          const className = isFirst ? "first-place" : isLast ? "last-place" : "";
-          board.innerHTML += `<li class="${className}">${user}: ${score} pts ${crown}${poop}</li>`;
+        const sortedUsers = Object.entries(data.scores).sort((a, b) => b[1] - a[1]);
+
+        sortedUsers.forEach(([user, score]) => {
+          const li = document.createElement("li");
+          li.textContent = `${user}: ${score} pts`;
+
+          if (data.champs && data.champs.includes(user)) {
+            li.innerHTML = `👑 ${user}: ${score} pts`;
+          }
+
+          board.appendChild(li);
         });
-        board.innerHTML += "</ul>";
 
         if (data.champMessage) {
-          document.getElementById("champion").innerText = data.champMessage;
+          const champMsg = document.createElement("li");
+          champMsg.innerHTML = `<strong>${data.champMessage}</strong>`;
+          board.appendChild(champMsg);
         }
       });
-  }
-
-  function startCountdown() {
-    const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
-
-    function updateCountdown() {
-      const now = new Date().getTime();
-      const distance = eventTime - now;
-
-      if (distance <= 0) {
-        countdown.innerText = "⏳ Picks are now locked.";
-        return;
-      }
-
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-      countdown.innerText = `⏳ Time until lock: ${hours}h ${minutes}m ${seconds}s`;
-      setTimeout(updateCountdown, 1000);
-    }
-
-    updateCountdown();
   }
 });
