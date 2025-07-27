@@ -185,42 +185,50 @@ document.addEventListener("DOMContentLoaded", () => {
         board.innerHTML = "";
 
         const sortedUsers = Object.entries(data.scores).sort((a, b) => b[1] - a[1]);
+        const scoresOnly = sortedUsers.map(entry => entry[1]);
+        const highest = Math.max(...scoresOnly);
+        const lowest = Math.min(...scoresOnly);
 
-        sortedUsers.forEach(([user, score], index) => {
+        sortedUsers.forEach(([user, score]) => {
           const li = document.createElement("li");
+          const isChamp = data.champs && data.champs.includes(user);
           const isUser = user === username;
-          const isLast = index === sortedUsers.length - 1;
+          const isLoser = score === lowest;
 
-          // Champion Crown
-          if (data.champs && data.champs.includes(user)) {
-            li.innerHTML = `<span class="crown">👑</span> ${user}: ${score} pts`;
-          } else {
-            li.innerHTML = `${user}: ${score} pts`;
+          let label = `${user}: ${score} pts`;
+
+          // 👑 Champion
+          if (isChamp) {
+            label = `<span class="crown">👑</span> ${user}: ${score} pts`;
+            li.classList.add("champ-glow");
           }
+
+          // 💩 Loser
+          if (isLoser) {
+            label = `💩 ${user}: ${score} pts`;
+            li.classList.add("loser");
+          }
+
+          li.innerHTML = label;
 
           // Highlight current user
           if (isUser) {
             li.style.fontWeight = "bold";
-            li.style.color = "#FFD700";
-          }
-
-          // Last place with 💩
-          if (isLast && score === 0) {
-            li.innerHTML = `💩 ${user}: ${score} pts`;
-            li.style.backgroundColor = "#3b2e2e";
-            li.style.color = "#d0a373";
-            li.style.borderLeft = "5px solid brown";
+            li.style.outline = "2px solid #FFD700";
           }
 
           board.appendChild(li);
         });
 
-        // Champion Banner
+        // 🏆 Champion of the Week Banner
         if (data.champMessage) {
           const champBanner = document.getElementById("champBanner");
           champBanner.innerHTML = `🌟 ${data.champMessage} 🌟`;
           champBanner.style.display = "block";
         }
+
+        // Show scoring rules if not already shown
+        document.getElementById("scoringRules").style.display = "block";
       });
   }
 });
