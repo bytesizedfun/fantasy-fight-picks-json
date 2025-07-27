@@ -122,6 +122,9 @@ document.addEventListener("DOMContentLoaded", () => {
       picks.push({ fight: fightName, winner, method, round });
     }
 
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Submitting...";
+
     fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -138,6 +141,8 @@ document.addEventListener("DOMContentLoaded", () => {
           loadMyPicks();
         } else {
           alert(data.error || "Something went wrong.");
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Submit Picks";
         }
       });
   }
@@ -160,7 +165,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
+          myPicksDiv.innerHTML += `
+            <p>
+              <span class="fight-name">${fight}</span>
+              <span class="user-pick">Pick: ${winner} by ${method} ${roundText}</span>
+            </p>`;
         });
       });
   }
@@ -177,21 +186,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const sortedUsers = Object.entries(data.scores).sort((a, b) => b[1] - a[1]);
 
-        sortedUsers.forEach(([user, score]) => {
+        sortedUsers.forEach(([user, score], index) => {
           const li = document.createElement("li");
-          li.textContent = `${user}: ${score} pts`;
+          const isUser = user === username;
+          const isLast = index === sortedUsers.length - 1;
 
+          // Champion Crown
           if (data.champs && data.champs.includes(user)) {
-            li.innerHTML = `👑 ${user}: ${score} pts`;
+            li.innerHTML = `<span class="crown">👑</span> ${user}: ${score} pts`;
+          } else {
+            li.innerHTML = `${user}: ${score} pts`;
+          }
+
+          // Highlight current user
+          if (isUser) {
+            li.style.fontWeight = "bold";
+            li.style.color = "#FFD700";
+          }
+
+          // Last place with 💩
+          if (isLast && score === 0) {
+            li.innerHTML = `💩 ${user}: ${score} pts`;
+            li.style.backgroundColor = "#3b2e2e";
+            li.style.color = "#d0a373";
+            li.style.borderLeft = "5px solid brown";
           }
 
           board.appendChild(li);
         });
 
+        // Champion Banner
         if (data.champMessage) {
-          const champMsg = document.createElement("li");
-          champMsg.innerHTML = `<strong>${data.champMessage}</strong>`;
-          board.appendChild(champMsg);
+          const champBanner = document.getElementById("champBanner");
+          champBanner.innerHTML = `🌟 ${data.champMessage} 🌟`;
+          champBanner.style.display = "block";
         }
       });
   }
