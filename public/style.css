@@ -23,6 +23,7 @@ body {
   box-shadow: 0 0 12px rgba(0,0,0,0.6);
 }
 
+/* Fight Cards */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
@@ -126,60 +127,98 @@ button:hover {
   letter-spacing: 0.3px;
 }
 
-/* Leaderboard */
-#leaderboard {
-  list-style: none;
-  padding: 0;
-  margin-top: 10px;
-}
-#leaderboard li {
-  background: #2c2c2c;
-  margin: 6px 0;
-  padding: 10px 12px;
-  border-radius: 6px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 1.1rem;
-}
-#leaderboard li.champ-glow {
-  color: gold;
-  text-shadow: 0 0 4px gold, 0 0 8px gold;
-}
-#leaderboard li.loser {
-  background-color: #3d2e2e;
-  color: #d4af37;
-}
-#leaderboard li.current-user {
-  font-weight: bold;
-}
-
 /* Scoring Box */
 .scoring-box {
-  font-size: 1rem;
+  font-size: 0.95rem;
   text-align: center;
+  color: #f2f2f2;
   padding: 10px 0;
   margin-bottom: 10px;
 }
-.scoring-box .clickable {
-  margin: 0 6px;
-  cursor: pointer;
+.rule {
+  text-align: center;
+  margin: 4px 0;
+  font-size: 0.95rem;
+}
+.clickable {
   font-weight: bold;
+  cursor: pointer;
   color: #ffffff;
   text-decoration: underline;
 }
-
-/* Champion Banner */
-.champ-banner {
-  margin-top: 20px;
-  padding: 10px;
-  font-size: 1.1rem;
-  color: #FFD700;
+.tip-box {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #2e2e2e;
+  border: 1px solid #C43228;
+  border-radius: 4px;
   text-align: center;
-  text-shadow: 0 0 6px #FFD700, 0 0 12px #FFD700;
-  animation: scrollBanner 12s linear infinite;
+  color: #f2f2f2;
+  font-style: italic;
+  font-size: 0.85rem;
 }
+
+/* Champion Banner (top) */
+.champ-banner {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #FFD700;
+  background: #1a1a1a;
+  padding: 10px 0;
+  text-align: center;
+  text-shadow: 0 0 6px #FFD700, 0 0 14px #FFD700;
+  animation: scrollBanner 15s linear infinite;
+  z-index: 1000;
+}
+
 @keyframes scrollBanner {
   0% { transform: translateX(100%); }
   100% { transform: translateX(-100%); }
+}
+
+/* Leaderboard Enhancements */
+.leader-title {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-top: 30px;
+  color: #FFD700;
+  text-shadow: 0 0 10px #FFD700;
+  letter-spacing: 1px;
+}
+
+#leaderboard {
+  list-style-type: none;
+  padding: 0;
+}
+
+#leaderboard li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #2e2e2e;
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
+}
+
+#leaderboard li.champ-glow span {
+  color: #FFD700;
+  font-weight: bold;
+  text-shadow: 0 0 6px #FFD700, 0 0 12px #FFD700;
+}
+
+#leaderboard li.loser {
+  background-color: #3b2f2f;
+  color: #d6b48b;
+}
+
+#leaderboard li.current-user {
+  font-weight: bold;
+  border: 2px dashed #999;
 }
