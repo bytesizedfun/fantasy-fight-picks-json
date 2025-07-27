@@ -4,63 +4,49 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Fantasy Fight Picks 👊</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="banner-container">
+    <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
+  </div>
+
+  <!-- ✅ Simplified event status -->
+  <div id="eventStatus" class="countdown-timer"></div>
+
   <div id="app">
-    <img src="logo.png" alt="Fantasy Fight Picks Logo" class="logo-banner" />
-
-    <!-- ✅ LOCKOUT MESSAGE OR COUNTDOWN -->
-    <div id="eventStatus" class="countdown-timer">Loading event status...</div>
-
-    <div id="welcome"></div>
     <div id="usernamePrompt">
-      <input type="text" id="usernameInput" placeholder="Enter your username" />
-      <button>Start Picking</button>
+      <label for="usernameInput">Enter your name:</label>
+      <input type="text" id="usernameInput" />
+      <button onclick="lockUsername()">Lock In</button>
     </div>
 
-    <div id="fightList"></div>
+    <h2 id="welcome" style="display: none;"></h2>
 
-    <div id="submitNote"></div>
-    <button id="submitBtn" style="display:none;">Submit Picks</button>
-
-    <!-- ✅ Updated Scoring Points -->
-    <div class="scoring-rules">
-      <p>✅ +1 for correct Winner</p>
-      <p>✅ +1 for correct Method <span style="font-size:0.9em;">(only if the Winner is correct)</span></p>
-      <p>✅ +1 for correct Round <span style="font-size:0.9em;">(only if the Winner and Method are both correct, and the fight did not end by Decision)</span></p>
-      <p>🐶 +2 for correct Underdog pick</p>
+    <div id="scoringRules" style="display: none;">
+      <div class="scoring-box" style="text-align: center; background-color: #1c1c1c; padding: 16px; margin: 20px auto; color: #f2f2f2; font-size: 1.05rem; max-width: 460px; border-radius: 10px;">
+        <div style="font-size: 1.2rem; color: gold; margin-bottom: 10px;">Scoring</div>
+        ✅ <strong>+1</strong> for correct <strong>Winner</strong><br>
+        ✅ <strong>+1</strong> for correct <strong>Method</strong> (only if the Winner is correct)<br>
+        ✅ <strong>+1</strong> for correct <strong>Round</strong> (only if the Winner and Method are both correct, and the fight did not end by Decision)<br>
+        🐶 <strong>+2</strong> for correct <strong>Underdog</strong> pick
+      </div>
     </div>
 
-    <div id="myPicks"></div>
+    <div id="fightList" style="display: none;"></div>
+    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
-    <h2>🏆 Leaderboard</h2>
-    <div id="leaderboard"></div>
+    <div id="myPicks" style="margin-top: 20px;"></div>
+
+    <h2 class="leader-title">LEADERBOARD</h2>
+    <ul id="leaderboard"></ul>
+
+    <!-- 👑 Champion message (hidden until shown via JS) -->
     <div id="champion"></div>
   </div>
 
   <script src="script.js"></script>
-  <audio id="punchSound" src="punch.mp3" preload="auto"></audio>
-
-  <script>
-    // 🔒 Display countdown or lock message
-    document.addEventListener("DOMContentLoaded", async () => {
-      const statusDiv = document.getElementById("eventStatus");
-      try {
-        const res = await fetch("/api/eventStatus");
-        const data = await res.json();
-        if (data.status === "live" || data.status === "ended") {
-          statusDiv.textContent = "🔒 Picks are now locked";
-        } else if (data.status === "upcoming") {
-          const date = new Date(data.eventStart);
-          statusDiv.textContent = `⏳ Picks lock: ${date.toLocaleString("en-US", {
-            weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
-          })}`;
-        }
-      } catch (err) {
-        statusDiv.textContent = "⚠️ Couldn't load event status";
-      }
-    });
-  </script>
 </body>
 </html>
