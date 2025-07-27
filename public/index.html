@@ -13,8 +13,6 @@
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
-  <div id="champBanner" class="champ-banner" style="display: none;"></div>
-
   <div id="app">
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
@@ -25,11 +23,12 @@
     <h2 id="welcome" style="display: none;"></h2>
 
     <div id="scoringRules" style="display: none;">
-      <div class="scoring-box" style="text-align: center;">
-        ✅ <strong>Winner</strong> = +1<br>
-        ✅ <strong>Method</strong> = +1 (only if Winner is correct)<br>
-        ✅ <strong>Round</strong> = +1 (only if Winner & Method are correct and NOT a Decision)<br>
-        🐶 <strong>Underdog</strong> = +2 bonus if picked correctly
+      <div class="scoring-box">
+        <div class="rule"><strong class="clickable" data-tip="You get +1 point for correctly picking the winner.">✅ Winner</strong> = +1</div>
+        <div class="rule"><strong class="clickable" data-tip="You only earn Method points if the Winner is also correct.">✅ Method</strong> = +1</div>
+        <div class="rule"><strong class="clickable" data-tip="You only earn Round points if Winner & Method are correct, and the fight did NOT go to Decision.">✅ Round</strong> = +1</div>
+        <div class="rule"><strong class="clickable" data-tip="If you correctly pick an underdog (based on data), you earn 2 bonus points.">🐶 Underdog</strong> = +2 bonus</div>
+        <div id="tipDisplay" class="tip-box" style="display:none;"></div>
       </div>
     </div>
 
@@ -37,6 +36,8 @@
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
     <div id="myPicks" style="margin-top: 20px;"></div>
+
+    <div id="champBanner" class="champ-banner" style="display: none;"></div>
 
     <h2 class="leader-title">LEADERBOARD</h2>
     <ul id="leaderboard"></ul>
