@@ -17,7 +17,7 @@ const lockoutTime = new Date("2025-08-02T18:00:00-04:00");
 // === GET FIGHTS FROM GOOGLE SHEETS
 app.get("/api/fights", async (req, res) => {
   try {
-    const response = await fetch(${GOOGLE_SCRIPT_URL}?action=getFights);
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
     const fights = await response.json();
     res.json(fights);
   } catch (error) {
@@ -61,7 +61,7 @@ app.post("/api/picks", async (req, res) => {
 // === GET LEADERBOARD
 app.get("/api/leaderboard", async (req, res) => {
   try {
-    const response = await fetch(${GOOGLE_SCRIPT_URL}?action=getLeaderboard);
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`);
     const data = await response.json();
     res.json(data);
   } catch (err) {
@@ -71,5 +71,5 @@ app.get("/api/leaderboard", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(Fantasy Fight Picks server running on port ${PORT});
+  console.log(`Fantasy Fight Picks server running on port ${PORT}`);
 });
