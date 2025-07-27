@@ -23,7 +23,6 @@ body {
   box-shadow: 0 0 12px rgba(0,0,0,0.6);
 }
 
-/* Fight Cards */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
@@ -90,20 +89,6 @@ button:hover {
   text-transform: uppercase;
 }
 
-.submit-warning {
-  text-align: center;
-  color: #f2f2f2;
-  font-size: 0.9rem;
-  font-style: italic;
-  margin-top: 6px;
-  animation: fadePop 2s infinite alternate;
-}
-
-@keyframes fadePop {
-  0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0.7; transform: scale(1.02); }
-}
-
 /* Picks Display */
 #myPicks h3 {
   color: #C43228;
@@ -122,10 +107,10 @@ button:hover {
   font-size: 1rem;
   line-height: 1.5;
   font-family: 'Teko', sans-serif;
-  color: #ffffff; /* 👈 default text now white */
+  color: #ffffff;
 }
 
-#myPicks p .fight-name {
+.fight-name {
   font-weight: 700;
   color: #ffffff;
   display: block;
@@ -134,24 +119,14 @@ button:hover {
   letter-spacing: 0.5px;
 }
 
-#myPicks p .user-pick {
+.user-pick {
   font-style: italic;
-  color: #bbbbbb; /* 👈 light gray for picks */
+  color: #bbbbbb;
   font-size: 0.95rem;
   letter-spacing: 0.3px;
 }
 
-/* Scoring Box */
-.scoring-box {
-  font-size: 0.95rem;
-  text-align: center;
-  color: #f2f2f2;
-  background: none;
-  padding: 10px 0;
-  margin-bottom: 10px;
-}
-
-/* Leaderboard Title */
+/* Leaderboard */
 .leader-title {
   font-family: 'Anton', sans-serif;
   font-size: 2.2rem;
@@ -164,7 +139,6 @@ button:hover {
   text-shadow: 0 0 6px #C43228;
 }
 
-/* Leaderboard List */
 #leaderboard {
   padding: 16px;
   margin-top: 20px;
@@ -205,13 +179,31 @@ button:hover {
   transform: scale(1.02);
 }
 
-#leaderboard li:first-child::before {
-  content: "👑";
-  margin-right: 10px;
+.crown {
   animation: crownBounce 1.5s infinite ease-in-out;
+  margin-right: 6px;
 }
 
 @keyframes crownBounce {
   0%, 100% { transform: translateY(0); text-shadow: 0 0 6px #fff; }
   50% { transform: translateY(-4px); text-shadow: 0 0 12px #fff; }
+}
+
+.champ-banner {
+  margin: 20px auto;
+  padding: 10px 0;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #FFD700;
+  background: linear-gradient(to right, #c43228, #ffd700, #c43228);
+  background-size: 200% auto;
+  animation: scrollText 5s linear infinite;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #FFD700;
+}
+
+@keyframes scrollText {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
 }
