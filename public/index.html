@@ -5,48 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>👊 Fantasy Fight Picks</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22><text y=%22.9em%22 font-size=%2216%22>👊</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
 </head>
 <body>
-  <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner" />
+  <img src="logo_fighter.png" alt="Fantasy Fight Picks" class="logo-banner" />
+  
+  <div id="countdown" class="countdown-timer"></div>
+  <div id="lockMessage" class="lock-message">🔒 Picks are now locked.</div>
 
-  <div class="countdown-timer" id="countdown">⏳ Loading countdown...</div>
-  <div id="lockedMessage" class="locked-message" style="display:none;">🔒 Picks are now locked.</div>
-
-  <div id="scoringRules" class="scoring-rules">
-    🧠 Scoring:
+  <div id="scoringRules" class="scoring-box">
+    <p>🧠 <strong>Scoring:</strong></p>
     <ul>
-      <li>✅ 1 point for correct <strong>fighter</strong></li>
-      <li>✅ 1 point for correct <strong>method</strong> (only if fighter is correct)</li>
-      <li>✅ 1 point for correct <strong>round</strong> (only if fighter is correct and method is not Decision)</li>
-      <li>🐶 +2 bonus points for correct <strong>underdog</strong> pick</li>
+      <li>✅ +1 for correct winner</li>
+      <li>✅ +1 for correct method <em>(only if winner is correct)</em></li>
+      <li>✅ +1 for correct round <em>(only if winner & method are correct, and method ≠ Decision)</em></li>
+      <li>🐶 +3 bonus if you picked an underdog correctly</li>
     </ul>
   </div>
 
-  <div id="app">
-    <div id="usernamePrompt">
-      <h2>Enter Your Name:</h2>
-      <input type="text" id="usernameInput" />
-      <button>Start</button>
-    </div>
-
-    <h2 id="welcome" style="display:none;"></h2>
-
-    <div id="fightList" style="display:none;"></div>
-    <button id="submitBtn" style="display:none;">Submit Picks</button>
-
-    <div id="myPicks"></div>
-    <h2>Leaderboard</h2>
-    <div id="leaderboard"></div>
-
-    <div id="champion" style="margin-top: 20px;"></div>
-
-    <div class="discord-banner">
-      <p>💬 Join the trash talk:</p>
-      <a href="https://discord.gg/your-invite-code" target="_blank" class="discord-button">Join Discord</a>
-    </div>
+  <div id="usernamePrompt">
+    <h2>Enter your name to play:</h2>
+    <input type="text" id="usernameInput" placeholder="Your name" />
+    <button>Join</button>
   </div>
 
+  <h2 id="welcome" style="display:none;"></h2>
+  <div id="fightList" style="display:none;"></div>
+  <button id="submitBtn" style="display:none;">Submit Picks</button>
+
+  <div id="myPicks"></div>
+  <div id="leaderboardContainer">
+    <h2>Leaderboard</h2>
+    <div id="leaderboard"></div>
+    <div id="champion"></div>
+  </div>
+
+  <!-- 💬 Discord button -->
+  <div style="text-align: center; margin-top: 40px;">
+    <a href="https://discord.gg/Nyn47TxB" target="_blank" class="discord-btn">💬 Join the trash talk</a>
+  </div>
+
+  <audio id="punchSound" src="punch.mp3" preload="auto"></audio>
   <script src="script.js"></script>
 </body>
 </html>
