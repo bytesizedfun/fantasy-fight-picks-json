@@ -13,6 +13,8 @@
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
+  <div id="countdown" class="countdown-timer"></div>
+
   <div id="app">
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
@@ -26,7 +28,7 @@
       <div class="scoring-box">
         🧠 <strong>Scoring Rules:</strong><br>
         ✅ 1 point for correct fighter<br>
-        ✅ 1 point for correct method <em>(💡 2 points if Decision)</em><br>
+        ✅ 1 point for correct method<br>
         ✅ 1 point for correct round<br>
         🌟 +1 bonus point for perfect pick<br>
         🐶 +1 bonus point for picking the underdog
@@ -47,6 +49,26 @@
 
   <script src="script.js"></script>
   <script>
+    const countdownDiv = document.getElementById("countdown");
+    const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
+
+    function updateCountdown() {
+      const now = new Date().getTime();
+      const distance = eventTime - now;
+      if (distance < 0) {
+        countdownDiv.innerHTML = "🔥 UFC Fight Night has started!";
+        return;
+      }
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Whittaker vs de Ridder — ${days}d ${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
     document.addEventListener("DOMContentLoaded", () => {
       const stored = localStorage.getItem("username");
       if (stored) {
