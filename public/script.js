@@ -11,16 +11,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = localStorage.getItem("username") || "";
 
-  if (username) {
-    finalizeLogin(username);
-  }
+  if (username) finalizeLogin(username);
 
   document.querySelector("button").addEventListener("click", () => {
     const input = usernameInput.value.trim();
-    if (!input) {
-      alert("Please enter your name.");
-      return;
-    }
+    if (!input) return alert("Please enter your name.");
     username = input;
     localStorage.setItem("username", username);
     finalizeLogin(username);
@@ -47,7 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
           loadFights();
           submitBtn.style.display = "block";
         }
-
         loadMyPicks();
         loadLeaderboard();
       });
@@ -84,7 +78,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".fight").forEach(fight => {
           const methodSelect = fight.querySelector('select[name$="-method"]');
           const roundSelect = fight.querySelector('select[name$="-round"]');
-
           methodSelect.addEventListener("change", () => {
             if (methodSelect.value === "Decision") {
               roundSelect.disabled = true;
@@ -94,7 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
               roundSelect.value = "1";
             }
           });
-
           if (methodSelect.value === "Decision") {
             roundSelect.disabled = true;
             roundSelect.value = "";
@@ -108,7 +100,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function submitPicks() {
     if (submitBtn.disabled) return;
-
     submitBtn.disabled = true;
     submitBtn.innerText = "Submitting…";
 
@@ -152,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.innerText = "Submit Picks";
         }
       })
-      .catch(err => {
+      .catch(() => {
         alert("Network error. Please try again.");
         submitBtn.disabled = false;
         submitBtn.innerText = "Submit Picks";
@@ -188,21 +179,17 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "";
-
         const scores = Object.entries(data.scores || {});
         scores.sort((a, b) => b[1] - a[1]);
-
         let ranks = {};
         let currentRank = 1;
         let lastScore = null;
-
         for (let i = 0; i < scores.length; i++) {
           const [user, score] = scores[i];
           if (score !== lastScore) currentRank = i + 1;
           ranks[user] = currentRank;
           lastScore = score;
         }
-
         const firstPlaceScore = scores[0]?.[1];
         const lastPlaceScore = scores[scores.length - 1]?.[1];
 
