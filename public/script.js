@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
+  const champBanner = document.getElementById("champBanner");
   const punchSound = new Audio("punch.mp3");
 
   let username = localStorage.getItem("username") || "";
@@ -25,8 +26,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
-    welcome.innerText = `Welcome, ${name}!`;
+    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
     welcome.style.display = "block";
+    document.getElementById("scoringRules").style.display = "block";
 
     fetch("/api/picks", {
       method: "POST",
@@ -104,6 +106,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function submitPicks() {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+
     const picks = [];
     const fights = document.querySelectorAll(".fight");
 
@@ -116,14 +121,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!winner || !method) {
         alert(`Please complete all picks. Missing data for "${fightName}".`);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
         return;
       }
 
       picks.push({ fight: fightName, winner, method, round });
     }
-
-    submitBtn.disabled = true;
-    submitBtn.innerText = "Submitting...";
 
     fetch("/api/submit", {
       method: "POST",
@@ -139,10 +143,11 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.style.display = "none";
           submitBtn.style.display = "none";
           loadMyPicks();
+          loadLeaderboard();
         } else {
           alert(data.error || "Something went wrong.");
           submitBtn.disabled = false;
-          submitBtn.innerText = "Submit Picks";
+          submitBtn.textContent = "Submit Picks";
         }
       });
   }
@@ -165,70 +170,60 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `
-            <p>
-              <span class="fight-name">${fight}</span>
-              <span class="user-pick">Pick: ${winner} by ${method} ${roundText}</span>
-            </p>`;
+          myPicksDiv.innerHTML += `<p><span class="fight-name">${fight}</span><span class="user-pick">${winner} by ${method} ${roundText}</span></p>`;
         });
       });
   }
 
   function loadLeaderboard() {
     fetch("/api/leaderboard", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
+      method: "POST"
     })
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "";
+        const scores = Object.entries(data.scores || {}).sort((a, b) => b[1] - a[1]);
 
-        const sortedUsers = Object.entries(data.scores).sort((a, b) => b[1] - a[1]);
-        const scoresOnly = sortedUsers.map(entry => entry[1]);
-        const highest = Math.max(...scoresOnly);
-        const lowest = Math.min(...scoresOnly);
+        let rank = 1;
+        let prevScore = null;
+        let actualRank = 1;
 
-        sortedUsers.forEach(([user, score]) => {
+        scores.forEach(([user, score], index) => {
+          if (score !== prevScore) {
+            actualRank = rank;
+          }
+
           const li = document.createElement("li");
-          const isChamp = data.champs && data.champs.includes(user);
-          const isUser = user === username;
-          const isLoser = score === lowest;
+          let displayName = user;
+          let classes = [];
 
-          let label = `${user}: ${score} pts`;
-
-          // 👑 Champion
-          if (isChamp) {
-            label = `<span class="crown">👑</span> ${user}: ${score} pts`;
-            li.classList.add("champ-glow");
+          if (data.champs?.includes(user)) {
+            classes.push("champ-glow");
+            displayName = `<span class="crown">👑</span> ${displayName}`;
           }
 
-          // 💩 Loser
-          if (isLoser) {
-            label = `💩 ${user}: ${score} pts`;
-            li.classList.add("loser");
+          if (index === scores.length - 1) {
+            classes.push("loser");
+            displayName = `💩 ${displayName}`;
           }
 
-          li.innerHTML = label;
-
-          // Highlight current user
-          if (isUser) {
-            li.style.fontWeight = "bold";
-            li.style.outline = "2px solid #FFD700";
+          if (user === username) {
+            classes.push("current-user");
           }
 
+          li.className = classes.join(" ");
+          li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
           board.appendChild(li);
+
+          prevScore = score;
+          rank++;
         });
 
-        // 🏆 Champion of the Week Banner
         if (data.champMessage) {
-          const champBanner = document.getElementById("champBanner");
-          champBanner.innerHTML = `🌟 ${data.champMessage} 🌟`;
+          champBanner.textContent = `🏆 ${data.champMessage}`;
           champBanner.style.display = "block";
         }
-
-        // Show scoring rules if not already shown
-        document.getElementById("scoringRules").style.display = "block";
       });
   }
 });
