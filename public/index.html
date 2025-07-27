@@ -1,4 +1,3 @@
-thats perfect, match it up and update my current html file pasted here:
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,15 +25,14 @@ thats perfect, match it up and update my current html file pasted here:
     <h2 id="welcome" style="display: none;"></h2>
 
     <div id="scoringRules" style="display: none;">
-      <div class="scoring-box" style="text-align: center;">
-        🧠 <strong>Scoring Rules:</strong><br>
-        ✅ 1 point for correct fighter<br>
-        ✅ 1 point for correct method (only if fighter is correct)<br>
-        ✅ 1 point for correct round (only if fighter is correct)<br>
-        🌟 +1 bonus for a perfect pick;<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;• correct fighter, method, and round<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;• or correct fighter and method = Decision<br>
-        🐶 +1 bonus for an underdog win
+      <div class="scoring-box" style="text-align: center; background-color: #1c1c1c; padding: 16px; margin: 20px auto; color: #f2f2f2; font-size: 1.05rem; max-width: 460px; border-radius: 10px;">
+        <div style="font-size: 1.4rem; margin-bottom: 10px;">🧠</div>
+        ✅ <strong>+1</strong> for correct <strong>Winner</strong><br>
+        ✅ <strong>+1</strong> for correct <strong>Method</strong> (only if the Winner is correct)<br>
+        ✅ <strong>+1</strong> for correct <strong>Round</strong><br>
+        <span style="font-size: 0.95rem; color: #aaa;">(only if Winner and Method are both correct, no point if fight ended by Decision)</span><br>
+        🐶 <strong>+2</strong> for correct <strong>Underdog</strong> pick<br><br>
+        <strong style="color: gold;">Max per fight: 5 points</strong>
       </div>
     </div>
 
@@ -69,7 +67,7 @@ thats perfect, match it up and update my current html file pasted here:
   <script src="script.js"></script>
   <script>
     const countdownDiv = document.getElementById("countdown");
-    const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
+    const eventTime = new Date("2025-08-02T18:00:00-04:00").getTime(); // Updated for next event
 
     function updateCountdown() {
       const now = new Date().getTime();
@@ -82,7 +80,7 @@ thats perfect, match it up and update my current html file pasted here:
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-      countdownDiv.innerHTML = ⏳ Countdown to UFC Fight Night: Whittaker vs de Ridder — ${days}d ${hours}h ${minutes}m ${seconds}s;
+      countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Albazi vs Taira — ${days}d ${hours}h ${minutes}m ${seconds}s`;
     }
 
     setInterval(updateCountdown, 1000);
@@ -92,7 +90,7 @@ thats perfect, match it up and update my current html file pasted here:
       const stored = localStorage.getItem("username");
       if (stored) {
         document.getElementById("scoringRules").style.display = "block";
-        document.getElementById("welcome").innerText = 🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!;
+        document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!`;
         document.getElementById("welcome").style.display = "block";
       }
 
@@ -101,7 +99,7 @@ thats perfect, match it up and update my current html file pasted here:
           const name = document.getElementById("usernameInput").value.trim();
           if (name) {
             document.getElementById("scoringRules").style.display = "block";
-            document.getElementById("welcome").innerText = 🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!;
+            document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
             document.getElementById("welcome").style.display = "block";
           }
         }, 100);
