@@ -14,6 +14,10 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW
 // ✅ Lockout set to August 2, 2025 @ 6:00 PM Eastern Time (EDT)
 const lockoutTime = new Date("2025-08-02T18:00:00-04:00");
 
+// ✅ Event timing
+const eventStart = new Date("2025-08-02T18:00:00-04:00");
+const eventEnd = new Date("2025-08-02T20:00:00-04:00");
+
 // === GET FIGHTS FROM GOOGLE SHEETS
 app.get("/api/fights", async (req, res) => {
   try {
@@ -67,6 +71,18 @@ app.get("/api/leaderboard", async (req, res) => {
   } catch (err) {
     console.error("Error fetching leaderboard:", err);
     res.status(500).json({ error: "Failed to load leaderboard." });
+  }
+});
+
+// ✅ GET EVENT STATUS
+app.get("/api/eventStatus", (req, res) => {
+  const now = new Date();
+  if (now < eventStart) {
+    return res.json({ status: "upcoming", eventStart });
+  } else if (now >= eventStart && now < eventEnd) {
+    return res.json({ status: "live" });
+  } else {
+    return res.json({ status: "ended" });
   }
 });
 
