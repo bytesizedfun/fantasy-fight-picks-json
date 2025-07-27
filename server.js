@@ -8,8 +8,10 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
+// ✅ Correct deployed Apps Script Web App URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
+// ✅ Lockout set to August 2, 2025 @ 6:00 PM Eastern Time (EDT)
 const lockoutTime = new Date("2025-08-02T18:00:00-04:00");
 
 // === GET FIGHTS FROM GOOGLE SHEETS
