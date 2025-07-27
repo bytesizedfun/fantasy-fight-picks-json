@@ -8,17 +8,17 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+// ✅ Updated Lockout Time: August 2, 2025 @ 6:00 PM ET
+const lockoutTime = new Date("2025-08-02T18:00:00-04:00");
 
-// Lockout time: July 26, 2025 @ 3:00 PM ET
-const lockoutTime = new Date("2025-07-26T15:00:00-04:00");
-
+// ✅ Endpoint to check lockout status (for frontend)
 app.get("/api/lockout", (req, res) => {
   const now = new Date();
   const locked = now >= lockoutTime;
   res.json({ locked });
 });
 
+// ✅ Fetch Fights
 app.get("/api/fights", async (req, res) => {
   try {
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
@@ -29,7 +29,13 @@ app.get("/api/fights", async (req, res) => {
   }
 });
 
+// ✅ Submit Picks (with lockout logic)
 app.post("/api/submit", async (req, res) => {
+  const now = new Date();
+  if (now >= lockoutTime) {
+    return res.json({ success: false, error: "⛔ Picks are locked. The event has started." });
+  }
+
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
@@ -43,6 +49,7 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
+// ✅ Get User Picks
 app.post("/api/picks", async (req, res) => {
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -57,6 +64,7 @@ app.post("/api/picks", async (req, res) => {
   }
 });
 
+// ✅ Get Leaderboard
 app.post("/api/leaderboard", async (req, res) => {
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -74,3 +82,6 @@ app.post("/api/leaderboard", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// ✅ Google Apps Script Web App URL
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
