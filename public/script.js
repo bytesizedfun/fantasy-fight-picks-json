@@ -9,16 +9,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = localStorage.getItem("username") || "";
 
-  if (username) {
-    finalizeLogin(username);
-  }
+  if (username) finalizeLogin(username);
 
   document.querySelector("button").addEventListener("click", () => {
     const input = usernameInput.value.trim();
-    if (!input) {
-      alert("Please enter your name.");
-      return;
-    }
+    if (!input) return alert("Please enter your name.");
     username = input;
     localStorage.setItem("username", username);
     finalizeLogin(username);
@@ -85,13 +80,9 @@ document.addEventListener("DOMContentLoaded", () => {
           const roundSelect = fight.querySelector(`select[name$="-round"]`);
 
           methodSelect.addEventListener("change", () => {
-            if (methodSelect.value === "Decision") {
-              roundSelect.disabled = true;
-              roundSelect.value = "";
-            } else {
-              roundSelect.disabled = false;
-              roundSelect.value = "1";
-            }
+            roundSelect.disabled = methodSelect.value === "Decision";
+            if (roundSelect.disabled) roundSelect.value = "";
+            else roundSelect.value = "1";
           });
 
           if (methodSelect.value === "Decision") {
@@ -175,29 +166,45 @@ document.addEventListener("DOMContentLoaded", () => {
             const fightResults = resultData.fightResults || {};
             data.picks.forEach(({ fight, winner, method, round }) => {
               let score = 0;
-              const actual = fightResults[fight];
-              if (actual) {
-                const matchWinner = winner === actual.winner;
-                const matchMethod = method === actual.method;
-                const matchRound = round == actual.round;
+              const actual = fightResults[fight] || {};
+              const matchWinner = winner === actual.winner;
+              const matchMethod = method === actual.method;
+              const matchRound = round == actual.round;
+              const isUnderdog = actual.underdog === "Y";
 
-                if (matchWinner) {
+              if (matchWinner) {
+                score += 1;
+                if (matchMethod) {
                   score += 1;
-                  if (matchMethod) {
+                  if (method !== "Decision" && matchRound) {
                     score += 1;
-                    if (method !== "Decision" && matchRound) {
-                      score += 1;
-                    }
-                    if (actual.underdog === "Y") {
-                      score += 2;
-                    }
                   }
                 }
+                if (isUnderdog) score += 2;
               }
 
-              const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-              const scoreText = actual ? ` — ${score} pts` : "";
-              myPicksDiv.innerHTML += `<p><span class="fight-name">${fight}</span><span class="user-pick">${winner} by ${method} ${roundText}${scoreText}</span></p>`;
+              const winnerClass = matchWinner ? "correct" : "wrong";
+              const methodClass = matchWinner ? (matchMethod ? "correct" : "wrong") : "wrong";
+              const roundClass = matchWinner && matchMethod && method !== "Decision"
+                ? (matchRound ? "correct" : "wrong")
+                : "disabled";
+
+              const dogIcon = isUnderdog
+                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
+                : "";
+
+              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
+              const scoreText = actual.winner ? ` <span class="points">+${score} pts</span>` : "";
+
+              myPicksDiv.innerHTML += `
+                <p class="scored-pick">
+                  <span class="fight-name">${fight}</span>
+                  <span class="user-pick">
+                    <span class="${winnerClass}">${winner}</span> ${dogIcon} by 
+                    <span class="${methodClass}">${method}</span> ${roundText}
+                    ${scoreText}
+                  </span>
+                </p>`;
             });
           });
       });
