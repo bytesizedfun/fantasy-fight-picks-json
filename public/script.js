@@ -168,17 +168,43 @@ document.addEventListener("DOMContentLoaded", () => {
           myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
           return;
         }
-        data.picks.forEach(({ fight, winner, method, round }) => {
-          const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><span class="fight-name">${fight}</span><span class="user-pick">${winner} by ${method} ${roundText}</span></p>`;
-        });
+
+        fetch("/api/leaderboard", { method: "POST" })
+          .then(res => res.json())
+          .then(resultData => {
+            const fightResults = resultData.fightResults || {};
+            data.picks.forEach(({ fight, winner, method, round }) => {
+              let score = 0;
+              const actual = fightResults[fight];
+              if (actual) {
+                const matchWinner = winner === actual.winner;
+                const matchMethod = method === actual.method;
+                const matchRound = round == actual.round;
+
+                if (matchWinner) {
+                  score += 1;
+                  if (matchMethod) {
+                    score += 1;
+                    if (method !== "Decision" && matchRound) {
+                      score += 1;
+                    }
+                    if (actual.underdog === "Y") {
+                      score += 2;
+                    }
+                  }
+                }
+              }
+
+              const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
+              const scoreText = actual ? ` — ${score} pts` : "";
+              myPicksDiv.innerHTML += `<p><span class="fight-name">${fight}</span><span class="user-pick">${winner} by ${method} ${roundText}${scoreText}</span></p>`;
+            });
+          });
       });
   }
 
   function loadLeaderboard() {
-    fetch("/api/leaderboard", {
-      method: "POST"
-    })
+    fetch("/api/leaderboard", { method: "POST" })
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
@@ -190,9 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let actualRank = 1;
 
         scores.forEach(([user, score], index) => {
-          if (score !== prevScore) {
-            actualRank = rank;
-          }
+          if (score !== prevScore) actualRank = rank;
 
           const li = document.createElement("li");
           let displayName = user;
@@ -226,13 +250,4 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
   }
-
-  // Tooltip logic for scoring
-  document.querySelectorAll(".clickable").forEach(el => {
-    el.addEventListener("click", () => {
-      const tipBox = document.getElementById("tipDisplay");
-      tipBox.innerText = el.dataset.tip;
-      tipBox.style.display = "block";
-    });
-  });
 });
