@@ -26,13 +26,11 @@
 
     <div id="scoringRules" style="display: none;">
       <div class="scoring-box" style="text-align: center; background-color: #1c1c1c; padding: 16px; margin: 20px auto; color: #f2f2f2; font-size: 1.05rem; max-width: 460px; border-radius: 10px;">
-        <div style="font-size: 1.4rem; margin-bottom: 10px;">🧠</div>
+        <div style="font-size: 1.2rem; color: gold; margin-bottom: 10px;">Scoring</div>
         ✅ <strong>+1</strong> for correct <strong>Winner</strong><br>
         ✅ <strong>+1</strong> for correct <strong>Method</strong> (only if the Winner is correct)<br>
-        ✅ <strong>+1</strong> for correct <strong>Round</strong><br>
-        <span style="font-size: 0.95rem; color: #aaa;">(only if Winner and Method are both correct, no point if fight ended by Decision)</span><br>
-        🐶 <strong>+2</strong> for correct <strong>Underdog</strong> pick<br><br>
-        <strong style="color: gold;">Max per fight: 5 points</strong>
+        ✅ <strong>+1</strong> for correct <strong>Round</strong> (only if the Winner and Method are both correct, and the fight did not end by Decision)<br>
+        🐶 <strong>+2</strong> for correct <strong>Underdog</strong> pick
       </div>
     </div>
 
@@ -67,13 +65,13 @@
   <script src="script.js"></script>
   <script>
     const countdownDiv = document.getElementById("countdown");
-    const eventTime = new Date("2025-08-02T18:00:00-04:00").getTime(); // Updated for next event
+    const eventTime = new Date("2025-08-02T18:00:00-04:00").getTime(); // August 2 @ 6 PM ET
 
     function updateCountdown() {
       const now = new Date().getTime();
       const distance = eventTime - now;
       if (distance < 0) {
-        countdownDiv.innerHTML = "🔥 UFC Fight Night has started!";
+        countdownDiv.innerHTML = "🔥 UFC Fight Night: Albazi vs Taira has started!";
         return;
       }
       const days = Math.floor(distance / (1000 * 60 * 60 * 24));
