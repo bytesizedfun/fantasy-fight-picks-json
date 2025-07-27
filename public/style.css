@@ -23,7 +23,6 @@ body {
   box-shadow: 0 0 12px rgba(0,0,0,0.6);
 }
 
-/* Fight Cards */
 .fight {
   margin-bottom: 20px;
   padding: 12px;
@@ -90,7 +89,6 @@ button:hover {
   text-transform: uppercase;
 }
 
-/* Your Picks */
 #myPicks h3 {
   color: #C43228;
   margin-bottom: 10px;
@@ -127,7 +125,6 @@ button:hover {
   letter-spacing: 0.3px;
 }
 
-/* Leaderboard Styles */
 .leader-title {
   font-family: 'Anton', sans-serif;
   font-size: 2.2rem;
@@ -182,8 +179,8 @@ button:hover {
 
 .crown {
   animation: crownBounce 1.5s infinite ease-in-out;
-  margin-right: 8px;
   display: inline-block;
+  margin-right: 6px;
   vertical-align: middle;
 }
 
@@ -194,7 +191,8 @@ button:hover {
 
 .champ-glow {
   color: #FFD700 !important;
-  text-shadow: 0 0 6px #FFD700, 0 0 10px #FFD700;
+  text-shadow: 0 0 8px #FFD700, 0 0 14px #FFD700;
+  font-size: 1.2rem;
 }
 
 .loser {
@@ -203,7 +201,10 @@ button:hover {
   border-left: 5px solid brown !important;
 }
 
-/* Champion banner */
+.current-user {
+  font-weight: bold;
+}
+
 .champ-banner {
   margin: 20px auto;
   padding: 10px 0;
