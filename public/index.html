@@ -26,10 +26,11 @@
 
     <div id="scoringRules" style="display: none;">
       <div class="scoring-box" style="text-align: center; background-color: #1c1c1c; padding: 16px; margin: 20px auto; color: #f2f2f2; font-size: 1.05rem; max-width: 460px; border-radius: 10px;">
-        <div style="font-size: 1.2rem; color: gold; margin-bottom: 10px;">🧠 <strong>Scoring Logic</strong></div>
+        <div style="font-size: 1.4rem; margin-bottom: 10px;">🧠</div>
         ✅ <strong>+1</strong> for correct <strong>Winner</strong><br>
-        💥 <strong>+1</strong> for correct <strong>Method</strong> (only if the Winner is correct)<br>
-        ⏱️ <strong>+1</strong> for correct <strong>Round</strong> (only if the Method is also correct and the fight didn’t end by Decision)<br>
+        ✅ <strong>+1</strong> for correct <strong>Method</strong> (only if the Winner is correct)<br>
+        ✅ <strong>+1</strong> for correct <strong>Round</strong><br>
+        <span style="font-size: 0.95rem; color: #aaa;">(only if Winner and Method are both correct, no point if fight ended by Decision)</span><br>
         🐶 <strong>+2</strong> for correct <strong>Underdog</strong> pick<br><br>
         <strong style="color: gold;">Max per fight: 5 points</strong>
       </div>
@@ -66,25 +67,20 @@
   <script src="script.js"></script>
   <script>
     const countdownDiv = document.getElementById("countdown");
-    const eventTime = new Date("2025-08-02T18:00:00-04:00").getTime();
-    const eventDuration = 6 * 60 * 60 * 1000; // 6 hours
+    const eventTime = new Date("2025-08-02T18:00:00-04:00").getTime(); // Updated for next event
 
     function updateCountdown() {
       const now = new Date().getTime();
       const distance = eventTime - now;
-      const timeSinceStart = now - eventTime;
-
-      if (distance > 0) {
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-        countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Albazi vs Taira — ${days}d ${hours}h ${minutes}m ${seconds}s`;
-      } else if (timeSinceStart <= eventDuration) {
-        countdownDiv.innerHTML = `🔥 UFC Fight Night: Albazi vs Taira is LIVE!`;
-      } else {
-        countdownDiv.innerHTML = `✅ UFC Fight Night: Albazi vs Taira has ended.`;
+      if (distance < 0) {
+        countdownDiv.innerHTML = "🔥 UFC Fight Night has started!";
+        return;
       }
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Albazi vs Taira — ${days}d ${hours}h ${minutes}m ${seconds}s`;
     }
 
     setInterval(updateCountdown, 1000);
