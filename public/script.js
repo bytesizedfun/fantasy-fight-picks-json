@@ -5,6 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const punchSound = new Audio("punch.mp3");
+  const submitNote = document.getElementById("submitNote");
+
+  punchSound.volume = 1.0;
 
   let username = localStorage.getItem("username") || "";
 
@@ -39,13 +42,15 @@ document.addEventListener("DOMContentLoaded", () => {
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
+          submitNote.style.display = "none";
         } else {
           localStorage.removeItem("submitted");
           loadFights();
           submitBtn.style.display = "block";
+          submitNote.style.display = "block";
         }
 
-        loadMyPicks();      // ✅ Always show user's picks (even if none)
+        loadMyPicks();
         loadLeaderboard();
       });
   }
@@ -79,8 +84,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector(`select[name$="-method"]`);
-          const roundSelect = fight.querySelector(`select[name$="-round"]`);
+          const methodSelect = fight.querySelector('select[name$="-method"]');
+          const roundSelect = fight.querySelector('select[name$="-round"]');
 
           methodSelect.addEventListener("change", () => {
             if (methodSelect.value === "Decision") {
@@ -100,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         fightList.style.display = "block";
         submitBtn.style.display = "block";
+        submitNote.style.display = "block";
       });
   }
 
@@ -135,6 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
+          submitNote.style.display = "none";
           loadMyPicks();
         } else {
           alert(data.error || "Something went wrong.");
@@ -160,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
+          myPicksDiv.innerHTML += `<p><span class="fight-name">${fight}</span><span class="user-pick">${winner} by ${method} ${roundText}</span></p>`;
         });
       });
   }
@@ -170,15 +177,32 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
-        board.innerHTML = "<ul>";
-        Object.entries(data.scores).forEach(([user, score]) => {
-          board.innerHTML += `<li>${user}: ${score} pts</li>`;
-        });
-        if (data.champ) {
-          board.innerHTML += `<li><strong>🏆 Champion of the Week: ${data.champ}</strong></li>`;
+        board.innerHTML = "";
+
+        const scores = Object.entries(data.scores);
+        scores.sort((a, b) => b[1] - a[1]);
+
+        let ranks = {};
+        let currentRank = 1;
+        let lastScore = null;
+
+        for (let i = 0; i < scores.length; i++) {
+          const [user, score] = scores[i];
+          if (score !== lastScore) currentRank = i + 1;
+          ranks[user] = currentRank;
+          lastScore = score;
         }
-        board.innerHTML += "</ul>";
+
+        scores.forEach(([user, score]) => {
+          const li = document.createElement("li");
+          li.innerText = `${user}: ${score} pts`;
+          if (ranks[user] === 1) li.setAttribute("data-icon", "👑");
+          board.appendChild(li);
+        });
+
+        if (data.champ) {
+          board.innerHTML += `<li><strong>👑 Champion of the Week: ${data.champ}</strong></li>`;
+        }
       });
   }
 });
-
