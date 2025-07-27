@@ -9,22 +9,26 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- CHAMP BANNER MOVED TO TOP -->
-  <div id="champBanner" class="champ-banner" style="display: none;"></div>
-
+  <!-- Logo -->
   <div class="banner-container">
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
+  <!-- Flashy Champion of the Week banner -->
+  <div id="champBanner" class="champ-banner" style="display: none;"></div>
+
   <div id="app">
+    <!-- Username prompt -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
       <button onclick="lockUsername()">Lock In</button>
     </div>
 
+    <!-- Welcome message -->
     <h2 id="welcome" style="display: none;"></h2>
 
+    <!-- Scoring Rules -->
     <div id="scoringRules" style="display: none;">
       <div class="scoring-box">
         <div class="rule"><strong class="clickable" data-tip="+1 for choosing the winner">+1 Winner</strong></div>
@@ -35,11 +39,14 @@
       </div>
     </div>
 
+    <!-- Fight List -->
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
+    <!-- My Picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
 
+    <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
     <ul id="leaderboard"></ul>
   </div>
