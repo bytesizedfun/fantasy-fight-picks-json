@@ -13,8 +13,6 @@
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
-  <div id="countdown" class="countdown-timer"></div>
-
   <div id="app">
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
@@ -25,46 +23,58 @@
     <h2 id="welcome" style="display: none;"></h2>
 
     <div id="scoringRules" style="display: none;">
-      <div class="scoring-box" style="text-align: center; background-color: #1c1c1c; padding: 16px; margin: 20px auto; color: #f2f2f2; font-size: 1.05rem; max-width: 460px; border-radius: 10px;">
-        ✅ <strong>+1</strong> for correct <strong>Winner</strong><br>
-        ✅ <strong>+1</strong> for correct <strong>Method</strong> (only if the Winner is correct)<br>
-        ✅ <strong>+1</strong> for correct <strong>Round</strong> (only if the Winner and Method are both correct, and the fight did not end by Decision)<br>
-        🐶 <strong>+2</strong> for correct <strong>Underdog</strong> pick
+      <div class="scoring-box">
+        🧠 <strong>Scoring Rules:</strong><br>
+        ✅ 1 point for correct fighter<br>
+        ✅ 1 point for correct method <em>(💡 2 points if Decision)</em><br>
+        ✅ 1 point for correct round<br>
+        🌟 +1 bonus point for perfect pick<br>
+        🐶 +1 bonus point for picking the underdog
       </div>
     </div>
 
     <div id="fightList" style="display: none;"></div>
     <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <p id="submitNote" class="submit-warning" style="display: none;">
+      👆 One click is all it takes — don’t ground and pound the button.
+    </p>
 
     <div id="myPicks" style="margin-top: 20px;"></div>
 
     <h2 class="leader-title">LEADERBOARD</h2>
     <ul id="leaderboard"></ul>
-
-    <div id="champion" style="display: none; margin-top: 20px; text-align: center; font-size: 1.3rem; color: gold;"></div>
   </div>
 
   <script src="script.js"></script>
   <script>
-    const countdownDiv = document.getElementById("countdown");
-    const eventTime = new Date("2025-08-02T18:00:00-04:00").getTime(); // August 2 @ 6 PM ET
-
-    function updateCountdown() {
-      const now = new Date().getTime();
-      const distance = eventTime - now;
-      if (distance < 0) {
-        countdownDiv.innerHTML = "🔒 Picks are now locked.";
-        return;
+    document.addEventListener("DOMContentLoaded", () => {
+      const stored = localStorage.getItem("username");
+      if (stored) {
+        document.getElementById("scoringRules").style.display = "block";
+        document.getElementById("submitNote").style.display = "block";
+        document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!`;
+        document.getElementById("welcome").style.display = "block";
       }
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-      countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Albazi vs Taira — ${days}d ${hours}h ${minutes}m ${seconds}s`;
-    }
 
-    setInterval(updateCountdown, 1000);
-    updateCountdown();
+      document.querySelector("button").addEventListener("click", () => {
+        setTimeout(() => {
+          const name = document.getElementById("usernameInput").value.trim();
+          if (name) {
+            document.getElementById("scoringRules").style.display = "block";
+            document.getElementById("submitNote").style.display = "block";
+            document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+            document.getElementById("welcome").style.display = "block";
+          }
+        }, 100);
+      });
+
+      const observer = new MutationObserver(() => {
+        if (document.getElementById("myPicks").innerText.includes("Your Picks")) {
+          document.getElementById("submitNote").style.display = "none";
+        }
+      });
+      observer.observe(document.getElementById("myPicks"), { childList: true, subtree: true });
+    });
   </script>
 </body>
 </html>
