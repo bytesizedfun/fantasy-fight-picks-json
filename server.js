@@ -10,7 +10,7 @@ app.use(express.static("public"));
 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-const lockoutTime = new Date("2025-07-26T15:00:00-04:00");
+const lockoutTime = new Date("2025-08-02T18:00:00-04:00");
 
 // === GET FIGHTS FROM GOOGLE SHEETS
 app.get("/api/fights", async (req, res) => {
