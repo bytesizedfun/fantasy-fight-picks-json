@@ -89,6 +89,7 @@ button:hover {
   text-transform: uppercase;
 }
 
+/* Picks Display */
 #myPicks h3 {
   color: #C43228;
   margin-bottom: 10px;
@@ -123,6 +124,27 @@ button:hover {
   color: #bbbbbb;
   font-size: 0.95rem;
   letter-spacing: 0.3px;
+}
+
+/* New Visual Enhancements */
+.correct {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.wrong {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.points {
+  color: gold;
+  font-weight: bold;
+}
+
+.underdog {
+  color: #ff8c00;
+  font-weight: bold;
 }
 
 /* Leaderboard */
