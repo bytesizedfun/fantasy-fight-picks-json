@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const punchSound = new Audio("punch.mp3");
-  const submitNote = document.getElementById("submitNote");
 
   let username = localStorage.getItem("username") || "";
 
@@ -32,17 +31,33 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch("/api/lockout")
       .then(res => res.json())
       .then(data => {
-        if (data.locked) {
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-          submitNote.textContent = "🔒 Picks are now locked.";
+        const locked = data.locked;
+        if (locked) {
+          document.getElementById("submitNote").innerText = "🔒 Picks are now locked.";
+          loadMyPicks();
+          loadLeaderboard();
         } else {
-          loadFights();
+          fetch("/api/picks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: name })
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success && data.picks.length > 0) {
+                localStorage.setItem("submitted", "true");
+                fightList.style.display = "none";
+                submitBtn.style.display = "none";
+              } else {
+                localStorage.removeItem("submitted");
+                loadFights();
+                submitBtn.style.display = "block";
+              }
+              loadMyPicks();
+              loadLeaderboard();
+            });
         }
       });
-
-    loadMyPicks();
-    loadLeaderboard();
   }
 
   function loadFights() {
@@ -127,9 +142,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.success) {
           punchSound.play();
           alert("Picks submitted!");
+          localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
-          submitNote.textContent = "🔒 Picks are now locked.";
           loadMyPicks();
           loadLeaderboard();
         } else {
@@ -156,48 +171,48 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         data.picks.forEach(({ fight, winner, method, round }) => {
           const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
-          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
+          myPicksDiv.innerHTML += `
+            <p>
+              <span class="fight-name">${fight}</span>
+              <span class="user-pick">${winner} by ${method} ${roundText}</span>
+            </p>`;
         });
       });
   }
 
   function loadLeaderboard() {
-    fetch("/api/leaderboard")
+    fetch("/api/leaderboard", {
+      method: "POST"
+    })
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "";
-        const scores = data.scores || {};
-        const champs = data.champs || [];
-        const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-        const topScore = entries.length ? entries[0][1] : null;
-        const lowScore = entries.length ? entries[entries.length - 1][1] : null;
 
-        entries.forEach(([user, score]) => {
+        const entries = Object.entries(data.scores);
+        const sorted = entries.sort((a, b) => b[1] - a[1]);
+
+        const max = sorted[0]?.[1];
+        const min = sorted[sorted.length - 1]?.[1];
+
+        sorted.forEach(([user, score]) => {
           const li = document.createElement("li");
           li.textContent = `${user}: ${score} pts`;
 
-          if (score === topScore && champs.includes(user)) {
-            li.classList.add("champion");
-            li.textContent = `👑 ${user}: ${score} pts`;
-          }
-
-          if (score === lowScore && entries.length > 1) {
-            li.classList.add("last-place");
-            li.textContent = `💩 ${user}: ${score} pts`;
+          if (score === max) {
+            li.innerHTML = `👑 <span class="crown">${user}: ${score} pts</span>`;
+          } else if (score === min && sorted.length > 1) {
+            li.innerHTML = `💩 <span class="poop">${user}: ${score} pts</span>`;
           }
 
           board.appendChild(li);
         });
 
         if (data.champMessage) {
-          const champLine = document.createElement("p");
-          champLine.style.textAlign = "center";
-          champLine.style.marginTop = "10px";
-          champLine.style.fontWeight = "bold";
-          champLine.style.color = "gold";
-          champLine.textContent = data.champMessage;
-          board.appendChild(champLine);
+          const champ = document.createElement("div");
+          champ.id = "champion";
+          champ.innerHTML = data.champMessage;
+          board.parentNode.insertBefore(champ, board);
         }
       });
   }
