@@ -5,138 +5,171 @@ body {
   background-color: #0f0f0f;
   color: #f2f2f2;
   margin: 0;
-  padding: 20px;
-}
-
-.logo-banner {
-  max-width: 180px;
-  display: block;
-  margin: 0 auto 10px;
+  padding: 0;
+  text-align: center;
 }
 
 #app {
   max-width: 600px;
-  margin: 0 auto;
+  margin: auto;
   padding: 20px;
-  background-color: #1a1a1a;
-  border-radius: 10px;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
 }
 
-h2 {
-  text-align: center;
-  font-size: 1.8rem;
-  margin-bottom: 15px;
+.logo-banner {
+  max-width: 220px;
+  display: block;
+  margin: 0 auto 10px;
 }
 
-.countdown-timer,
-.locked-message {
-  text-align: center;
-  font-size: 1.2rem;
-  color: gold;
+.countdown-timer {
+  font-size: 1.1rem;
+  color: #ffd700;
   font-weight: bold;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   text-shadow: 0 0 6px #c43228;
 }
 
-.fight {
+.lock-message {
+  font-size: 1.1rem;
+  color: #ffd700;
+  font-weight: bold;
   margin-bottom: 20px;
 }
 
-.fight label {
-  margin-right: 10px;
+#usernamePrompt input {
+  padding: 8px;
+  font-size: 1rem;
+  width: 60%;
+  max-width: 300px;
+  margin-bottom: 10px;
+}
+
+button {
+  padding: 10px 18px;
+  font-size: 1rem;
+  font-weight: bold;
+  background-color: #c43228;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #a3221a;
+}
+
+.fight {
+  background: #1a1a1a;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 8px rgba(255, 0, 0, 0.2);
+  text-align: left;
+}
+
+.fight h3 {
+  color: #ff5555;
+  margin-bottom: 5px;
+}
+
+.fight label,
+.fight select {
+  display: block;
+  margin: 5px 0;
+}
+
+#myPicks h3 {
+  margin-top: 30px;
+  color: #f2f2f2;
 }
 
 #myPicks p {
+  color: #ffffff;
   margin: 5px 0;
-  font-weight: 600;
-  color: #f0f0f0;
 }
 
-#myPicks strong {
-  color: #ff3333;
-  display: block;
-}
-
-.scoring-rules {
-  background-color: #222;
-  border-left: 5px solid gold;
-  padding: 10px 15px;
-  margin: 10px auto 20px;
-  max-width: 600px;
-  font-size: 1rem;
-  line-height: 1.4;
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
-}
-
-.scoring-rules ul {
-  list-style: none;
-  padding-left: 0;
-  margin: 0;
-}
-
-.scoring-rules li {
-  padding: 4px 0;
-}
-
-/* Leaderboard */
-#leaderboard ul {
-  list-style: none;
-  padding-left: 0;
-}
-
-#leaderboard li {
-  font-size: 1.3rem;
-  margin: 6px 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.first-place {
+#leaderboardContainer h2 {
+  margin-top: 40px;
+  font-size: 1.6rem;
   color: gold;
-  font-weight: bold;
-  animation: bounce 1.5s infinite;
   text-shadow: 0 0 6px gold;
 }
 
-.first-place .crown {
-  margin-left: 8px;
+#leaderboard ul {
+  list-style: none;
+  padding: 0;
+}
+
+#leaderboard li {
+  margin: 8px 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.glow-gold {
+  color: gold !important;
+  animation: crownBounce 1.5s infinite;
+  text-shadow: 0 0 8px gold;
 }
 
 .last-place {
-  color: #caa27c;
-  opacity: 0.6;
-  text-decoration: line-through;
-  text-shadow: 0 0 4px brown;
+  color: #d98c00;
+  opacity: 0.7;
+  text-shadow: 0 0 6px #663300;
 }
 
-.last-place .poop {
-  margin-left: 8px;
+@keyframes crownBounce {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-/* Discord */
-.discord-banner {
-  text-align: center;
-  margin-top: 40px;
-}
-
-.discord-button {
-  background-color: #5865F2;
-  color: white;
-  text-decoration: none;
+.scoring-box {
+  background: #222;
   padding: 10px 20px;
-  border-radius: 6px;
-  display: inline-block;
+  border-left: 4px solid #ffd700;
+  margin-bottom: 20px;
+  text-align: left;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.scoring-box p {
+  margin: 0;
+  font-weight: bold;
+  color: #ffd700;
+  font-size: 1.2rem;
+}
+
+.scoring-box ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 8px 0 0 0;
+}
+
+.scoring-box li {
+  text-align: left;
+  margin: 4px 0;
+  font-size: 1.05rem;
+}
+
+.discord-btn {
+  background-color: #7289da;
+  padding: 10px 18px;
+  border-radius: 5px;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
   font-size: 1rem;
   transition: background-color 0.3s ease;
+  display: inline-block;
 }
 
-.discord-button:hover {
-  background-color: #4854c8;
+.discord-btn:hover {
+  background-color: #5b6eae;
 }
