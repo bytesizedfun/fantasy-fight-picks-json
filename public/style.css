@@ -89,6 +89,7 @@ button:hover {
   text-transform: uppercase;
 }
 
+/* Picks Display */
 #myPicks h3 {
   color: #C43228;
   margin-bottom: 10px;
@@ -109,7 +110,7 @@ button:hover {
   color: #ffffff;
 }
 
-.fight-name {
+#myPicks p .fight-name {
   font-weight: 700;
   color: #ffffff;
   display: block;
@@ -118,108 +119,55 @@ button:hover {
   letter-spacing: 0.5px;
 }
 
-.user-pick {
+#myPicks p .user-pick {
   font-style: italic;
   color: #bbbbbb;
   font-size: 0.95rem;
   letter-spacing: 0.3px;
 }
 
-.leader-title {
-  font-family: 'Anton', sans-serif;
-  font-size: 2.2rem;
-  color: #f2f2f2;
+/* Scoring Box */
+.scoring-box {
+  font-size: 0.95rem;
   text-align: center;
-  margin-top: 40px;
-  letter-spacing: 2px;
-  border-bottom: 2px solid #C43228;
-  padding-bottom: 8px;
-  text-shadow: 0 0 6px #C43228;
-}
-
-#leaderboard {
-  padding: 16px;
-  margin-top: 20px;
-  background: #1c1c1c;
-  border-radius: 12px;
-  border: 3px solid #C43228;
-  box-shadow: 0 0 20px rgba(196, 50, 40, 0.5);
-  animation: pulse-border 2s infinite;
-  list-style: none;
-}
-
-@keyframes pulse-border {
-  0% { box-shadow: 0 0 10px #C43228; }
-  50% { box-shadow: 0 0 30px #D9483B; }
-  100% { box-shadow: 0 0 10px #C43228; }
-}
-
-#leaderboard li {
-  background: #2a2a2a;
-  padding: 12px 16px;
-  margin: 8px 0;
-  border-radius: 6px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-left: 5px solid #C43228;
   color: #f2f2f2;
-  font-size: 1.1rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: 'Anton', sans-serif;
-  transition: all 0.3s ease;
-}
-
-#leaderboard li:hover {
-  background-color: #383838;
-  transform: scale(1.02);
-}
-
-.crown {
-  animation: crownBounce 1.5s infinite ease-in-out;
-  display: inline-block;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-@keyframes crownBounce {
-  0%, 100% { transform: translateY(0); text-shadow: 0 0 6px #fff; }
-  50% { transform: translateY(-4px); text-shadow: 0 0 12px #fff; }
-}
-
-.champ-glow {
-  color: #FFD700 !important;
-  text-shadow: 0 0 8px #FFD700, 0 0 14px #FFD700;
-  font-size: 1.2rem;
-}
-
-.loser {
-  background-color: #3b2e2e !important;
-  color: #d0a373 !important;
-  border-left: 5px solid brown !important;
-}
-
-.current-user {
-  font-weight: bold;
-}
-
-.champ-banner {
-  margin: 20px auto;
   padding: 10px 0;
+  margin-bottom: 10px;
+}
+.rule {
   text-align: center;
-  font-size: 1.2rem;
+  margin: 4px 0;
+  font-size: 0.95rem;
+}
+.clickable {
   font-weight: bold;
-  color: #FFD700;
-  background: linear-gradient(to right, #c43228, #ffd700, #c43228);
-  background-size: 200% auto;
-  animation: scrollText 5s linear infinite;
-  border-radius: 8px;
-  box-shadow: 0 0 10px #FFD700;
+  cursor: pointer;
+  color: #ffffff;
+  text-decoration: underline;
+}
+.tip-box {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #2e2e2e;
+  border: 1px solid #C43228;
+  border-radius: 4px;
+  text-align: center;
+  color: #f2f2f2;
+  font-style: italic;
+  font-size: 0.85rem;
 }
 
-@keyframes scrollText {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
+/* Champion Banner */
+.champ-banner {
+  margin-top: 20px;
+  padding: 10px;
+  font-size: 1.1rem;
+  color: #FFD700;
+  text-align: center;
+  text-shadow: 0 0 6px #FFD700, 0 0 12px #FFD700;
+  animation: scrollBanner 12s linear infinite;
+}
+@keyframes scrollBanner {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
 }
