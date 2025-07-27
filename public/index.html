@@ -2,53 +2,78 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fantasy Fight Picks</title>
-  <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="banner-container">
+    <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
+  </div>
+
   <div id="app">
-    <img src="logo_fighter.png" alt="Fantasy Fight Picks" class="logo-banner" />
-
-    <div id="countdown" class="countdown-timer"></div>
-    <div id="lockMessage" class="lock-message">🔒 Picks are now locked.</div>
-
-    <div id="scoringRules" class="scoring-box">
-      <p>🧠 <strong>Scoring:</strong></p>
-      <ul>
-        <li>✅ +1 for correct winner</li>
-        <li>✅ +1 for correct method <em>(only if winner is correct)</em></li>
-        <li>✅ +1 for correct round <em>(only if winner & method are correct, and method ≠ Decision)</em></li>
-        <li>🐶 +3 bonus if you picked an underdog correctly</li>
-      </ul>
-    </div>
-
     <div id="usernamePrompt">
-      <h2>Enter your name to play:</h2>
-      <input type="text" id="usernameInput" placeholder="Your name" />
-      <button>Join</button>
+      <label for="usernameInput">Enter your name:</label>
+      <input type="text" id="usernameInput" />
+      <button onclick="lockUsername()">Lock In</button>
     </div>
 
-    <h2 id="welcome" style="display:none;"></h2>
-    <div id="fightList" style="display:none;"></div>
-    <button id="submitBtn" style="display:none;">Submit Picks</button>
+    <h2 id="welcome" style="display: none;"></h2>
 
-    <div id="myPicks"></div>
-
-    <div id="leaderboardContainer">
-      <h2>Leaderboard</h2>
-      <div id="leaderboard"></div>
-      <div id="champion"></div>
+    <div id="scoringRules" style="display: none;">
+      <div class="scoring-box">
+        🧠 <strong>Scoring Rules:</strong><br>
+        ✅ 1 point for correct winner<br>
+        ✅ +1 if method is also correct<br>
+        ✅ +1 more if round is also correct (only if not Decision)<br>
+        🐶 +2 bonus points for picking the underdog correctly
+      </div>
     </div>
 
-    <div style="text-align: center; margin-top: 40px;">
-      <a href="https://discord.gg/Nyn47TxB" target="_blank" class="discord-btn">💬 Join the trash talk</a>
-    </div>
+    <div id="fightList" style="display: none;"></div>
+    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <p id="submitNote" class="submit-warning" style="display: none;">
+      👆 One click is all it takes — don’t ground and pound the button.
+    </p>
 
-    <audio id="punchSound" src="punch.mp3" preload="auto"></audio>
+    <div id="myPicks" style="margin-top: 20px;"></div>
+
+    <h2 class="leader-title">LEADERBOARD</h2>
+    <ul id="leaderboard"></ul>
   </div>
 
   <script src="script.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const stored = localStorage.getItem("username");
+      if (stored) {
+        document.getElementById("scoringRules").style.display = "block";
+        document.getElementById("submitNote").style.display = "block";
+        document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${stored.toUpperCase()}!`;
+        document.getElementById("welcome").style.display = "block";
+      }
+
+      document.querySelector("button").addEventListener("click", () => {
+        setTimeout(() => {
+          const name = document.getElementById("usernameInput").value.trim();
+          if (name) {
+            document.getElementById("scoringRules").style.display = "block";
+            document.getElementById("submitNote").style.display = "block";
+            document.getElementById("welcome").innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+            document.getElementById("welcome").style.display = "block";
+          }
+        }, 100);
+      });
+
+      const observer = new MutationObserver(() => {
+        if (document.getElementById("myPicks").innerText.includes("Your Picks")) {
+          document.getElementById("submitNote").style.display = "none";
+        }
+      });
+      observer.observe(document.getElementById("myPicks"), { childList: true, subtree: true });
+    });
+  </script>
 </body>
 </html>
