@@ -210,10 +210,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
           if (user === username) {
             classes.push("current-user");
+            displayName = `<strong>${displayName}</strong>`;
           }
 
           li.className = classes.join(" ");
-          li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
+          li.innerHTML = `<span class="rank">#${actualRank}</span> <span class="name">${displayName}</span><span class="score">${score} pts</span>`;
           board.appendChild(li);
 
           prevScore = score;
@@ -226,4 +227,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
   }
+
+  // Tooltip logic for scoring rules
+  document.querySelectorAll('.clickable').forEach(el => {
+    el.addEventListener('click', () => {
+      const tip = el.getAttribute('data-tip');
+      const tipBox = document.getElementById('tipDisplay');
+      tipBox.innerText = tip;
+      tipBox.style.display = 'block';
+    });
+  });
 });
