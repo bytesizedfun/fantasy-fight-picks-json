@@ -10,7 +10,7 @@
   <div id="app">
     <img src="logo.png" alt="Fantasy Fight Picks Logo" class="logo-banner" />
 
-    <!-- 🔒 Event Status -->
+    <!-- ✅ LOCKOUT MESSAGE OR COUNTDOWN -->
     <div id="eventStatus" class="countdown-timer">Loading event status...</div>
 
     <div id="welcome"></div>
@@ -24,7 +24,7 @@
     <div id="submitNote"></div>
     <button id="submitBtn" style="display:none;">Submit Picks</button>
 
-    <!-- ✅ Scoring Rules (simplified layout) -->
+    <!-- ✅ Updated Scoring Points -->
     <div class="scoring-rules">
       <p>✅ +1 for correct Winner</p>
       <p>✅ +1 for correct Method <span style="font-size:0.9em;">(only if the Winner is correct)</span></p>
@@ -32,7 +32,7 @@
       <p>🐶 +2 for correct Underdog pick</p>
     </div>
 
-    <div id="yourPicks"></div>
+    <div id="myPicks"></div>
 
     <h2>🏆 Leaderboard</h2>
     <div id="leaderboard"></div>
@@ -43,19 +43,19 @@
   <audio id="punchSound" src="punch.mp3" preload="auto"></audio>
 
   <script>
-    // 🔒 Load Event Lock/Status
+    // 🔒 Display countdown or lock message
     document.addEventListener("DOMContentLoaded", async () => {
       const statusDiv = document.getElementById("eventStatus");
       try {
         const res = await fetch("/api/eventStatus");
         const data = await res.json();
-        if (data.status === "upcoming") {
+        if (data.status === "live" || data.status === "ended") {
+          statusDiv.textContent = "🔒 Picks are now locked";
+        } else if (data.status === "upcoming") {
           const date = new Date(data.eventStart);
-          statusDiv.textContent = `⏳ Picks lock at: ${date.toLocaleString("en-US", {
+          statusDiv.textContent = `⏳ Picks lock: ${date.toLocaleString("en-US", {
             weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
           })}`;
-        } else {
-          statusDiv.textContent = "🔒 Picks are now locked.";
         }
       } catch (err) {
         statusDiv.textContent = "⚠️ Couldn't load event status";
