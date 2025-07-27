@@ -4,36 +4,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
-  const punchSound = document.getElementById("punchSound");
+  const punchSound = new Audio("punch.mp3");
   const submitNote = document.getElementById("submitNote");
-  const yourPicks = document.getElementById("yourPicks");
-  const userPicksList = document.getElementById("userPicksList");
-  const leaderboard = document.getElementById("leaderboard");
-  const leaderboardList = document.getElementById("leaderboardList");
-  const championDiv = document.getElementById("champion");
-  const countdown = document.getElementById("countdown");
 
   let username = localStorage.getItem("username") || "";
-
-  function updateCountdown() {
-    const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
-    const now = new Date().getTime();
-    const distance = eventTime - now;
-
-    if (distance <= 0) {
-      countdown.textContent = "🔒 Picks are now locked.";
-      return;
-    }
-
-    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-    countdown.textContent = `⏳ Picks lock in: ${hours}h ${minutes}m ${seconds}s`;
-
-    setTimeout(updateCountdown, 1000);
-  }
-
-  updateCountdown();
 
   if (username) {
     finalizeLogin(username);
@@ -52,115 +26,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
-    welcome.innerHTML = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
-    fetchFights();
-    fetchUserPicks();
-    fetchLeaderboard();
-    checkLockout();
-  }
+    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+    welcome.style.display = "block";
 
-  function fetchFights() {
-    fetch("/api/fights")
-      .then(res => res.json())
-      .then(data => {
-        data.forEach(f => {
-          const container = document.createElement("div");
-          container.className = "fight";
-
-          const title = document.createElement("h3");
-          title.textContent = f.fight;
-          container.appendChild(title);
-
-          const fighterSelect = document.createElement("select");
-          fighterSelect.innerHTML = `
-            <option value="">Pick winner</option>
-            <option value="${f.fighter1}">${f.fighter1}</option>
-            <option value="${f.fighter2}">${f.fighter2}</option>
-          `;
-          container.appendChild(fighterSelect);
-
-          const methodSelect = document.createElement("select");
-          methodSelect.innerHTML = `
-            <option value="">Pick method</option>
-            <option value="KO/TKO">KO/TKO</option>
-            <option value="Submission">Submission</option>
-            <option value="Decision">Decision</option>
-          `;
-          container.appendChild(methodSelect);
-
-          const roundSelect = document.createElement("select");
-          roundSelect.innerHTML = `
-            <option value="">Pick round</option>
-            <option value="1">Round 1</option>
-            <option value="2">Round 2</option>
-            <option value="3">Round 3</option>
-            <option value="4">Round 4</option>
-            <option value="5">Round 5</option>
-          `;
-          container.appendChild(roundSelect);
-
-          methodSelect.addEventListener("change", () => {
-            roundSelect.disabled = methodSelect.value === "Decision";
-          });
-
-          fightList.appendChild(container);
-        });
-
-        submitBtn.style.display = "block";
-      });
-  }
-
-  function fetchUserPicks() {
-    fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (!data.success || !data.picks.length) return;
-
-        fightList.style.display = "none";
-        submitBtn.style.display = "none";
-        yourPicks.style.display = "block";
-
-        data.picks.forEach(p => {
-          const div = document.createElement("div");
-          div.innerHTML = `<div class="fight-name">${p.fight}</div><div class="user-pick">✅ ${p.winner} | ${p.method} | ${p.round}</div>`;
-          userPicksList.appendChild(div);
-        });
-      });
-  }
-
-  function fetchLeaderboard() {
-    fetch("/api/leaderboard", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
-    })
-      .then(res => res.json())
-      .then(data => {
-        leaderboard.style.display = "block";
-        leaderboardList.innerHTML = "";
-
-        const champs = data.champs || [];
-
-        (data.leaderboard || Object.entries(data.scores).map(([username, score]) => ({ username, score })))
-          .sort((a, b) => b.score - a.score)
-          .forEach(entry => {
-            const li = document.createElement("li");
-            const isChamp = champs.includes(entry.username);
-            li.innerHTML = `${isChamp ? "👑 " : ""}${entry.username}: ${entry.score} pts`;
-            leaderboardList.appendChild(li);
-          });
-
-        if (data.champMessage) {
-          championDiv.style.display = "block";
-          championDiv.textContent = data.champMessage;
-        }
-      });
-  }
-
-  function checkLockout() {
     fetch("/api/lockout")
       .then(res => res.json())
       .then(data => {
@@ -169,28 +37,84 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "none";
           submitNote.textContent = "🔒 Picks are now locked.";
         } else {
-          submitBtn.addEventListener("click", submitPicks);
+          loadFights();
         }
+      });
+
+    loadMyPicks();
+    loadLeaderboard();
+  }
+
+  function loadFights() {
+    fetch("/api/fights")
+      .then(res => res.json())
+      .then(data => {
+        fightList.innerHTML = "";
+        data.forEach(({ fight, fighter1, fighter2 }) => {
+          const div = document.createElement("div");
+          div.className = "fight";
+          div.innerHTML = `
+            <h3>${fight}</h3>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
+            <select name="${fight}-method">
+              <option value="Decision">Decision</option>
+              <option value="KO/TKO">KO/TKO</option>
+              <option value="Submission">Submission</option>
+            </select>
+            <select name="${fight}-round">
+              <option value="1">Round 1</option>
+              <option value="2">Round 2</option>
+              <option value="3">Round 3</option>
+              <option value="4">Round 4</option>
+              <option value="5">Round 5</option>
+            </select>
+          `;
+          fightList.appendChild(div);
+        });
+
+        document.querySelectorAll(".fight").forEach(fight => {
+          const methodSelect = fight.querySelector(`select[name$="-method"]`);
+          const roundSelect = fight.querySelector(`select[name$="-round"]`);
+
+          methodSelect.addEventListener("change", () => {
+            if (methodSelect.value === "Decision") {
+              roundSelect.disabled = true;
+              roundSelect.value = "";
+            } else {
+              roundSelect.disabled = false;
+              roundSelect.value = "1";
+            }
+          });
+
+          if (methodSelect.value === "Decision") {
+            roundSelect.disabled = true;
+            roundSelect.value = "";
+          }
+        });
+
+        fightList.style.display = "block";
+        submitBtn.style.display = "block";
       });
   }
 
   function submitPicks() {
-    const fightDivs = document.querySelectorAll(".fight");
     const picks = [];
+    const fights = document.querySelectorAll(".fight");
 
-    for (let div of fightDivs) {
-      const [fightEl, fighterSelect, methodSelect, roundSelect] = div.children;
-      const fight = fightEl.textContent;
-      const winner = fighterSelect.value;
-      const method = methodSelect.value;
-      const round = roundSelect.value;
+    for (const fight of fights) {
+      const fightName = fight.querySelector("h3").innerText;
+      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
 
-      if (!winner || !method || (method !== "Decision" && !round)) {
-        alert("Make sure all picks are filled out.");
+      if (!winner || !method) {
+        alert(`Please complete all picks. Missing data for "${fightName}".`);
         return;
       }
 
-      picks.push({ fight, winner, method, round });
+      picks.push({ fight: fightName, winner, method, round });
     }
 
     fetch("/api/submit", {
@@ -202,9 +126,78 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         if (data.success) {
           punchSound.play();
-          location.reload();
+          alert("Picks submitted!");
+          fightList.style.display = "none";
+          submitBtn.style.display = "none";
+          submitNote.textContent = "🔒 Picks are now locked.";
+          loadMyPicks();
+          loadLeaderboard();
         } else {
-          alert(data.error || "Error submitting picks.");
+          alert(data.error || "Something went wrong.");
+        }
+      });
+  }
+
+  submitBtn.addEventListener("click", submitPicks);
+
+  function loadMyPicks() {
+    fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const myPicksDiv = document.getElementById("myPicks");
+        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+        if (!data.success || !data.picks.length) {
+          myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
+          return;
+        }
+        data.picks.forEach(({ fight, winner, method, round }) => {
+          const roundText = method === "Decision" ? "(Decision)" : `in Round ${round}`;
+          myPicksDiv.innerHTML += `<p><strong>${fight}</strong>: ${winner} by ${method} ${roundText}</p>`;
+        });
+      });
+  }
+
+  function loadLeaderboard() {
+    fetch("/api/leaderboard")
+      .then(res => res.json())
+      .then(data => {
+        const board = document.getElementById("leaderboard");
+        board.innerHTML = "";
+        const scores = data.scores || {};
+        const champs = data.champs || [];
+        const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+        const topScore = entries.length ? entries[0][1] : null;
+        const lowScore = entries.length ? entries[entries.length - 1][1] : null;
+
+        entries.forEach(([user, score]) => {
+          const li = document.createElement("li");
+          li.textContent = `${user}: ${score} pts`;
+
+          if (score === topScore && champs.includes(user)) {
+            li.classList.add("champion");
+            li.textContent = `👑 ${user}: ${score} pts`;
+          }
+
+          if (score === lowScore && entries.length > 1) {
+            li.classList.add("last-place");
+            li.textContent = `💩 ${user}: ${score} pts`;
+          }
+
+          board.appendChild(li);
+        });
+
+        if (data.champMessage) {
+          const champLine = document.createElement("p");
+          champLine.style.textAlign = "center";
+          champLine.style.marginTop = "10px";
+          champLine.style.fontWeight = "bold";
+          champLine.style.color = "gold";
+          champLine.textContent = data.champMessage;
+          board.appendChild(champLine);
         }
       });
   }
