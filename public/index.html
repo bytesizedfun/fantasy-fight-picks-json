@@ -66,20 +66,25 @@
   <script src="script.js"></script>
   <script>
     const countdownDiv = document.getElementById("countdown");
-    const eventTime = new Date("2025-07-26T15:00:00-04:00").getTime();
+    const eventTime = new Date("2025-08-02T18:00:00-04:00").getTime();
+    const eventDuration = 6 * 60 * 60 * 1000; // 6 hours
 
     function updateCountdown() {
       const now = new Date().getTime();
       const distance = eventTime - now;
-      if (distance < 0) {
-        countdownDiv.innerHTML = "🔥 UFC Fight Night has started!";
-        return;
+      const timeSinceStart = now - eventTime;
+
+      if (distance > 0) {
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Albazi vs Taira — ${days}d ${hours}h ${minutes}m ${seconds}s`;
+      } else if (timeSinceStart <= eventDuration) {
+        countdownDiv.innerHTML = `🔥 UFC Fight Night: Albazi vs Taira is LIVE!`;
+      } else {
+        countdownDiv.innerHTML = `✅ UFC Fight Night: Albazi vs Taira has ended.`;
       }
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-      countdownDiv.innerHTML = `⏳ Countdown to UFC Fight Night: Whittaker vs de Ridder — ${days}d ${hours}h ${minutes}m ${seconds}s`;
     }
 
     setInterval(updateCountdown, 1000);
