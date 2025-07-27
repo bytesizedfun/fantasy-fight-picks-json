@@ -14,14 +14,10 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW
 // ✅ Lockout set to August 2, 2025 @ 6:00 PM Eastern Time (EDT)
 const lockoutTime = new Date("2025-08-02T18:00:00-04:00");
 
-// ✅ Event timing
-const eventStart = new Date("2025-08-02T18:00:00-04:00");
-const eventEnd = new Date("2025-08-02T20:00:00-04:00");
-
 // === GET FIGHTS FROM GOOGLE SHEETS
 app.get("/api/fights", async (req, res) => {
   try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    const response = await fetch(${GOOGLE_SCRIPT_URL}?action=getFights);
     const fights = await response.json();
     res.json(fights);
   } catch (error) {
@@ -65,7 +61,7 @@ app.post("/api/picks", async (req, res) => {
 // === GET LEADERBOARD
 app.get("/api/leaderboard", async (req, res) => {
   try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`);
+    const response = await fetch(${GOOGLE_SCRIPT_URL}?action=getLeaderboard);
     const data = await response.json();
     res.json(data);
   } catch (err) {
@@ -74,18 +70,6 @@ app.get("/api/leaderboard", async (req, res) => {
   }
 });
 
-// ✅ GET EVENT STATUS
-app.get("/api/eventStatus", (req, res) => {
-  const now = new Date();
-  if (now < eventStart) {
-    return res.json({ status: "upcoming", eventStart });
-  } else if (now >= eventStart && now < eventEnd) {
-    return res.json({ status: "live" });
-  } else {
-    return res.json({ status: "ended" });
-  }
-});
-
 app.listen(PORT, () => {
-  console.log(`Fantasy Fight Picks server running on port ${PORT}`);
+  console.log(Fantasy Fight Picks server running on port ${PORT});
 });
