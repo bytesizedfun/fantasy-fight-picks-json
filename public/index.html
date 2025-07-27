@@ -10,7 +10,7 @@
   <div id="app">
     <img src="logo.png" alt="Fantasy Fight Picks Logo" class="logo-banner" />
 
-    <!-- ✅ LIVE STATUS OR COUNTDOWN -->
+    <!-- 🔒 Event Status -->
     <div id="eventStatus" class="countdown-timer">Loading event status...</div>
 
     <div id="welcome"></div>
@@ -24,7 +24,7 @@
     <div id="submitNote"></div>
     <button id="submitBtn" style="display:none;">Submit Picks</button>
 
-    <!-- ✅ Scoring Logic -->
+    <!-- ✅ Scoring Rules (simplified layout) -->
     <div class="scoring-rules">
       <p>✅ +1 for correct Winner</p>
       <p>✅ +1 for correct Method <span style="font-size:0.9em;">(only if the Winner is correct)</span></p>
@@ -43,21 +43,19 @@
   <audio id="punchSound" src="punch.mp3" preload="auto"></audio>
 
   <script>
-    // 🔥 NEW: Load Event Status
+    // 🔒 Load Event Lock/Status
     document.addEventListener("DOMContentLoaded", async () => {
       const statusDiv = document.getElementById("eventStatus");
       try {
         const res = await fetch("/api/eventStatus");
         const data = await res.json();
-        if (data.status === "live") {
-          statusDiv.textContent = "🔥 Event is Live Now!";
-        } else if (data.status === "ended") {
-          statusDiv.textContent = "✅ Event Has Ended – See Results!";
-        } else if (data.status === "upcoming") {
+        if (data.status === "upcoming") {
           const date = new Date(data.eventStart);
-          statusDiv.textContent = `⏳ Event starts: ${date.toLocaleString("en-US", {
+          statusDiv.textContent = `⏳ Picks lock at: ${date.toLocaleString("en-US", {
             weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
           })}`;
+        } else {
+          statusDiv.textContent = "🔒 Picks are now locked.";
         }
       } catch (err) {
         statusDiv.textContent = "⚠️ Couldn't load event status";
