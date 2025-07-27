@@ -9,9 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = localStorage.getItem("username") || "";
 
-  if (username) {
-    finalizeLogin(username);
-  }
+  if (username) finalizeLogin(username);
 
   document.querySelector("button").addEventListener("click", () => {
     const input = usernameInput.value.trim();
@@ -29,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
     welcome.style.display = "block";
     document.getElementById("scoringRules").style.display = "block";
+    initTooltipListeners();
 
     fetch("/api/picks", {
       method: "POST",
@@ -176,9 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadLeaderboard() {
-    fetch("/api/leaderboard", {
-      method: "POST"
-    })
+    fetch("/api/leaderboard", { method: "POST" })
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
@@ -190,9 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let actualRank = 1;
 
         scores.forEach(([user, score], index) => {
-          if (score !== prevScore) {
-            actualRank = rank;
-          }
+          if (score !== prevScore) actualRank = rank;
 
           const li = document.createElement("li");
           let displayName = user;
@@ -214,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           li.className = classes.join(" ");
-          li.innerHTML = `<span class="rank">#${actualRank}</span> <span class="name">${displayName}</span><span class="score">${score} pts</span>`;
+          li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
           board.appendChild(li);
 
           prevScore = score;
@@ -228,13 +223,22 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // Tooltip logic for scoring rules
-  document.querySelectorAll('.clickable').forEach(el => {
-    el.addEventListener('click', () => {
-      const tip = el.getAttribute('data-tip');
-      const tipBox = document.getElementById('tipDisplay');
-      tipBox.innerText = tip;
-      tipBox.style.display = 'block';
+  function initTooltipListeners() {
+    const tooltips = {
+      winner: "+1 for choosing the winner",
+      method: "+1 for correct method if winner is also correct",
+      round: "+1 for correct round if Winner & Method are correct, and the fight did NOT go to Decision.",
+      underdog: "+2 bonus for underdog win"
+    };
+
+    Object.entries(tooltips).forEach(([id, msg]) => {
+      const el = document.getElementById(`tooltip-${id}`);
+      if (el) {
+        el.style.cursor = "pointer";
+        el.addEventListener("click", () => {
+          alert(msg);
+        });
+      }
     });
-  });
+  }
 });
