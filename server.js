@@ -10,56 +10,64 @@ app.use(express.static("public"));
 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-// ✅ Lockout set to August 2, 2025 @ 6:00 PM Eastern Time (EDT)
-const lockoutTime = new Date("2025-08-02T18:00:00-04:00");
+// Lockout time: July 26, 2025 @ 3:00 PM ET
+const lockoutTime = new Date("2025-07-26T15:00:00-04:00");
 
-app.get("/api/fights", (req, res) => {
-  const fights = require("./data/fights.json");
-  res.json(fights);
+app.get("/api/lockout", (req, res) => {
+  const now = new Date();
+  const locked = now >= lockoutTime;
+  res.json({ locked });
+});
+
+app.get("/api/fights", async (req, res) => {
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    const fights = await response.json();
+    res.json(fights);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch fights" });
+  }
 });
 
 app.post("/api/submit", async (req, res) => {
-  const { username, picks } = req.body;
-
-  if (new Date() >= lockoutTime) {
-    return res.json({ success: false, error: "Picks are locked." });
-  }
-
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "submitPicks", username, picks }),
+      body: JSON.stringify({ action: "submitPicks", ...req.body }),
+      headers: { "Content-Type": "application/json" }
     });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ success: false, error: "Server error." });
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to submit picks" });
   }
 });
 
 app.post("/api/picks", async (req, res) => {
-  const { username } = req.body;
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getUserPicks", username }),
+      body: JSON.stringify({ action: "getUserPicks", ...req.body }),
+      headers: { "Content-Type": "application/json" }
     });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ success: false, error: "Could not retrieve picks." });
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch picks" });
   }
 });
 
-app.get("/api/leaderboard", async (req, res) => {
+app.post("/api/leaderboard", async (req, res) => {
   try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`);
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ success: false, error: "Could not load leaderboard." });
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "getLeaderboard" }),
+      headers: { "Content-Type": "application/json" }
+    });
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
 });
 
