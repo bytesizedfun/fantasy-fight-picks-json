@@ -42,6 +42,11 @@ body {
   margin: 6px 0;
   font-size: 1rem;
   cursor: pointer;
+  line-height: 1.4;
+}
+
+.fight label span {
+  margin-left: 4px;
 }
 
 .fight input[type="radio"] {
@@ -145,6 +150,17 @@ button:hover {
 .underdog {
   color: #ff8c00;
   font-weight: bold;
+}
+
+/* 🐶 Optional styling in picks */
+.correct .dog-icon {
+  color: #4CAF50;
+  margin-left: 4px;
+}
+
+.wrong .dog-icon {
+  color: #e74c3c;
+  margin-left: 4px;
 }
 
 /* Leaderboard */
