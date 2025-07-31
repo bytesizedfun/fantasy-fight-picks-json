@@ -32,14 +32,15 @@ document.addEventListener("DOMContentLoaded", () => {
     })
       .then(res => res.json())
       .then(data => {
-        if (data.success && data.picks.length > 0) {
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-        } else {
+        // 🔥 FIX: if user has no picks anymore, reset the state
+        if (!data.success || data.picks.length === 0) {
           localStorage.removeItem("submitted");
           loadFights();
           submitBtn.style.display = "block";
+        } else {
+          localStorage.setItem("submitted", "true");
+          fightList.style.display = "none";
+          submitBtn.style.display = "none";
         }
 
         loadMyPicks();
@@ -86,8 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           methodSelect.addEventListener("change", () => {
             roundSelect.disabled = methodSelect.value === "Decision";
-            if (roundSelect.disabled) roundSelect.value = "";
-            else roundSelect.value = "1";
+            roundSelect.value = roundSelect.disabled ? "" : "1";
           });
 
           if (methodSelect.value === "Decision") {
