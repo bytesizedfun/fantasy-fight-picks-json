@@ -8,7 +8,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const punchSound = new Audio("punch.mp3");
 
   let username = localStorage.getItem("username") || "";
-  let underdogs = {}; // fight => "Fighter 1" or "Fighter 2"
 
   if (username) finalizeLogin(username);
 
@@ -39,28 +38,12 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "none";
         } else {
           localStorage.removeItem("submitted");
-          loadUnderdogs().then(() => {
-            loadFights();
-            submitBtn.style.display = "block";
-          });
+          loadFights();
+          submitBtn.style.display = "block";
         }
 
         loadMyPicks();
         loadLeaderboard();
-      });
-  }
-
-  function loadUnderdogs() {
-    return fetch("/api/leaderboard", { method: "POST" })
-      .then(res => res.json())
-      .then(data => {
-        const results = data.fightResults || {};
-        Object.keys(results).forEach(fight => {
-          const ud = results[fight].underdog;
-          if (ud === "FIGHTER 1" || ud === "FIGHTER 2") {
-            underdogs[fight] = ud;
-          }
-        });
       });
   }
 
@@ -69,18 +52,17 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2 }) => {
-          const isDog1 = underdogs[fight] === "FIGHTER 1";
-          const isDog2 = underdogs[fight] === "FIGHTER 2";
-          const label1 = isDog1 ? `${fighter1} 🐶` : fighter1;
-          const label2 = isDog2 ? `${fighter2} 🐶` : fighter2;
+
+        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
+          const f1 = fighter1 + (underdog === "Fighter 1" ? " 🐶" : "");
+          const f2 = fighter2 + (underdog === "Fighter 2" ? " 🐶" : "");
 
           const div = document.createElement("div");
           div.className = "fight";
           div.innerHTML = `
             <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${label1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${label2}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${f1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${f2}</label>
             <select name="${fight}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
