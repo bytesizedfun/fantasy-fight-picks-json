@@ -53,8 +53,8 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         fightList.innerHTML = "";
         data.forEach(({ fight, fighter1, fighter2, underdog }) => {
-          const fighter1Label = underdog === "Fighter 1" ? `${fighter1} 🐶` : fighter1;
-          const fighter2Label = underdog === "Fighter 2" ? `${fighter2} 🐶` : fighter2;
+          const fighter1Label = underdog === "FIGHTER 1" ? `${fighter1} 🐶` : fighter1;
+          const fighter2Label = underdog === "FIGHTER 2" ? `${fighter2} 🐶` : fighter2;
 
           const div = document.createElement("div");
           div.className = "fight";
