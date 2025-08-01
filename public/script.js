@@ -48,58 +48,52 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadFights() {
-    Promise.all([
-      fetch("/api/fights").then(res => res.json()),
-      fetch("/api/leaderboard", { method: "POST" }).then(res => res.json())
-    ]).then(([fightData, leaderboardData]) => {
-      const fightResults = leaderboardData.fightResults || {};
-      fightList.innerHTML = "";
-
-      fightData.forEach(({ fight, fighter1, fighter2 }) => {
-        const underdog = (fightResults[fight]?.underdog || "").trim();
-        const dog1 = underdog === "Fighter 1" ? " 🐶" : "";
-        const dog2 = underdog === "Fighter 2" ? " 🐶" : "";
-
-        const div = document.createElement("div");
-        div.className = "fight";
-        div.innerHTML = `
-          <h3>${fight}</h3>
-          <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}${dog1}</label>
-          <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}${dog2}</label>
-          <select name="${fight}-method">
-            <option value="Decision">Decision</option>
-            <option value="KO/TKO">KO/TKO</option>
-            <option value="Submission">Submission</option>
-          </select>
-          <select name="${fight}-round">
-            <option value="1">Round 1</option>
-            <option value="2">Round 2</option>
-            <option value="3">Round 3</option>
-            <option value="4">Round 4</option>
-            <option value="5">Round 5</option>
-          </select>
-        `;
-        fightList.appendChild(div);
-      });
-
-      document.querySelectorAll(".fight").forEach(fight => {
-        const methodSelect = fight.querySelector(`select[name$="-method"]`);
-        const roundSelect = fight.querySelector(`select[name$="-round"]`);
-
-        methodSelect.addEventListener("change", () => {
-          roundSelect.disabled = methodSelect.value === "Decision";
-          roundSelect.value = roundSelect.disabled ? "" : "1";
+    fetch("/api/fights")
+      .then(res => res.json())
+      .then(data => {
+        fightList.innerHTML = "";
+        data.forEach(({ fight, fighter1, fighter2 }) => {
+          const div = document.createElement("div");
+          div.className = "fight";
+          div.innerHTML = `
+            <h3>${fight}</h3>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
+            <select name="${fight}-method">
+              <option value="Decision">Decision</option>
+              <option value="KO/TKO">KO/TKO</option>
+              <option value="Submission">Submission</option>
+            </select>
+            <select name="${fight}-round">
+              <option value="1">Round 1</option>
+              <option value="2">Round 2</option>
+              <option value="3">Round 3</option>
+              <option value="4">Round 4</option>
+              <option value="5">Round 5</option>
+            </select>
+          `;
+          fightList.appendChild(div);
         });
 
-        if (methodSelect.value === "Decision") {
-          roundSelect.disabled = true;
-          roundSelect.value = "";
-        }
-      });
+        document.querySelectorAll(".fight").forEach(fight => {
+          const methodSelect = fight.querySelector(`select[name$="-method"]`);
+          const roundSelect = fight.querySelector(`select[name$="-round"]`);
 
-      fightList.style.display = "block";
-      submitBtn.style.display = "block";
-    });
+          methodSelect.addEventListener("change", () => {
+            roundSelect.disabled = methodSelect.value === "Decision";
+            if (roundSelect.disabled) roundSelect.value = "";
+            else roundSelect.value = "1";
+          });
+
+          if (methodSelect.value === "Decision") {
+            roundSelect.disabled = true;
+            roundSelect.value = "";
+          }
+        });
+
+        fightList.style.display = "block";
+        submitBtn.style.display = "block";
+      });
   }
 
   function submitPicks() {
