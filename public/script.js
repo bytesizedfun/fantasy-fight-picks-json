@@ -48,55 +48,58 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadFights() {
-    fetch("/api/fights")
-      .then(res => res.json())
-      .then(data => {
-        fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
-          const fighter1Label = underdog === "FIGHTER 1" ? `${fighter1} 🐶` : fighter1;
-          const fighter2Label = underdog === "FIGHTER 2" ? `${fighter2} 🐶` : fighter2;
+    Promise.all([
+      fetch("/api/fights").then(res => res.json()),
+      fetch("/api/leaderboard", { method: "POST" }).then(res => res.json())
+    ]).then(([fightData, leaderboardData]) => {
+      const fightResults = leaderboardData.fightResults || {};
+      fightList.innerHTML = "";
 
-          const div = document.createElement("div");
-          div.className = "fight";
-          div.innerHTML = `
-            <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1Label}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2Label}</label>
-            <select name="${fight}-method">
-              <option value="Decision">Decision</option>
-              <option value="KO/TKO">KO/TKO</option>
-              <option value="Submission">Submission</option>
-            </select>
-            <select name="${fight}-round">
-              <option value="1">Round 1</option>
-              <option value="2">Round 2</option>
-              <option value="3">Round 3</option>
-              <option value="4">Round 4</option>
-              <option value="5">Round 5</option>
-            </select>
-          `;
-          fightList.appendChild(div);
-        });
+      fightData.forEach(({ fight, fighter1, fighter2 }) => {
+        const underdog = (fightResults[fight]?.underdog || "").trim();
+        const dog1 = underdog === "Fighter 1" ? " 🐶" : "";
+        const dog2 = underdog === "Fighter 2" ? " 🐶" : "";
 
-        document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector(`select[name$="-method"]`);
-          const roundSelect = fight.querySelector(`select[name$="-round"]`);
-
-          methodSelect.addEventListener("change", () => {
-            roundSelect.disabled = methodSelect.value === "Decision";
-            if (roundSelect.disabled) roundSelect.value = "";
-            else roundSelect.value = "1";
-          });
-
-          if (methodSelect.value === "Decision") {
-            roundSelect.disabled = true;
-            roundSelect.value = "";
-          }
-        });
-
-        fightList.style.display = "block";
-        submitBtn.style.display = "block";
+        const div = document.createElement("div");
+        div.className = "fight";
+        div.innerHTML = `
+          <h3>${fight}</h3>
+          <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}${dog1}</label>
+          <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}${dog2}</label>
+          <select name="${fight}-method">
+            <option value="Decision">Decision</option>
+            <option value="KO/TKO">KO/TKO</option>
+            <option value="Submission">Submission</option>
+          </select>
+          <select name="${fight}-round">
+            <option value="1">Round 1</option>
+            <option value="2">Round 2</option>
+            <option value="3">Round 3</option>
+            <option value="4">Round 4</option>
+            <option value="5">Round 5</option>
+          </select>
+        `;
+        fightList.appendChild(div);
       });
+
+      document.querySelectorAll(".fight").forEach(fight => {
+        const methodSelect = fight.querySelector(`select[name$="-method"]`);
+        const roundSelect = fight.querySelector(`select[name$="-round"]`);
+
+        methodSelect.addEventListener("change", () => {
+          roundSelect.disabled = methodSelect.value === "Decision";
+          roundSelect.value = roundSelect.disabled ? "" : "1";
+        });
+
+        if (methodSelect.value === "Decision") {
+          roundSelect.disabled = true;
+          roundSelect.value = "";
+        }
+      });
+
+      fightList.style.display = "block";
+      submitBtn.style.display = "block";
+    });
   }
 
   function submitPicks() {
