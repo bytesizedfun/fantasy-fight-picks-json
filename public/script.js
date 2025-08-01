@@ -32,14 +32,14 @@ document.addEventListener("DOMContentLoaded", () => {
     })
       .then(res => res.json())
       .then(data => {
-        if (!data.success || data.picks.length === 0) {
-          localStorage.removeItem("submitted");
-          loadFights();
-          submitBtn.style.display = "block";
-        } else {
+        if (data.success && data.picks.length > 0) {
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
+        } else {
+          localStorage.removeItem("submitted");
+          loadFights();
+          submitBtn.style.display = "block";
         }
 
         loadMyPicks();
@@ -53,17 +53,15 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         fightList.innerHTML = "";
         data.forEach(({ fight, fighter1, fighter2, underdog }) => {
-          const isDog1 = underdog === "fighter1";
-          const isDog2 = underdog === "fighter2";
-          const label1 = isDog1 ? `${fighter1} 🐶` : fighter1;
-          const label2 = isDog2 ? `${fighter2} 🐶` : fighter2;
+          const fighter1Label = underdog === "Fighter 1" ? `${fighter1} 🐶` : fighter1;
+          const fighter2Label = underdog === "Fighter 2" ? `${fighter2} 🐶` : fighter2;
 
           const div = document.createElement("div");
           div.className = "fight";
           div.innerHTML = `
             <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${label1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${label2}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1Label}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2Label}</label>
             <select name="${fight}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
@@ -86,7 +84,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
           methodSelect.addEventListener("change", () => {
             roundSelect.disabled = methodSelect.value === "Decision";
-            roundSelect.value = roundSelect.disabled ? "" : "1";
+            if (roundSelect.disabled) roundSelect.value = "";
+            else roundSelect.value = "1";
           });
 
           if (methodSelect.value === "Decision") {
@@ -174,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
               const matchWinner = winner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
-              const isUnderdog = actual.underdog && actual.winner === actual.underdog;
+              const isUnderdog = actual.underdog === "Y";
 
               if (matchWinner) {
                 score += 1;
@@ -220,7 +219,6 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "";
-
         const scores = Object.entries(data.scores || {}).sort((a, b) => b[1] - a[1]);
 
         let rank = 1;
@@ -259,8 +257,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.champMessage) {
           champBanner.textContent = `🏆 ${data.champMessage}`;
           champBanner.style.display = "block";
-        } else {
-          champBanner.style.display = "none";
         }
       });
   }
