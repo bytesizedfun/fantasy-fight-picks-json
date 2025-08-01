@@ -32,7 +32,6 @@ document.addEventListener("DOMContentLoaded", () => {
     })
       .then(res => res.json())
       .then(data => {
-        // 🔥 FIX: if user has no picks anymore, reset the state
         if (!data.success || data.picks.length === 0) {
           localStorage.removeItem("submitted");
           loadFights();
@@ -221,6 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         const board = document.getElementById("leaderboard");
         board.innerHTML = "";
+
         const scores = Object.entries(data.scores || {}).sort((a, b) => b[1] - a[1]);
 
         let rank = 1;
@@ -259,6 +259,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.champMessage) {
           champBanner.textContent = `🏆 ${data.champMessage}`;
           champBanner.style.display = "block";
+        } else {
+          champBanner.style.display = "none";
         }
       });
   }
