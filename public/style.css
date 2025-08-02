@@ -131,7 +131,6 @@ button:hover {
   letter-spacing: 0.3px;
 }
 
-/* New Visual Enhancements */
 .correct {
   color: #4CAF50;
   font-weight: bold;
@@ -264,32 +263,41 @@ button:hover {
   100% { background-position: 100% 50%; }
 }
 
-/* 🆕 Clean Scoring Display */
+/* Clean Scoring Display */
 .scoring-box {
   background-color: #1f1f1f;
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 20px;
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #f2f2f2;
 }
 
 .scoring-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
-  color: #ffcc00;
+  color: #f2f2f2;
   text-align: center;
   margin-bottom: 12px;
   font-family: 'Anton', sans-serif;
 }
 
 .scoring-section {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  line-height: 1.5;
 }
 
-.scoring-section small {
-  color: #bbbbbb;
+.scoring-section strong {
   display: block;
-  margin-left: 10px;
+  margin-bottom: 6px;
+  color: #ffffff;
+}
+
+.note {
+  color: #bbbbbb;
+  font-size: 0.9rem;
+  display: block;
+  margin-left: 12px;
 }
