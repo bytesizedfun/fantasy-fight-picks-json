@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
               const matchWinner = winner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
-              const isUnderdog = actual.underdog === "Y" && winner === actual.winner;
+              const isUnderdog = actual.underdog === "Y";
 
               if (matchWinner) {
                 score += 1;
@@ -252,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (data.champMessage) {
-          champBanner.textContent = `🏆 ${data.champMessage}`;
+          champBanner.textContent = data.champMessage;
           champBanner.style.display = "block";
         }
       });
