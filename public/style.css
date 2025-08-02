@@ -152,7 +152,6 @@ button:hover {
   font-weight: bold;
 }
 
-/* 🐶 Optional styling in picks */
 .correct .dog-icon {
   color: #4CAF50;
   margin-left: 4px;
@@ -265,36 +264,32 @@ button:hover {
   100% { background-position: 100% 50%; }
 }
 
-/* Scoring Rules */
+/* 🆕 Clean Scoring Display */
 .scoring-box {
-  text-align: center;
-  font-size: 0.95rem;
-  color: #f2f2f2;
-  padding: 10px 0;
-  margin-bottom: 10px;
+  background-color: #1f1f1f;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-.rule {
-  margin: 6px 0;
-  font-size: 1rem;
-  text-align: center;
-}
-
-.rule strong {
-  cursor: pointer;
-  color: #fff;
+.scoring-title {
+  font-size: 20px;
   font-weight: bold;
-  text-decoration: underline;
+  color: #ffcc00;
+  text-align: center;
+  margin-bottom: 12px;
+  font-family: 'Anton', sans-serif;
 }
 
-.tip-box {
-  margin-top: 10px;
-  padding: 8px;
-  background-color: #2e2e2e;
-  border: 1px solid #C43228;
-  border-radius: 4px;
-  text-align: center;
-  color: #f2f2f2;
-  font-style: italic;
-  font-size: 0.85rem;
+.scoring-section {
+  margin-bottom: 16px;
+}
+
+.scoring-section small {
+  color: #bbbbbb;
+  display: block;
+  margin-left: 10px;
 }
