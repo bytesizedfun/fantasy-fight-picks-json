@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         loadMyPicks();
         loadLeaderboard();
-        loadChampionBanner();
+        loadChampBanner();
       });
   }
 
@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "none";
           loadMyPicks();
           loadLeaderboard();
-          loadChampionBanner();
+          loadChampBanner();
         } else {
           alert(data.error || "Something went wrong.");
           submitBtn.disabled = false;
@@ -258,15 +258,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function loadChampionBanner() {
-    fetch("/api?action=getChampionMessage")
+  function loadChampBanner() {
+    fetch("/api?action=getChampionBanner")
       .then(res => res.text())
-      .then(msg => {
-        if (msg) {
-          champBanner.textContent = `🏆 ${msg}`;
+      .then(text => {
+        if (text.trim()) {
+          champBanner.textContent = `🏆 ${text.trim()}`;
           champBanner.style.display = "block";
-        } else {
-          champBanner.style.display = "none";
         }
       });
   }
