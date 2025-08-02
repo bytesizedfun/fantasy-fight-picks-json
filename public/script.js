@@ -25,10 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.style.display = "block";
     document.getElementById("scoringRules").style.display = "block";
 
-    fetch("/api", {
+    fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getUserPicks", username: name })
+      body: JSON.stringify({ username: name })
     })
       .then(res => res.json())
       .then(data => {
@@ -44,12 +44,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         loadMyPicks();
         loadLeaderboard();
-        loadChampionBanner();
       });
   }
 
   function loadFights() {
-    fetch("/api?action=getFights")
+    fetch("/api/fights")
       .then(res => res.json())
       .then(data => {
         fightList.innerHTML = "";
@@ -84,7 +83,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
           methodSelect.addEventListener("change", () => {
             roundSelect.disabled = methodSelect.value === "Decision";
-            roundSelect.value = roundSelect.disabled ? "" : "1";
+            if (roundSelect.disabled) roundSelect.value = "";
+            else roundSelect.value = "1";
           });
 
           if (methodSelect.value === "Decision") {
@@ -122,10 +122,10 @@ document.addEventListener("DOMContentLoaded", () => {
       picks.push({ fight: fightName, winner, method, round });
     }
 
-    fetch("/api", {
+    fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "submitPicks", username, picks })
+      body: JSON.stringify({ username, picks })
     })
       .then(res => res.json())
       .then(data => {
@@ -137,7 +137,6 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "none";
           loadMyPicks();
           loadLeaderboard();
-          loadChampionBanner();
         } else {
           alert(data.error || "Something went wrong.");
           submitBtn.disabled = false;
@@ -149,10 +148,10 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
 
   function loadMyPicks() {
-    fetch("/api", {
+    fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getUserPicks", username })
+      body: JSON.stringify({ username })
     })
       .then(res => res.json())
       .then(data => {
@@ -163,11 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        fetch("/api", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "getLeaderboard" })
-        })
+        fetch("/api/leaderboard", { method: "POST" })
           .then(res => res.json())
           .then(resultData => {
             const fightResults = resultData.fightResults || {};
@@ -177,6 +172,8 @@ document.addEventListener("DOMContentLoaded", () => {
               const matchWinner = winner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
+
+              // ✅ THE ONE CORRECTED LINE:
               const isUnderdog = actual.underdog === "Y" && winner === actual.winner;
 
               if (matchWinner) {
@@ -218,11 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadLeaderboard() {
-    fetch("/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getLeaderboard" })
-    })
+    fetch("/api/leaderboard", { method: "POST" })
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
@@ -261,19 +254,9 @@ document.addEventListener("DOMContentLoaded", () => {
           prevScore = score;
           rank++;
         });
-      });
-  }
 
-  function loadChampionBanner() {
-    fetch("/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getChampionBanner" })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.message) {
-          champBanner.textContent = `🏆 ${data.message}`;
+        if (data.champMessage) {
+          champBanner.textContent = `🏆 ${data.champMessage}`;
           champBanner.style.display = "block";
         }
       });
