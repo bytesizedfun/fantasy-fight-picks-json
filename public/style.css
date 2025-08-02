@@ -131,6 +131,7 @@ button:hover {
   letter-spacing: 0.3px;
 }
 
+/* Visual Enhancements */
 .correct {
   color: #4CAF50;
   font-weight: bold;
@@ -242,7 +243,7 @@ button:hover {
   font-weight: bold;
 }
 
-/* Flashy Champion Banner */
+/* Champion Banner */
 .champ-banner {
   margin: 10px 0 20px 0;
   padding: 12px 0;
@@ -275,24 +276,16 @@ button:hover {
   color: #f2f2f2;
 }
 
-.scoring-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #f2f2f2;
-  text-align: center;
-  margin-bottom: 10px;
-  font-family: 'Anton', sans-serif;
-}
-
 .scoring-section {
-  margin-bottom: 12px;
-  line-height: 1.4;
+  margin-bottom: 14px;
+  line-height: 1.5;
 }
 
 .scoring-section strong {
   display: block;
   margin-bottom: 6px;
   color: #ffffff;
+  font-size: 1.05rem;
 }
 
 .scoring-section div {
