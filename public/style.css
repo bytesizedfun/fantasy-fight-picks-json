@@ -94,7 +94,6 @@ button:hover {
   text-transform: uppercase;
 }
 
-/* Picks Display */
 #myPicks h3 {
   color: #C43228;
   margin-bottom: 10px;
@@ -131,7 +130,6 @@ button:hover {
   letter-spacing: 0.3px;
 }
 
-/* Visual Enhancements */
 .correct {
   color: #4CAF50;
   font-weight: bold;
@@ -162,7 +160,6 @@ button:hover {
   margin-left: 4px;
 }
 
-/* Leaderboard */
 .leader-title {
   font-family: 'Anton', sans-serif;
   font-size: 2.2rem;
@@ -243,7 +240,6 @@ button:hover {
   font-weight: bold;
 }
 
-/* Champion Banner */
 .champ-banner {
   margin: 10px 0 20px 0;
   padding: 12px 0;
@@ -264,36 +260,18 @@ button:hover {
   100% { background-position: 100% 50%; }
 }
 
-/* Clean Scoring Display */
-.scoring-box {
+/* Final Tight Scoring */
+.scoring-box.tight {
   background-color: #1f1f1f;
   border-radius: 10px;
   padding: 14px 18px;
   margin-bottom: 20px;
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 0.95rem;
+  line-height: 1.4;
   color: #f2f2f2;
 }
 
-.scoring-section {
-  margin-bottom: 14px;
-  line-height: 1.5;
-}
-
-.scoring-section strong {
-  display: block;
-  margin-bottom: 6px;
-  color: #ffffff;
-  font-size: 1.05rem;
-}
-
-.scoring-section div {
+.scoring-box.tight div {
   margin: 2px 0;
-}
-
-.note {
-  color: #bbbbbb;
-  font-size: 0.88rem;
-  margin-left: 12px;
 }
