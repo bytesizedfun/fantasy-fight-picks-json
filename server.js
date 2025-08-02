@@ -79,18 +79,6 @@ app.post("/api/leaderboard", async (req, res) => {
   }
 });
 
-// ✅ Get Champion Banner (NEW)
-app.get("/api/getChampionBanner", async (req, res) => {
-  try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`);
-    const banner = await response.json();
-    res.json(banner);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch champion banner" });
-  }
-});
-
-// ✅ Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
