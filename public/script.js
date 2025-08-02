@@ -170,6 +170,8 @@ document.addEventListener("DOMContentLoaded", () => {
             data.picks.forEach(({ fight, winner, method, round }) => {
               let score = 0;
               const actual = fightResults[fight] || {};
+              const resultsAvailable = !!actual.winner;
+
               const matchWinner = winner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
@@ -186,18 +188,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (isUnderdog) score += 2;
               }
 
-              const winnerClass = matchWinner ? "correct" : "wrong";
-              const methodClass = matchWinner ? (matchMethod ? "correct" : "wrong") : "wrong";
-              const roundClass = matchWinner && matchMethod && method !== "Decision"
+              const winnerClass = resultsAvailable ? (matchWinner ? "correct" : "wrong") : "";
+              const methodClass = resultsAvailable ? (matchMethod && matchWinner ? "correct" : "") : "";
+              const roundClass = resultsAvailable && method !== "Decision" && matchMethod && matchWinner
                 ? (matchRound ? "correct" : "wrong")
-                : "disabled";
+                : "";
 
               const dogIcon = isUnderdog
                 ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
                 : "";
 
-              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
-              const scoreText = actual.winner ? ` <span class="points">+${score} pts</span>` : "";
+              const roundText = method === "Decision"
+                ? "(Decision)"
+                : `in Round <span class="${roundClass}">${round}</span>`;
+
+              const scoreText = resultsAvailable ? ` <span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
                 <p class="scored-pick">
