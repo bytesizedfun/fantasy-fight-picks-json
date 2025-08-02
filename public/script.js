@@ -52,13 +52,16 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2 }) => {
+        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
+          const dog1 = underdog === "Fighter 1" ? "🐶" : "";
+          const dog2 = underdog === "Fighter 2" ? "🐶" : "";
+
           const div = document.createElement("div");
           div.className = "fight";
           div.innerHTML = `
             <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1} ${dog1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2} ${dog2}</label>
             <select name="${fight}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
@@ -252,7 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (data.champMessage) {
-          champBanner.textContent = data.champMessage;
+          champBanner.textContent = `🏆 ${data.champMessage}`;
           champBanner.style.display = "block";
         }
       });
