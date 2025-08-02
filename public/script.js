@@ -7,9 +7,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const champBanner = document.getElementById("champBanner");
   const punchSound = new Audio("punch.mp3");
 
-  let username = localStorage.getItem("username") || "";
+  let username = localStorage.getItem("username");
 
-  if (username) finalizeLogin(username);
+  if (username) {
+    usernameInput.value = username;
+    finalizeLogin(username);
+  }
 
   document.querySelector("button").addEventListener("click", () => {
     const input = usernameInput.value.trim();
@@ -21,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
-    welcome.innerText = 🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!;
+    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
     welcome.style.display = "block";
     document.getElementById("scoringRules").style.display = "block";
 
@@ -58,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const div = document.createElement("div");
           div.className = "fight";
-          div.innerHTML = 
+          div.innerHTML = `
             <h3>${fight}</h3>
             <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1} ${dog1}</label>
             <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2} ${dog2}</label>
@@ -74,13 +77,13 @@ document.addEventListener("DOMContentLoaded", () => {
               <option value="4">Round 4</option>
               <option value="5">Round 5</option>
             </select>
-          ;
+          `;
           fightList.appendChild(div);
         });
 
         document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector(select[name$="-method"]);
-          const roundSelect = fight.querySelector(select[name$="-round"]);
+          const methodSelect = fight.querySelector(`select[name$="-method"]`);
+          const roundSelect = fight.querySelector(`select[name$="-round"]`);
 
           methodSelect.addEventListener("change", () => {
             roundSelect.disabled = methodSelect.value === "Decision";
@@ -108,13 +111,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     for (const fight of fights) {
       const fightName = fight.querySelector("h3").innerText;
-      const winner = fight.querySelector(input[name="${fightName}-winner"]:checked)?.value;
-      const method = fight.querySelector(select[name="${fightName}-method"])?.value;
-      const roundRaw = fight.querySelector(select[name="${fightName}-round"]);
+      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
       const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
 
       if (!winner || !method) {
-        alert(Please complete all picks. Missing data for "${fightName}".);
+        alert(`Please complete all picks. Missing data for "${fightName}".`);
         submitBtn.disabled = false;
         submitBtn.textContent = "Submit Picks";
         return;
@@ -193,13 +196,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 : "disabled";
 
               const dogIcon = isUnderdog
-                ? <span class="${matchWinner ? "correct" : "wrong"}">🐶</span>
+                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
                 : "";
 
-              const roundText = method === "Decision" ? "(Decision)" : in Round <span class="${roundClass}">${round}</span>;
-              const scoreText = actual.winner ?  <span class="points">+${score} pts</span> : "";
+              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
+              const scoreText = actual.winner ? ` <span class="points">+${score} pts</span>` : "";
 
-              myPicksDiv.innerHTML += 
+              myPicksDiv.innerHTML += `
                 <p class="scored-pick">
                   <span class="fight-name">${fight}</span>
                   <span class="user-pick">
@@ -207,7 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="${methodClass}">${method}</span> ${roundText}
                     ${scoreText}
                   </span>
-                </p>;
+                </p>`;
             });
           });
       });
@@ -234,12 +237,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
           if (data.champs?.includes(user)) {
             classes.push("champ-glow");
-            displayName = <span class="crown">👑</span> ${displayName};
+            displayName = `<span class="crown">👑</span> ${displayName}`;
           }
 
           if (index === scores.length - 1) {
             classes.push("loser");
-            displayName = 💩 ${displayName};
+            displayName = `💩 ${displayName}`;
           }
 
           if (user === username) {
@@ -247,16 +250,23 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           li.className = classes.join(" ");
-          li.innerHTML = <span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>;
+          li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
           board.appendChild(li);
 
           prevScore = score;
           rank++;
         });
 
-        if (data.champMessage) {
-          champBanner.textContent = 🏆 ${data.champMessage};
+        // ✅ Only show banner if ALL fights have results
+        const allResultsPosted = Object.values(data.fightResults || {}).every(
+          res => res.winner && res.method
+        );
+
+        if (data.champMessage && allResultsPosted) {
+          champBanner.textContent = `🏆 ${data.champMessage}`;
           champBanner.style.display = "block";
+        } else {
+          champBanner.style.display = "none";
         }
       });
   }
