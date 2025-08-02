@@ -167,7 +167,8 @@ document.addEventListener("DOMContentLoaded", () => {
             data.picks.forEach(({ fight, winner, method, round }) => {
               let score = 0;
               const actual = fightResults[fight] || {};
-              const matchWinner = winner === actual.winner;
+              const cleanWinner = winner.replace(" 🐶", "");
+              const matchWinner = cleanWinner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
               const isUnderdog = actual.underdog === "Y";
