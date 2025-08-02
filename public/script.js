@@ -25,10 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.style.display = "block";
     document.getElementById("scoringRules").style.display = "block";
 
-    fetch("/api/picks", {
+    fetch("/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: name })
+      body: JSON.stringify({ action: "getUserPicks", username: name })
     })
       .then(res => res.json())
       .then(data => {
@@ -44,21 +44,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
         loadMyPicks();
         loadLeaderboard();
+        loadChampionBanner();
       });
   }
 
   function loadFights() {
-    fetch("/api/fights")
+    fetch("/api?action=getFights")
       .then(res => res.json())
       .then(data => {
         fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2 }) => {
+        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
+          const dog1 = underdog === "Fighter 1" ? " 🐶" : "";
+          const dog2 = underdog === "Fighter 2" ? " 🐶" : "";
           const div = document.createElement("div");
           div.className = "fight";
           div.innerHTML = `
             <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}${dog1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}${dog2}</label>
             <select name="${fight}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
@@ -81,8 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           methodSelect.addEventListener("change", () => {
             roundSelect.disabled = methodSelect.value === "Decision";
-            if (roundSelect.disabled) roundSelect.value = "";
-            else roundSelect.value = "1";
+            roundSelect.value = roundSelect.disabled ? "" : "1";
           });
 
           if (methodSelect.value === "Decision") {
@@ -120,10 +122,10 @@ document.addEventListener("DOMContentLoaded", () => {
       picks.push({ fight: fightName, winner, method, round });
     }
 
-    fetch("/api/submit", {
+    fetch("/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, picks })
+      body: JSON.stringify({ action: "submitPicks", username, picks })
     })
       .then(res => res.json())
       .then(data => {
@@ -135,6 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "none";
           loadMyPicks();
           loadLeaderboard();
+          loadChampionBanner();
         } else {
           alert(data.error || "Something went wrong.");
           submitBtn.disabled = false;
@@ -146,10 +149,10 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
 
   function loadMyPicks() {
-    fetch("/api/picks", {
+    fetch("/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ action: "getUserPicks", username })
     })
       .then(res => res.json())
       .then(data => {
@@ -160,20 +163,22 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        fetch("/api/leaderboard", { method: "POST" })
+        fetch("/api", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getLeaderboard" })
+        })
           .then(res => res.json())
           .then(resultData => {
             const fightResults = resultData.fightResults || {};
             data.picks.forEach(({ fight, winner, method, round }) => {
+              let score = 0;
               const actual = fightResults[fight] || {};
-              const cleanWinner = winner.replace(" 🐶", "");
-
-              const matchWinner = cleanWinner === actual.winner;
+              const matchWinner = winner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
-              const isUnderdog = actual.underdog === "Y" && matchWinner;
+              const isUnderdog = actual.underdog === "Y" && winner === actual.winner;
 
-              let score = 0;
               if (matchWinner) {
                 score += 1;
                 if (matchMethod) {
@@ -182,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     score += 1;
                   }
                 }
-                if (actual.underdog === "Y") score += 2;
+                if (isUnderdog) score += 2;
               }
 
               const winnerClass = matchWinner ? "correct" : "wrong";
@@ -191,7 +196,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? (matchRound ? "correct" : "wrong")
                 : "disabled";
 
-              const dogIcon = isUnderdog ? ` <span class="correct">🐶</span>` : "";
+              const dogIcon = isUnderdog
+                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
+                : "";
 
               const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
               const scoreText = actual.winner ? ` <span class="points">+${score} pts</span>` : "";
@@ -200,7 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <p class="scored-pick">
                   <span class="fight-name">${fight}</span>
                   <span class="user-pick">
-                    <span class="${winnerClass}">${winner}</span>${dogIcon} by 
+                    <span class="${winnerClass}">${winner}</span> ${dogIcon} by 
                     <span class="${methodClass}">${method}</span> ${roundText}
                     ${scoreText}
                   </span>
@@ -211,7 +218,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadLeaderboard() {
-    fetch("/api/leaderboard", { method: "POST" })
+    fetch("/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getLeaderboard" })
+    })
       .then(res => res.json())
       .then(data => {
         const board = document.getElementById("leaderboard");
@@ -250,9 +261,19 @@ document.addEventListener("DOMContentLoaded", () => {
           prevScore = score;
           rank++;
         });
+      });
+  }
 
-        if (data.champMessage) {
-          champBanner.textContent = `🏆 ${data.champMessage}`;
+  function loadChampionBanner() {
+    fetch("/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getChampionBanner" })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.message) {
+          champBanner.textContent = `🏆 ${data.message}`;
           champBanner.style.display = "block";
         }
       });
