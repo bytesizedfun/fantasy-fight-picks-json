@@ -173,6 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
             data.picks.forEach(({ fight, winner, method, round }) => {
               let score = 0;
               const actual = fightResults[fight] || {};
+              const hasResults = actual.winner && actual.method;
               const matchWinner = winner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
@@ -189,18 +190,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (isUnderdog) score += 2;
               }
 
-              const winnerClass = matchWinner ? "correct" : "wrong";
-              const methodClass = matchWinner ? (matchMethod ? "correct" : "wrong") : "wrong";
-              const roundClass = matchWinner && matchMethod && method !== "Decision"
+              const winnerClass = hasResults ? (matchWinner ? "correct" : "wrong") : "";
+              const methodClass = hasResults ? (matchWinner ? (matchMethod ? "correct" : "wrong") : "wrong") : "";
+              const roundClass = hasResults && matchWinner && matchMethod && method !== "Decision"
                 ? (matchRound ? "correct" : "wrong")
-                : "disabled";
-
-              const dogIcon = isUnderdog
-                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
                 : "";
 
+              const dogIcon = isUnderdog && hasResults
+                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
+                : isUnderdog ? `🐶` : "";
+
               const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
-              const scoreText = actual.winner ? ` <span class="points">+${score} pts</span>` : "";
+              const scoreText = hasResults ? ` <span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
                 <p class="scored-pick">
@@ -257,7 +258,6 @@ document.addEventListener("DOMContentLoaded", () => {
           rank++;
         });
 
-        // ✅ Only show banner if ALL fights have results
         const allResultsPosted = Object.values(data.fightResults || {}).every(
           res => res.winner && res.method
         );
