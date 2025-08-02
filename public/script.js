@@ -173,11 +173,12 @@ document.addEventListener("DOMContentLoaded", () => {
             data.picks.forEach(({ fight, winner, method, round }) => {
               let score = 0;
               const actual = fightResults[fight] || {};
-              const hasResults = actual.winner && actual.method;
-              const matchWinner = winner === actual.winner;
-              const matchMethod = method === actual.method;
-              const matchRound = round == actual.round;
-              const isUnderdog = actual.underdog === "Y";
+              const resultAvailable = actual.winner && actual.method;
+
+              const matchWinner = resultAvailable && winner === actual.winner;
+              const matchMethod = resultAvailable && method === actual.method;
+              const matchRound = resultAvailable && round == actual.round;
+              const isUnderdog = resultAvailable && actual.underdog === "Y";
 
               if (matchWinner) {
                 score += 1;
@@ -190,18 +191,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (isUnderdog) score += 2;
               }
 
-              const winnerClass = hasResults ? (matchWinner ? "correct" : "wrong") : "";
-              const methodClass = hasResults ? (matchWinner ? (matchMethod ? "correct" : "wrong") : "wrong") : "";
-              const roundClass = hasResults && matchWinner && matchMethod && method !== "Decision"
+              const winnerClass = resultAvailable ? (matchWinner ? "correct" : "wrong") : "";
+              const methodClass = resultAvailable && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
+              const roundClass = resultAvailable && matchWinner && matchMethod && method !== "Decision"
                 ? (matchRound ? "correct" : "wrong")
+                : "disabled";
+
+              const dogIcon = isUnderdog
+                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
                 : "";
 
-              const dogIcon = isUnderdog && hasResults
-                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
-                : isUnderdog ? `🐶` : "";
-
               const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
-              const scoreText = hasResults ? ` <span class="points">+${score} pts</span>` : "";
+              const scoreText = resultAvailable ? ` <span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
                 <p class="scored-pick">
@@ -258,9 +259,12 @@ document.addEventListener("DOMContentLoaded", () => {
           rank++;
         });
 
-        const allResultsPosted = Object.values(data.fightResults || {}).every(
+        // ✅ Only show champ banner if ALL fights have results
+        const totalFights = Object.keys(data.fightResults || {}).length;
+        const completeFights = Object.values(data.fightResults || {}).filter(
           res => res.winner && res.method
-        );
+        ).length;
+        const allResultsPosted = totalFights > 0 && totalFights === completeFights;
 
         if (data.champMessage && allResultsPosted) {
           champBanner.textContent = `🏆 ${data.champMessage}`;
