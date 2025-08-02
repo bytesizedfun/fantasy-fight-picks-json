@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         loadMyPicks();
         loadLeaderboard();
-        loadChampBanner();
+        loadChampionBanner();
       });
   }
 
@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "none";
           loadMyPicks();
           loadLeaderboard();
-          loadChampBanner();
+          loadChampionBanner();
         } else {
           alert(data.error || "Something went wrong.");
           submitBtn.disabled = false;
@@ -258,13 +258,15 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function loadChampBanner() {
-    fetch("/api/champions")
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.usernames?.length) {
-          champBanner.textContent = `🏆 Champion${data.usernames.length > 1 ? "s" : ""} of the Week: ${data.usernames.join(", ")}`;
+  function loadChampionBanner() {
+    fetch("/api?action=getChampionMessage")
+      .then(res => res.text())
+      .then(msg => {
+        if (msg) {
+          champBanner.textContent = `🏆 ${msg}`;
           champBanner.style.display = "block";
+        } else {
+          champBanner.style.display = "none";
         }
       });
   }
