@@ -173,12 +173,11 @@ document.addEventListener("DOMContentLoaded", () => {
             data.picks.forEach(({ fight, winner, method, round }) => {
               let score = 0;
               const actual = fightResults[fight] || {};
-              const resultAvailable = actual.winner && actual.method;
-
-              const matchWinner = resultAvailable && winner === actual.winner;
-              const matchMethod = resultAvailable && method === actual.method;
-              const matchRound = resultAvailable && round == actual.round;
-              const isUnderdog = resultAvailable && actual.underdog === "Y";
+              const hasResult = actual.winner && actual.method;
+              const matchWinner = hasResult && winner === actual.winner;
+              const matchMethod = hasResult && method === actual.method;
+              const matchRound = hasResult && round == actual.round;
+              const isUnderdog = actual.underdog === "Y";
 
               if (matchWinner) {
                 score += 1;
@@ -191,18 +190,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (isUnderdog) score += 2;
               }
 
-              const winnerClass = resultAvailable ? (matchWinner ? "correct" : "wrong") : "";
-              const methodClass = resultAvailable && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-              const roundClass = resultAvailable && matchWinner && matchMethod && method !== "Decision"
+              const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+              const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
+              const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
                 ? (matchRound ? "correct" : "wrong")
-                : "disabled";
+                : "";
 
-              const dogIcon = isUnderdog
+              const dogIcon = isUnderdog && hasResult
                 ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
                 : "";
 
-              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
-              const scoreText = resultAvailable ? ` <span class="points">+${score} pts</span>` : "";
+              const roundText = method === "Decision"
+                ? "(Decision)"
+                : `in Round <span class="${roundClass}">${round}</span>`;
+
+              const scoreText = hasResult ? ` <span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
                 <p class="scored-pick">
@@ -219,59 +221,63 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadLeaderboard() {
-    fetch("/api/leaderboard", { method: "POST" })
-      .then(res => res.json())
-      .then(data => {
-        const board = document.getElementById("leaderboard");
-        board.innerHTML = "";
-        const scores = Object.entries(data.scores || {}).sort((a, b) => b[1] - a[1]);
+    Promise.all([
+      fetch("/api/fights").then(r => r.json()),
+      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
+    ]).then(([fightsData, leaderboardData]) => {
+      const board = document.getElementById("leaderboard");
+      board.innerHTML = "";
 
-        let rank = 1;
-        let prevScore = null;
-        let actualRank = 1;
+      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
 
-        scores.forEach(([user, score], index) => {
-          if (score !== prevScore) actualRank = rank;
+      let rank = 1;
+      let prevScore = null;
+      let actualRank = 1;
 
-          const li = document.createElement("li");
-          let displayName = user;
-          let classes = [];
+      scores.forEach(([user, score], index) => {
+        if (score !== prevScore) actualRank = rank;
 
-          if (data.champs?.includes(user)) {
-            classes.push("champ-glow");
-            displayName = `<span class="crown">👑</span> ${displayName}`;
-          }
+        const li = document.createElement("li");
+        let displayName = user;
+        let classes = [];
 
-          if (index === scores.length - 1) {
-            classes.push("loser");
-            displayName = `💩 ${displayName}`;
-          }
-
-          if (user === username) {
-            classes.push("current-user");
-          }
-
-          li.className = classes.join(" ");
-          li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
-          board.appendChild(li);
-
-          prevScore = score;
-          rank++;
-        });
-
-        // ✅ Only show champ banner if ALL fights have results
-        const totalFights = Object.keys(data.fightResults || {}).length;
-        const completeFights = Object.values(data.fightResults || {}).filter(
-          res => res.winner && res.method
-        ).length;
-        const allResultsPosted = totalFights > 0 && totalFights === completeFights;
-
-        if (data.champMessage && allResultsPosted) {
-          champBanner.textContent = `🏆 ${data.champMessage}`;
-          champBanner.style.display = "block";
-        } else {
-          champBanner.style.display = "none";
+        if (leaderboardData.champs?.includes(user)) {
+          classes.push("champ-glow");
+          displayName = `<span class="crown">👑</span> ${displayName}`;
         }
+
+        if (index === scores.length - 1) {
+          classes.push("loser");
+          displayName = `💩 ${displayName}`;
+        }
+
+        if (user === username) {
+          classes.push("current-user");
+        }
+
+        li.className = classes.join(" ");
+        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
+        board.appendChild(li);
+
+        prevScore = score;
+        rank++;
       });
+
+      const totalFights = fightsData.length;
+      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
+        res => res.winner && res.method
+      ).length;
+
+      if (
+        leaderboardData.champMessage &&
+        totalFights > 0 &&
+        completedResults === totalFights
+      ) {
+        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
+        champBanner.style.display = "block";
+      } else {
+        champBanner.style.display = "none";
+      }
+    });
   }
 });
