@@ -4,231 +4,221 @@ document.addEventListener("DOMContentLoaded", async () => {
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
-  const leaderboard = document.getElementById("leaderboard");
   const myPicks = document.getElementById("myPicks");
+  const leaderboard = document.getElementById("leaderboard");
   const champBanner = document.getElementById("champBanner");
-  const tipDisplay = document.getElementById("tipDisplay");
   const scoringRules = document.getElementById("scoringRules");
 
   let username = localStorage.getItem("username");
-  let fights = [];
+  let submitted = localStorage.getItem("submitted") === "true";
+  let allFights = [];
 
-  const tooltips = {
-    "Winner": "+1 for choosing the winner",
-    "Method": "+1 for correct method if winner is also correct",
-    "Round": "+1 for correct round if Winner & Method are correct, and the fight did NOT go to Decision",
-    "Underdog": "+2 bonus for underdog win"
+  const showTip = (text) => {
+    const tipBox = document.getElementById("tipDisplay");
+    tipBox.textContent = text;
+    tipBox.style.display = "block";
   };
 
   document.querySelectorAll(".clickable").forEach(el => {
-    el.addEventListener("click", () => {
-      tipDisplay.innerText = el.dataset.tip || "";
-      tipDisplay.style.display = "block";
-    });
+    el.addEventListener("click", () => showTip(el.dataset.tip));
   });
 
-  if (username) {
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IT'S TIME, ${username.toUpperCase()}!`;
-    welcome.style.display = "block";
-    scoringRules.style.display = "block";
-    loadFights();
-    loadPicks();
-    loadLeaderboard();
-    loadChampionBanner();
+  async function fetchChampionBanner() {
+    try {
+      const res = await fetch("/api/championBanner");
+      const data = await res.json();
+      if (data.success && data.message) {
+        champBanner.innerHTML = `<marquee behavior="scroll" direction="left">${data.message}</marquee>`;
+        champBanner.style.display = "block";
+      }
+    } catch (err) {
+      console.error("Champion banner error:", err);
+    }
   }
 
-  window.lockUsername = () => {
-    const input = usernameInput.value.trim();
-    if (!input) return;
-    username = input;
-    localStorage.setItem("username", username);
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IT'S TIME, ${username.toUpperCase()}!`;
-    welcome.style.display = "block";
-    scoringRules.style.display = "block";
-    loadFights();
-    loadPicks();
-    loadLeaderboard();
-    loadChampionBanner();
-  };
-
-  async function loadFights() {
+  async function fetchFights() {
     const res = await fetch("/api/fights");
-    fights = await res.json();
+    allFights = await res.json();
+    renderFights();
+  }
 
+  function renderFights() {
     fightList.innerHTML = "";
-    fights.forEach(fight => {
+    allFights.forEach(({ fight, fighter1, fighter2, underdog }) => {
       const div = document.createElement("div");
-      div.className = "fight-pick";
-
-      const underdog = fight.underdog === "Fighter 1" ? fight.fighter1 : fight.underdog === "Fighter 2" ? fight.fighter2 : "";
-      const isUnderdog = fighter => fighter === underdog ? " 🐶" : "";
-
+      div.className = "fight";
       div.innerHTML = `
-        <h3>${fight.fight}</h3>
-        <select class="winner">
-          <option value="">Pick Winner</option>
-          <option value="${fight.fighter1}">${fight.fighter1}${isUnderdog(fight.fighter1)}</option>
-          <option value="${fight.fighter2}">${fight.fighter2}${isUnderdog(fight.fighter2)}</option>
-        </select>
-        <select class="method">
-          <option value="">Pick Method</option>
-          <option value="KO/TKO">KO/TKO</option>
-          <option value="Submission">Submission</option>
-          <option value="Decision">Decision</option>
-        </select>
-        <select class="round">
-          <option value="">Pick Round</option>
-          <option value="1">1️⃣</option>
-          <option value="2">2️⃣</option>
-          <option value="3">3️⃣</option>
-          <option value="4">4️⃣</option>
-          <option value="5">5️⃣</option>
-        </select>
+        <h3>${fight}</h3>
+        <label>Winner:
+          <select data-fight="${fight}" data-type="winner">
+            <option value="">Pick Winner</option>
+            <option value="${fighter1}">${fighter1}${underdog === "Fighter 1" ? " 🐶" : ""}</option>
+            <option value="${fighter2}">${fighter2}${underdog === "Fighter 2" ? " 🐶" : ""}</option>
+          </select>
+        </label>
+        <label>Method:
+          <select data-fight="${fight}" data-type="method">
+            <option value="">Pick Method</option>
+            <option value="KO/TKO">KO/TKO</option>
+            <option value="Submission">Submission</option>
+            <option value="Decision">Decision</option>
+          </select>
+        </label>
+        <label>Round:
+          <select data-fight="${fight}" data-type="round">
+            <option value="">Pick Round</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </label>
       `;
-
       fightList.appendChild(div);
     });
-
-    submitBtn.style.display = "block";
   }
 
-  window.submitPicks = async () => {
+  function lockUsername() {
+    username = usernameInput.value.trim();
+    if (username) {
+      localStorage.setItem("username", username);
+      location.reload();
+    }
+  }
+
+  async function fetchLeaderboard() {
+    const res = await fetch("/api/leaderboard", { method: "POST" });
+    const data = await res.json();
+    const entries = Object.entries(data.scores || {}).sort((a, b) => b[1] - a[1]);
+
+    const ranks = {};
+    let currentRank = 1;
+    let lastScore = null;
+    let displayedRank = 0;
+
+    leaderboard.innerHTML = "";
+
+    entries.forEach(([user, score], index) => {
+      if (score !== lastScore) {
+        displayedRank = currentRank;
+      }
+      ranks[user] = displayedRank;
+      lastScore = score;
+      currentRank++;
+
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="rank">#${ranks[user]}</span> ${user} - ${score} pts`;
+
+      if (data.champs && data.champs.includes(user)) {
+        li.classList.add("champion");
+        li.innerHTML = `<span class="crown">👑</span> ${li.innerHTML}`;
+      }
+
+      if (user === username) {
+        li.classList.add("current-user");
+      }
+
+      leaderboard.appendChild(li);
+    });
+
+    if (entries.length > 0) {
+      const lowestScore = entries[entries.length - 1][1];
+      entries.forEach(([user, score]) => {
+        if (score === lowestScore) {
+          const loser = leaderboard.querySelector(`li:contains('${user}')`);
+          if (loser) loser.innerHTML += " 💩";
+        }
+      });
+    }
+  }
+
+  async function fetchUserPicks() {
+    if (!username) return;
+    const res = await fetch("/api/picks", {
+      method: "POST",
+      body: JSON.stringify({ username }),
+      headers: { "Content-Type": "application/json" }
+    });
+    const data = await res.json();
+
+    if (data.success && data.picks.length > 0) {
+      submitted = true;
+      localStorage.setItem("submitted", "true");
+      renderSubmittedPicks(data.picks);
+    } else {
+      submitted = false;
+      localStorage.setItem("submitted", "false");
+    }
+  }
+
+  function renderSubmittedPicks(picks) {
+    myPicks.innerHTML = "<h3>Your Picks</h3>";
+    picks.forEach(({ fight, winner, method, round }) => {
+      const div = document.createElement("div");
+      div.className = "pick";
+      div.innerHTML = `
+        <strong>${fight}</strong><br>
+        🥊 Winner: <span>${winner}</span><br>
+        🧠 Method: <span>${method}</span><br>
+        ⏱️ Round: <span>${round}</span>
+      `;
+      myPicks.appendChild(div);
+    });
+  }
+
+  async function submitPicks() {
     const picks = [];
-    const pickDivs = document.querySelectorAll(".fight-pick");
-    pickDivs.forEach((div, i) => {
-      const winner = div.querySelector(".winner").value;
-      const method = div.querySelector(".method").value;
-      const round = div.querySelector(".round").value;
+    allFights.forEach(({ fight }) => {
+      const winner = document.querySelector(`[data-fight="${fight}"][data-type="winner"]`).value;
+      const method = document.querySelector(`[data-fight="${fight}"][data-type="method"]`).value;
+      const round = document.querySelector(`[data-fight="${fight}"][data-type="round"]`).value;
       if (winner && method) {
-        picks.push({
-          fight: fights[i].fight,
-          winner,
-          method,
-          round
-        });
+        picks.push({ fight, winner, method, round });
       }
     });
 
-    if (picks.length !== fights.length) {
-      alert("Please complete all picks!");
+    if (picks.length === 0) {
+      alert("Please make at least one pick.");
       return;
     }
 
     const res = await fetch("/api/submit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, picks })
+      body: JSON.stringify({ username, picks }),
+      headers: { "Content-Type": "application/json" }
     });
 
-    const data = await res.json();
-    if (data.success) {
+    const result = await res.json();
+    if (result.success) {
+      localStorage.setItem("submitted", "true");
       alert("Picks submitted!");
       location.reload();
     } else {
-      alert(data.error || "Error submitting picks.");
-    }
-  };
-
-  async function loadPicks() {
-    const res = await fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
-    });
-
-    const data = await res.json();
-    if (!data.success) return;
-
-    const res2 = await fetch("/api/leaderboard");
-    const results = await res2.json();
-
-    myPicks.innerHTML = "<h3>Your Picks</h3>";
-    data.picks.forEach(pick => {
-      const fight = pick.fight;
-      const result = results.fightResults?.[fight];
-      const points = result ? getPoints(pick, result) : 0;
-      const winColor = pick.winner === result?.winner ? "green" : "red";
-      const methodColor = pick.method === result?.method ? "green" : "red";
-      const roundColor = pick.round === result?.round ? "green" : "red";
-
-      const dogEmoji = result?.underdog === "Y" && pick.winner === result?.winner ? " 🐶" : "";
-
-      myPicks.innerHTML += `
-        <div class="pick-result">
-          <strong>${fight}</strong><br>
-          <span style="color:${winColor}">Winner: ${pick.winner}${dogEmoji}</span> |
-          <span style="color:${methodColor}">Method: ${pick.method}</span> |
-          <span style="color:${roundColor}">Round: ${pick.round}</span>
-          <span style="color:gold">(+${points})</span>
-        </div>
-      `;
-    });
-  }
-
-  function getPoints(pick, result) {
-    let pts = 0;
-    const isCorrectWinner = pick.winner === result.winner;
-    const isCorrectMethod = pick.method === result.method;
-    const isCorrectRound = pick.round === result.round;
-    const isUnderdog = result.underdog === "Y" && isCorrectWinner;
-
-    if (isCorrectWinner) {
-      pts += 1;
-      if (isCorrectMethod) {
-        pts += 1;
-        if (result.method !== "Decision" && isCorrectRound) {
-          pts += 1;
-        }
-      }
-      if (isUnderdog) {
-        pts += 2;
-      }
-    }
-    return pts;
-  }
-
-  async function loadLeaderboard() {
-    const res = await fetch("/api/leaderboard");
-    const data = await res.json();
-    if (!data || !data.scores) return;
-
-    const entries = Object.entries(data.scores).sort((a, b) => b[1] - a[1]);
-    leaderboard.innerHTML = "";
-
-    let rank = 1;
-    let prevScore = null;
-    let actualRank = 0;
-    const crownHolders = new Set(data.champs || []);
-
-    entries.forEach(([user, score], i) => {
-      if (score !== prevScore) actualRank = rank;
-      prevScore = score;
-      rank++;
-
-      const crown = crownHolders.has(user) ? " 👑" : "";
-      const poop = i === entries.length - 1 ? " 💩" : "";
-      const highlight = user === username ? "font-weight:bold;" : "";
-      const glow = crown ? "text-shadow: 0 0 6px gold;" : "";
-
-      leaderboard.innerHTML += `<li style="${highlight} ${glow}">${actualRank}. ${user}${crown}${poop} — ${score} pts</li>`;
-    });
-  }
-
-  async function loadChampionBanner() {
-    try {
-      const res = await fetch("/api/champions");
-      const data = await res.json();
-      if (data?.length) {
-        const latestDate = data[data.length - 1]?.date;
-        const latest = data.filter(d => d.date === latestDate);
-        const names = latest.map(c => c.username).join(", ");
-        champBanner.innerHTML = `🏆 Champion${latest.length > 1 ? "s" : ""} of the Week: ${names}`;
-        champBanner.style.display = "block";
-      }
-    } catch (err) {
-      console.error("Failed to load champ banner:", err);
+      alert(result.error || "Error submitting picks.");
     }
   }
+
+  // Init
+  if (username) {
+    usernamePrompt.style.display = "none";
+    welcome.textContent = `🎤 IT'S TIME ${username.toUpperCase()}!`;
+    welcome.style.display = "block";
+    scoringRules.style.display = "block";
+
+    await fetchChampionBanner();
+    await fetchFights();
+    await fetchUserPicks();
+    await fetchLeaderboard();
+
+    if (!submitted) {
+      fightList.style.display = "block";
+      submitBtn.style.display = "block";
+    }
+  } else {
+    usernamePrompt.style.display = "block";
+  }
+
+  window.lockUsername = lockUsername;
+  window.submitPicks = submitPicks;
 });
