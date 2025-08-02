@@ -25,6 +25,16 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.style.display = "block";
     document.getElementById("scoringRules").style.display = "block";
 
+    // ✅ Champion banner restored
+    fetch("/api/getChampionBanner")
+      .then(res => res.json())
+      .then(data => {
+        if (data.message) {
+          champBanner.textContent = `🏆 ${data.message}`;
+          champBanner.style.display = "block";
+        }
+      });
+
     fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -52,15 +62,13 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
-          const dog1 = underdog === "Fighter 1" ? " 🐶" : "";
-          const dog2 = underdog === "Fighter 2" ? " 🐶" : "";
+        data.forEach(({ fight, fighter1, fighter2 }) => {
           const div = document.createElement("div");
           div.className = "fight";
           div.innerHTML = `
             <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}${dog1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}${dog2}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
             <select name="${fight}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
@@ -173,7 +181,6 @@ document.addEventListener("DOMContentLoaded", () => {
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
 
-              // ✅ THE ONE CORRECTED LINE:
               const isUnderdog = actual.underdog === "Y" && winner === actual.winner;
 
               if (matchWinner) {
@@ -197,8 +204,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
                 : "";
 
-              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
-              const scoreText = actual.winner ? ` <span class="points">+${score} pts</span>` : "";
+              const roundText = method === "Decision"
+                ? "(Decision)"
+                : `in Round <span class="${roundClass}">${round}</span>`;
+              const scoreText = actual.winner
+                ? ` <span class="points">+${score} pts</span>`
+                : "";
 
               myPicksDiv.innerHTML += `
                 <p class="scored-pick">
