@@ -165,14 +165,15 @@ document.addEventListener("DOMContentLoaded", () => {
           .then(resultData => {
             const fightResults = resultData.fightResults || {};
             data.picks.forEach(({ fight, winner, method, round }) => {
-              let score = 0;
               const actual = fightResults[fight] || {};
               const cleanWinner = winner.replace(" 🐶", "");
+
               const matchWinner = cleanWinner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
-              const isUnderdog = actual.underdog === "Y";
+              const isUnderdog = actual.underdog === "Y" && matchWinner;
 
+              let score = 0;
               if (matchWinner) {
                 score += 1;
                 if (matchMethod) {
@@ -181,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     score += 1;
                   }
                 }
-                if (isUnderdog) score += 2;
+                if (actual.underdog === "Y") score += 2;
               }
 
               const winnerClass = matchWinner ? "correct" : "wrong";
@@ -190,9 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? (matchRound ? "correct" : "wrong")
                 : "disabled";
 
-              const dogIcon = isUnderdog
-                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
-                : "";
+              const dogIcon = isUnderdog ? ` <span class="correct">🐶</span>` : "";
 
               const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
               const scoreText = actual.winner ? ` <span class="points">+${score} pts</span>` : "";
@@ -201,7 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <p class="scored-pick">
                   <span class="fight-name">${fight}</span>
                   <span class="user-pick">
-                    <span class="${winnerClass}">${winner}</span> ${dogIcon} by 
+                    <span class="${winnerClass}">${winner}</span>${dogIcon} by 
                     <span class="${methodClass}">${method}</span> ${roundText}
                     ${scoreText}
                   </span>
