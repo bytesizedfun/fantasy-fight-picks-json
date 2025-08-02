@@ -25,16 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.style.display = "block";
     document.getElementById("scoringRules").style.display = "block";
 
-    // ✅ Champion banner restored
-    fetch("/api/getChampionBanner")
-      .then(res => res.json())
-      .then(data => {
-        if (data.message) {
-          champBanner.textContent = `🏆 ${data.message}`;
-          champBanner.style.display = "block";
-        }
-      });
-
     fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -180,7 +170,6 @@ document.addEventListener("DOMContentLoaded", () => {
               const matchWinner = winner === actual.winner;
               const matchMethod = method === actual.method;
               const matchRound = round == actual.round;
-
               const isUnderdog = actual.underdog === "Y" && winner === actual.winner;
 
               if (matchWinner) {
@@ -204,12 +193,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
                 : "";
 
-              const roundText = method === "Decision"
-                ? "(Decision)"
-                : `in Round <span class="${roundClass}">${round}</span>`;
-              const scoreText = actual.winner
-                ? ` <span class="points">+${score} pts</span>`
-                : "";
+              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
+              const scoreText = actual.winner ? ` <span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
                 <p class="scored-pick">
