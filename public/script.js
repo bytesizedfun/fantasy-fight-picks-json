@@ -251,9 +251,8 @@ document.addEventListener("DOMContentLoaded", () => {
           rank++;
         });
 
-        // ✅ Champion banner display restored properly
         if (data.champMessage) {
-          champBanner.textContent = data.champMessage;
+          champBanner.textContent = `🏆 ${data.champMessage}`;
           champBanner.style.display = "block";
         }
       });
