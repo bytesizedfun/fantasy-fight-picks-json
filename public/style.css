@@ -1,241 +1,411 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Teko:wght@500;600;700&display=swap');
 
-:root {
-  --bg-dark: #0b0b0d;
-  --bg-panel: #141416;
-  --neon-cyan: #00f5ff;
-  --neon-red: #ff003c;
-  --silver: #b0b3b8;
-  --success: #2fffa0;
-  --error: #ff4e4e;
-  --text-main: #e4e6eb;
-  --muted: #b7bbc2;
-  --shadow-dark: rgba(0,0,0,0.6);
-}
+/* =========================
+   FUTURISTIC THEME — VARS
+   ========================= */
+:root{
+  /* Core palette */
+  --space-0: #0b0f14;     /* page bg */
+  --space-1: #0e151d;     /* panel */
+  --space-2: #121c27;     /* tiles */
+  --space-3: #162231;     /* tiles hover/alt */
 
-* { box-sizing: border-box; }
+  --text: #eaf2ff;        /* primary text */
+  --muted: #9fb2c7;
 
-body {
-  background: var(--bg-dark);
-  color: var(--text-main);
-  font-family: 'Orbitron', sans-serif;
-  margin: 0;
-  padding: 20px;
-}
+  --neon: #3ce9ff;        /* electric cyan accent */
+  --neon-rgb: 60,233,255;
+  --violet: #7a5cff;      /* subtle secondary accent */
 
-/* ===== Logo (use your preferred mobile-friendly style) ===== */
-.logo-banner {
-  max-width: 220px;
-  display: block;
-  margin: 0 auto 10px;
-  height: auto;
-}
-/* If you ever use .logo_fighter, keep it tidy too */
-.logo_fighter {
-  display: block;
-  max-width: 200px;
-  height: auto;
-  margin: 0 auto 16px;
+  --success: #36d982;
+  --error: #ff5b6b;
+  --warning: #ffb84d;
+
+  --divider: rgba(255,255,255,0.06);
+  --shadow: rgba(0,0,0,0.6);
 }
 
-/* Panels */
-#app {
-  max-width: 580px;
-  margin: auto;
-  padding: 20px;
-  background: var(--bg-panel);
-  border-radius: 16px;
-  border: 2px solid rgba(255,255,255,0.08);
-  box-shadow: 0 0 40px rgba(0, 245, 255, 0.05);
-}
-
-/* Champion Banner */
-.champ-banner {
-  text-align: center;
-  font-size: 2rem;
-  font-weight: 900;
-  color: var(--neon-cyan);
-  background: linear-gradient(120deg, rgba(0,245,255,0.2), rgba(255,0,60,0.2), rgba(0,245,255,0.2));
-  background-size: 300% 300%;
-  animation: bannerGlow 6s ease infinite;
-  border-radius: 14px;
-  padding: 14px;
-  border: 1px solid var(--neon-cyan);
-  text-shadow: 0 0 12px var(--neon-cyan), 0 0 24px var(--neon-red);
-  margin: 10px 0 20px 0;
-}
-@keyframes bannerGlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* Leaderboard */
-#leaderboard {
-  list-style: none;
-  padding: 0;
-  margin-top: 20px;
-}
-#leaderboard li {
-  background: rgba(255,255,255,0.04);
-  margin: 10px 0;
-  padding: 14px;
-  display: grid;
-  grid-template-columns: 50px auto 60px;
-  align-items: center;
-  border-radius: 10px;
-  border-left: 4px solid var(--silver);
-  transition: all 0.3s ease;
-}
-#leaderboard li:hover {
-  border-left-color: var(--neon-cyan);
-  box-shadow: 0 0 12px rgba(0,245,255,0.4);
-  transform: translateX(4px);
-}
-
-/* ✅ Flash ALL first-place winners.
-   Add .champion or .rank-1 to every tied #1 item in your JS/HTML. */
-#leaderboard li.champion,
-#leaderboard li.rank-1,
-#leaderboard li:first-child {
-  border-left-color: var(--neon-cyan);
-  background: rgba(0,245,255,0.1);
-  box-shadow: 0 0 14px rgba(0,245,255,0.5);
-  animation: pulseChampion 1.8s infinite;
-}
-@keyframes pulseChampion {
-  0%,100% { box-shadow: 0 0 14px rgba(0,245,255,0.5); }
-  50% { box-shadow: 0 0 28px rgba(255,0,60,0.6); }
-}
-
-/* Fight Blocks */
-.fight {
-  background: rgba(255,255,255,0.03);
-  padding: 14px;
-  margin-bottom: 18px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: inset 0 0 10px rgba(0,245,255,0.05);
-}
-.fight h3 {
-  color: var(--neon-cyan);
-  margin: 0 0 8px 0;
-}
-
-/* Pick Results */
-.correct {
-  color: var(--success);
-  text-shadow: 0 0 6px var(--success);
-  animation: correctShimmer 2.2s ease-in-out infinite;
-}
-@keyframes correctShimmer {
-  0%,100% { filter: drop-shadow(0 0 0px var(--success)); opacity: 1; }
-  50% { filter: drop-shadow(0 0 8px var(--success)); opacity: 0.86; }
-}
-.wrong { color: var(--error); text-shadow: 0 0 6px var(--error); }
-.points { color: var(--neon-cyan); font-weight: 900; }
-
-/* Buttons */
-button {
-  background: var(--neon-cyan);
-  color: var(--bg-dark);
-  font-weight: 900;
-  border: none;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 0 14px rgba(0,245,255,0.4);
-}
-button:hover {
-  background: var(--neon-red);
-  color: white;
-  box-shadow: 0 0 14px rgba(255,0,60,0.5);
-}
-
-/* ===== Cleaner “Your Picks” section =====
-   Suggested structure:
-   <div id="yourPicks" class="picks">
-     <div class="pick-row">
-       <div class="pick-fight">Fighter A vs Fighter B</div>
-       <div class="pick-choice correct">Your: Fighter A (KO/TKO R1) 🐶</div>
-       <div class="pick-result">Result: Fighter A (KO/TKO R1)</div>
-       <div class="pick-points"><span class="pill pill-points">+3</span></div>
-     </div>
-   </div>
-*/
-.picks {
-  margin-top: 18px;
-  display: grid;
-  gap: 10px;
-}
-.pick-row {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 6px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
-  padding: 12px;
-}
-@media (min-width: 520px) {
-  .pick-row {
-    grid-template-columns: 1.1fr 1fr auto 80px;
-    align-items: center;
-  }
-}
-.pick-fight {
-  font-weight: 900;
-  color: var(--text-main);
-  letter-spacing: 0.02em;
-}
-.pick-choice,
-.pick-result {
-  font-weight: 600;
-  color: var(--muted);
-}
-.pick-points { justify-self: end; }
-
-.pill {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 900;
-  font-size: 0.95rem;
-  line-height: 1;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(4px);
-}
-.pill-points {
-  color: var(--bg-dark);
-  background: linear-gradient(90deg, var(--neon-cyan), #74fff6);
-  border: none;
-  box-shadow: 0 0 12px rgba(0,245,255,0.35);
-}
-.pill-underdog {
-  color: var(--neon-cyan);
-  border-color: rgba(0,245,255,0.35);
-}
-
-/* Optional subtle dividers for readability */
-.pick-row :where(.pick-choice, .pick-result) {
-  position: relative;
-  padding-left: 10px;
-}
-.pick-row :where(.pick-choice, .pick-result)::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 4px;
-  bottom: 4px;
-  width: 2px;
-  border-radius: 2px;
-  background: rgba(255,255,255,0.06);
-}
-
-/* Accessibility: respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce){
   * { animation: none !important; transition: none !important; }
+}
+
+/* ============ Base ============ */
+body{
+  font-family:'Teko',sans-serif;
+  background:
+    radial-gradient(1200px 800px at 10% -10%, rgba(122,92,255,0.10), transparent 60%),
+    radial-gradient(1400px 900px at 110% 10%, rgba(60,233,255,0.10), transparent 60%),
+    var(--space-0);
+  color:var(--text);
+  padding:20px;
+  margin:0;
+}
+
+.logo-banner{
+  max-width:240px;
+  display:block;
+  margin:0 auto 14px;
+  height:auto;
+  filter: drop-shadow(0 6px 24px rgba(var(--neon-rgb),0.12));
+}
+
+#app{
+  max-width:620px;
+  margin:0 auto;
+  padding:22px;
+  background:linear-gradient(180deg, var(--space-1), var(--space-2));
+  border-radius:16px;
+  border:1px solid var(--divider);
+  box-shadow:
+    0 12px 36px rgba(0,0,0,0.45),
+    inset 0 0 0 1px rgba(255,255,255,0.02);
+}
+
+/* ======= Fight Blocks ======= */
+.fight{
+  margin-bottom:18px;
+  padding:14px;
+  border-radius:14px;
+  background: linear-gradient(180deg, var(--space-2), var(--space-3));
+  border:1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.fight::after{
+  content:"";
+  position:absolute; inset:-2px;
+  border-radius:16px;
+  pointer-events:none;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    rgba(var(--neon-rgb),0.18),
+    transparent 25%,
+    rgba(122,92,255,0.16),
+    transparent 50%,
+    rgba(var(--neon-rgb),0.18),
+    transparent 75%,
+    rgba(122,92,255,0.16)
+  );
+  filter: blur(18px);
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  mask: linear-gradient(#000 40%, transparent 100%);
+}
+
+.fight h3{
+  color:var(--text);
+  margin:0 0 8px 0;
+  font-weight:700;
+  letter-spacing:.5px;
+}
+
+.fight label{
+  display:block;
+  margin:6px 0;
+  font-size:1rem;
+  line-height:1.4;
+  cursor:pointer;
+}
+.fight label span{ margin-left:4px; }
+
+.fight input[type="radio"]{
+  margin-right:8px;
+  transform:scale(1.15);
+  vertical-align:middle;
+}
+
+/* ======= Inputs ======= */
+input[type="text"], select{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border-radius:10px;
+  border:1px solid var(--divider);
+  background-color:#1a2634;
+  color:#ecf5ff;
+  outline:none;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+input[type="text"]:focus, select:focus{
+  border-color: rgba(var(--neon-rgb),0.6);
+  box-shadow: 0 0 0 3px rgba(var(--neon-rgb),0.18);
+}
+
+/* ======= Buttons ======= */
+button{
+  background: linear-gradient(90deg, var(--neon), #7ff0ff);
+  color:#051017;
+  padding:12px 16px;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  width:100%;
+  font-weight:900;
+  margin-top:12px;
+  font-family:'Teko',sans-serif;
+  font-size:1.3rem;
+  letter-spacing:1px;
+  box-shadow: 0 12px 28px rgba(var(--neon-rgb),0.28);
+  transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+}
+button:hover{ filter: brightness(1.05); }
+button:active{ transform:translateY(1px); box-shadow: 0 8px 20px rgba(var(--neon-rgb),0.25); }
+
+/* ======= Section Headings ======= */
+#welcome{
+  font-size:1.6rem;
+  color:var(--text);
+  text-align:center;
+  margin:20px 0 14px;
+  font-weight:800;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  border-bottom:1px solid var(--divider);
+  padding-bottom:10px;
+}
+
+/* ======= Your Picks ======= */
+#myPicks h3{
+  color:var(--neon);
+  margin-bottom:10px;
+  text-align:center;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  font-family:'Bebas Neue',sans-serif;
+  font-size:2rem;
+  text-shadow: 0 0 14px rgba(var(--neon-rgb),0.22);
+}
+
+#myPicks p{
+  background-color:#172330;
+  padding:10px 12px;
+  margin:8px 0;
+  border-left:4px solid var(--neon);
+  border-radius:10px;
+  font-size:1rem;
+  line-height:1.5;
+  color:#e9f6ff;
+}
+
+.fight-name{
+  font-weight:800;
+  color:#ffffff;
+  display:block;
+  margin-bottom:2px;
+  font-size:1.1rem;
+  letter-spacing:.5px;
+}
+
+.user-pick{ font-style:italic; color:var(--muted); font-size:.95rem; letter-spacing:.3px; }
+
+.correct{ color:var(--success); font-weight:900; }
+.wrong{ color:var(--error); font-weight:900; }
+
+.points{ color:var(--neon); font-weight:900; }
+
+.underdog{ color:var(--warning); font-weight:900; }
+
+.correct .dog-icon{ color:var(--success); margin-left:4px; }
+.wrong .dog-icon{ color:var(--error); margin-left:4px; }
+
+/* ======= Leaderboard Title ======= */
+.leader-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:3rem;
+  font-weight:1000;
+  text-align:center;
+  margin-top:42px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:var(--neon);
+  text-shadow: 0 0 12px rgba(var(--neon-rgb),0.35);
+  -webkit-text-stroke:.6px rgba(0,0,0,0.45);
+  border-bottom:3px solid rgba(var(--neon-rgb),0.6);
+  padding-bottom:12px;
+}
+
+/* ======= Leaderboard ======= */
+#leaderboard{
+  padding:16px;
+  margin-top:20px;
+  background:var(--space-2);
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 0 18px rgba(0,0,0,0.35), 0 0 24px rgba(var(--neon-rgb),0.08);
+  list-style:none;
+}
+
+#leaderboard li{
+  background:linear-gradient(180deg, var(--space-2), var(--space-3));
+  padding:12px 16px;
+  margin:10px 0;
+  border-radius:12px;
+  font-weight:900;
+  display:grid;
+  grid-template-columns: 44px auto 70px; /* Rank/Crown | Name | Points */
+  align-items:center;
+  border-left:4px solid rgba(var(--neon-rgb),0.7);
+  color:var(--text);
+  font-size:1.22rem;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  font-family:'Bebas Neue',sans-serif;
+  transition: transform .2s ease, background .2s ease;
+  text-shadow:0 1px 0 var(--shadow);
+}
+#leaderboard li:hover{ background: var(--space-3); transform: translateY(-1px); }
+
+#leaderboard li .rank-number{
+  font-size:1.55rem;
+  font-weight:1000;
+  text-align:center;
+  color:var(--text);
+}
+
+#leaderboard li .name-cell{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;              /* allow ellipsis */
+  overflow:hidden;
+}
+#leaderboard li .name-cell span,
+#leaderboard li .name-cell strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#leaderboard li .points-cell{
+  text-align:right;
+  color:var(--neon);
+  font-weight:1000;
+  text-shadow: 0 0 10px rgba(var(--neon-rgb),0.25);
+}
+
+.crown{
+  animation:crownBounce 1.5s infinite ease-in-out;
+  display:inline-block;
+  vertical-align:middle;
+  filter: drop-shadow(0 0 8px rgba(var(--neon-rgb),0.50));
+}
+@keyframes crownBounce{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-4px);} }
+
+.champ-glow{
+  color:var(--neon) !important;
+  text-shadow: 0 0 10px rgba(var(--neon-rgb),0.35);
+  -webkit-text-stroke:.6px rgba(0,0,0,0.45);
+  font-size:1.45rem;
+}
+
+.loser{
+  background-color:#21161a !important;
+  color:#d8c7cc !important;
+  border-left:4px solid #7a2d3a !important;
+}
+
+.current-user{ font-weight:1000; }
+
+/* ======= Champion Banner ======= */
+.champ-banner{
+  margin:14px 0 22px 0;
+  padding:14px 0;
+  text-align:center;
+  font-size:2rem;
+  font-family:'Anton',sans-serif;
+  font-weight:1000;
+  color:#03141a;
+  background:linear-gradient(90deg, var(--neon), #ffffff, var(--neon));
+  background-size:280% 100%;
+  animation: bannerSlide 7s linear infinite;
+  border-radius:14px;
+  -webkit-text-stroke:1px rgba(255,255,255,0.85);
+  text-shadow:0 2px 4px rgba(0,0,0,0.35);
+  box-shadow: 0 0 22px rgba(var(--neon-rgb),0.32);
+}
+@keyframes bannerSlide{ 0%{background-position:0% 50%;} 100%{background-position:100% 50%;} }
+
+/* ======= Scoring Box ======= */
+.scoring-box.tight{
+  background: linear-gradient(180deg, var(--space-2), var(--space-3));
+  border-radius:14px;
+  padding:16px 18px;
+  margin-bottom:20px;
+  box-shadow: 0 0 14px rgba(var(--neon-rgb),0.18);
+  font-size:.98rem;
+  line-height:1.5;
+  color:var(--text);
+  border:1px solid rgba(255,255,255,0.05);
+}
+.scoring-box.tight div{ margin:4px 0; }
+
+/* =========================
+   RESPONSIVE: MOBILE FIRST
+   ========================= */
+@media (max-width: 600px){
+  .logo-banner{ max-width:150px; margin-bottom:10px; }
+
+  #app{ padding:18px; }
+
+  .leader-title{
+    font-size:2.3rem;
+    border-bottom-width:2px;
+    padding-bottom:10px;
+    letter-spacing:2px;
+  }
+
+  .champ-banner{
+    font-size:1.7rem;
+    padding:12px 0;
+    border-radius:12px;
+  }
+
+  #leaderboard{
+    padding:14px;
+    border-radius:12px;
+  }
+
+  #leaderboard li{
+    grid-template-columns: 36px auto 56px;
+    font-size:1.08rem;
+    padding:10px 12px;
+    border-radius:10px;
+    margin:8px 0;
+  }
+  #leaderboard li .rank-number{ font-size:1.35rem; }
+  #leaderboard li .points-cell{ font-size:1.05rem; }
+
+  .fight{ padding:12px; border-radius:12px; }
+  #myPicks h3{ font-size:1.6rem; }
+  button{ font-size:1.15rem; padding:11px 14px; border-radius:10px; }
+  input[type="text"], select{ padding:9px; border-radius:9px; }
+  .scoring-box.tight{ padding:14px 16px; border-radius:12px; }
+}
+
+@media (max-width: 380px){
+  .logo-banner{ max-width:120px; }
+
+  .leader-title{
+    font-size:2rem;
+    letter-spacing:1.5px;
+  }
+
+  .champ-banner{
+    font-size:1.55rem;
+    padding:10px 0;
+  }
+
+  #leaderboard li{
+    grid-template-columns: 30px auto 52px;
+    font-size:1rem;
+  }
+  #leaderboard li .rank-number{ font-size:1.2rem; }
+  #leaderboard li .points-cell{ font-size:1rem; }
+
+  /* tighter spacing overall */
+  #app{ padding:16px; }
 }
