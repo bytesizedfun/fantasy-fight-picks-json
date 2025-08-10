@@ -160,28 +160,22 @@ button:hover {
   margin-left: 4px;
 }
 
-/* ===== Flashy Leaderboard Title ===== */
+/* ===== Leaderboard Title (matching username gold style) ===== */
 .leader-title {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 3rem;
   font-weight: 900;
   text-align: center;
   margin-top: 40px;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  background: linear-gradient(90deg, #FFD700, #fff6c1, #FFD700);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shimmerTitle 4s linear infinite;
-  text-shadow: 0 0 14px rgba(255, 215, 0, 0.9), 0 0 24px rgba(255, 215, 0, 0.6);
+  color: #f7d774;
+  text-shadow:
+    0 0 2px rgba(0,0,0,0.9),
+    0 0 8px rgba(247,215,116,0.45);
+  -webkit-text-stroke: 0.6px rgba(0,0,0,0.5);
   border-bottom: 3px solid #e6b13f;
-  padding-bottom: 12px;
-}
-
-@keyframes shimmerTitle {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
+  padding-bottom: 10px;
 }
 
 /* ===== Leaderboard readability & alignment ===== */
@@ -265,7 +259,7 @@ button:hover {
   font-weight: bold;
 }
 
-/* ===== Champ banner (unchanged from your file) ===== */
+/* ===== Champ banner (unchanged) ===== */
 .champ-banner {
   margin: 10px 0 20px 0;
   padding: 12px 0;
