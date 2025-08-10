@@ -162,6 +162,19 @@ button:hover {
   box-shadow: 0 0 14px rgba(255,0,60,0.5);
 }
 
+/* UNIVERSAL focus glow for all form elements */
+select, input, textarea, button {
+  border: 1px solid var(--neon-cyan);
+  background: #1a1a1a;
+  color: #fff;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+select:focus, input:focus, textarea:focus, button:focus {
+  outline: none;
+  border-color: var(--neon-red);
+  box-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-red);
+}
+
 /* Mobile */
 @media (max-width: 600px) {
   /* Logo smaller */
@@ -174,22 +187,13 @@ button:hover {
     line-height: 1.35;
   }
 
-  /* Bigger touch-friendly selects with neon glow on focus */
+  /* Bigger selects */
   .fight select {
     width: 100%;
     margin-top: 6px;
     padding: 12px;
     font-size: 1.08rem;
     border-radius: 6px;
-    background: #1a1a1a;
-    color: #fff;
-    border: 1px solid var(--neon-cyan);
-    transition: box-shadow 0.25s ease, border-color 0.25s ease;
-  }
-  .fight select:focus {
-    outline: none;
-    border-color: var(--neon-red);
-    box-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-red);
   }
   .fight select option {
     background: #1a1a1a;
@@ -205,7 +209,7 @@ button:hover {
     font-size: 1.1rem;
   }
 
-  /* Center "No picks submitted." message */
+  /* Center "No picks submitted." */
   #myPicks > p {
     text-align: center;
     margin: 12px 0;
