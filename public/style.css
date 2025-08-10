@@ -174,10 +174,26 @@ button:hover {
     line-height: 1.35;
   }
 
-  /* Full-width dropdowns */
+  /* Bigger touch-friendly selects with neon glow on focus */
   .fight select {
     width: 100%;
     margin-top: 6px;
+    padding: 12px;
+    font-size: 1.08rem;
+    border-radius: 6px;
+    background: #1a1a1a;
+    color: #fff;
+    border: 1px solid var(--neon-cyan);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .fight select:focus {
+    outline: none;
+    border-color: var(--neon-red);
+    box-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-red);
+  }
+  .fight select option {
+    background: #1a1a1a;
+    color: #fff;
   }
 
   /* Center submit button */
@@ -185,6 +201,8 @@ button:hover {
     display: block;
     width: 100%;
     margin: 12px auto 0;
+    padding: 14px;
+    font-size: 1.1rem;
   }
 
   /* Center "No picks submitted." message */
