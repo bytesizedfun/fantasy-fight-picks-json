@@ -1,24 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Teko:wght@500;600;700&display=swap');
 
-/* ===== Brand palette (matches the logo colors) ===== */
+/* ===== Brand palette: Smashing Machine theme ===== */
 :root{
-  --navy: #0f1b24;        /* deep navy background */
-  --panel: #111f2a;       /* card/panel */
-  --tile: #182531;        /* list tiles */
-  --tile-alt: #1d2b38;    /* alt tiles */
-  --bone: #e9e4d6;        /* light bone text */
-  --bone-strong:#f1ebdc;  /* brighter bone for headings */
-  --warm-gold:#d4a254;    /* warm gold (not neon) */
-  --gold-rgb: 212,162,84;
-  --metal-beige:#c8b89a;  /* subtle metallic/beige accent */
-  --warm-red:#a44433;     /* muted warm red */
+  --ink: #0b0b0b;            /* page background (near-black) */
+  --panel: #121212;          /* cards/panels */
+  --tile: #181818;           /* list tiles */
+  --tile-alt: #1f1f1f;       /* alt tiles */
+  --text: #f2f2ec;           /* off-white text */
+  --text-muted:#cfd3c6;
+
+  --lime: #d7e34f;           /* acid-lime headline/cta */
+  --lime-rgb: 215,227,79;
+
+  --cta: #d7e34f;            /* buttons = lime */
+  --cta-hover: #c7d43f;
+
+  --orange: #ff7a3c;         /* optional accent (underdog, small pops) */
+  --error: #e74c3c;
+  --success: #4caf50;
+
+  /* Reserved ONLY for inside the leaderboard rows (per your request) */
+  --warm-gold: #e6b13f;
+  --gold-rgb: 230,177,63;
+
   --shadow: rgba(0,0,0,0.65);
 }
 
 body{
   font-family:'Teko',sans-serif;
-  background-color:var(--navy);
-  color:var(--bone);
+  background-color:var(--ink);
+  color:var(--text);
   padding:20px;
   margin:0;
 }
@@ -36,20 +47,21 @@ body{
   background-color:var(--panel);
   border-radius:10px;
   box-shadow:0 0 12px rgba(0,0,0,0.6);
-  border:1px solid rgba(200,184,154,0.18); /* faint metallic edge */
+  border:1px solid rgba(255,255,255,0.04);
 }
 
+/* ===== Fight blocks ===== */
 .fight{
   margin-bottom:20px;
   padding:12px;
   border-radius:8px;
   background-color:var(--tile);
-  border:2px solid var(--warm-red);
-  box-shadow:0 0 10px rgba(164,68,51,0.35);
+  border:2px solid var(--lime);
+  box-shadow:0 0 10px rgba(var(--lime-rgb),0.18);
 }
 
 .fight h3{
-  color:var(--bone-strong);
+  color:var(--text);
   margin-top:0;
 }
 
@@ -69,37 +81,39 @@ body{
   vertical-align:middle;
 }
 
+/* ===== Inputs ===== */
 input[type="text"],select{
   width:100%;
   padding:8px;
   margin:6px 0;
   border-radius:6px;
-  border:1px solid rgba(200,184,154,0.25);
-  background-color:#223140;
+  border:1px solid rgba(255,255,255,0.08);
+  background-color:#222;
   color:#fff;
 }
 
+/* ===== Buttons (lime) ===== */
 button{
-  background-color:var(--warm-red);
-  color:var(--bone-strong);
+  background-color:var(--cta);
+  color:#101010;
   padding:10px 16px;
   border:none;
   border-radius:8px;
   cursor:pointer;
   width:100%;
-  font-weight:bold;
+  font-weight:800;
   margin-top:10px;
   font-family:'Teko',sans-serif;
-  font-size:1.2rem;
+  font-size:1.25rem;
   letter-spacing:1px;
-  box-shadow:0 6px 18px rgba(164,68,51,0.35);
+  box-shadow:0 6px 18px rgba(var(--lime-rgb),0.25);
 }
 
-button:hover{ background-color:#8f3b2d; }
+button:hover{ background-color:var(--cta-hover); }
 
 #welcome{
   font-size:1.5rem;
-  color:var(--bone-strong);
+  color:var(--text);
   text-align:center;
   margin:20px 0;
   font-weight:bold;
@@ -107,8 +121,9 @@ button:hover{ background-color:#8f3b2d; }
   text-transform:uppercase;
 }
 
+/* ===== Your Picks ===== */
 #myPicks h3{
-  color:var(--warm-gold); /* unified gold */
+  color:var(--lime); /* lime, not gold */
   margin-bottom:10px;
   text-align:center;
   text-transform:uppercase;
@@ -119,7 +134,7 @@ button:hover{ background-color:#8f3b2d; }
   background-color:var(--tile-alt);
   padding:10px 12px;
   margin:8px 0;
-  border-left:4px solid var(--warm-gold);
+  border-left:4px solid var(--lime);
   border-radius:6px;
   font-size:1rem;
   line-height:1.5;
@@ -136,19 +151,19 @@ button:hover{ background-color:#8f3b2d; }
   letter-spacing:.5px;
 }
 
-.user-pick{ font-style:italic; color:#cfd6dd; font-size:.95rem; letter-spacing:.3px; }
+.user-pick{ font-style:italic; color:var(--text-muted); font-size:.95rem; letter-spacing:.3px; }
 
-.correct{ color:#4CAF50; font-weight:bold; }
-.wrong{ color:#e74c3c; font-weight:bold; }
+.correct{ color:var(--success); font-weight:bold; }
+.wrong{ color:var(--error); font-weight:bold; }
 
-.points{ color:var(--warm-gold); font-weight:bold; }
+.points{ color:var(--lime); font-weight:bold; }
 
-.underdog{ color:#ff9a3d; font-weight:bold; }
+.underdog{ color:var(--orange); font-weight:bold; }
 
-.correct .dog-icon{ color:#4CAF50; margin-left:4px; }
-.wrong .dog-icon{ color:#e74c3c; margin-left:4px; }
+.correct .dog-icon{ color:var(--success); margin-left:4px; }
+.wrong .dog-icon{ color:var(--error); margin-left:4px; }
 
-/* ===== Leaderboard Title (unified with username gold, new palette) ===== */
+/* ===== Leaderboard Title (lime, NOT gold) ===== */
 .leader-title{
   font-family:'Bebas Neue',sans-serif;
   font-size:3rem;
@@ -157,26 +172,27 @@ button:hover{ background-color:#8f3b2d; }
   margin-top:40px;
   letter-spacing:3px;
   text-transform:uppercase;
-  color:var(--warm-gold);
+  color:var(--lime);
   text-shadow:
     0 0 2px rgba(0,0,0,0.9),
-    0 0 8px rgba(var(--gold-rgb),0.45);
+    0 0 8px rgba(var(--lime-rgb),0.35);
   -webkit-text-stroke:.6px rgba(0,0,0,0.45);
-  border-bottom:3px solid var(--warm-gold);
+  border-bottom:3px solid var(--lime);
   padding-bottom:10px;
 }
 
-/* ===== Leaderboard readability & alignment (navy theme) ===== */
+/* ===== Leaderboard container ===== */
 #leaderboard{
   padding:16px;
   margin-top:20px;
   background:var(--tile);
   border-radius:12px;
-  border:3px solid var(--warm-gold);
-  box-shadow:0 0 12px rgba(var(--gold-rgb),0.18);
+  border:3px solid var(--lime); /* frame uses lime */
+  box-shadow:0 0 12px rgba(var(--lime-rgb),0.18);
   list-style:none;
 }
 
+/* ===== Leaderboard rows (ONLY place that uses gold) ===== */
 #leaderboard li{
   background:var(--tile-alt);
   padding:12px 16px;
@@ -186,8 +202,8 @@ button:hover{ background-color:#8f3b2d; }
   display:grid;
   grid-template-columns:40px auto 60px; /* Rank/Crown | Name | Points */
   align-items:center;
-  border-left:5px solid var(--warm-gold);
-  color:var(--bone);
+  border-left:5px solid var(--warm-gold);      /* gold edge */
+  color:var(--text);
   font-size:1.2rem;
   text-transform:uppercase;
   letter-spacing:1px;
@@ -200,7 +216,7 @@ button:hover{ background-color:#8f3b2d; }
   font-size:1.5rem;
   font-weight:900;
   text-align:center;
-  color:var(--bone-strong);
+  color:var(--text);
 }
 
 #leaderboard li .name-cell{
@@ -211,12 +227,12 @@ button:hover{ background-color:#8f3b2d; }
 
 #leaderboard li .points-cell{
   text-align:right;
-  color:var(--warm-gold);
+  color:var(--warm-gold);     /* gold points */
   font-weight:900;
 }
 
 #leaderboard li:hover{
-  background-color:#213244;
+  background-color:#232323;
   transform:scale(1.02);
 }
 
@@ -232,7 +248,7 @@ button:hover{ background-color:#8f3b2d; }
   50%{ transform:translateY(-4px); }
 }
 
-/* Champion names in leaderboard: unified gold */
+/* Champion names inside leaderboard: gold */
 .champ-glow{
   color:var(--warm-gold) !important;
   text-shadow:
@@ -250,7 +266,7 @@ button:hover{ background-color:#8f3b2d; }
 
 .current-user{ font-weight:bold; }
 
-/* ===== Champ banner (kept as your preferred style, just palette-aligned) ===== */
+/* ===== Champ banner (lime theme, high contrast) ===== */
 .champ-banner{
   margin:10px 0 20px 0;
   padding:12px 0;
@@ -258,14 +274,14 @@ button:hover{ background-color:#8f3b2d; }
   font-size:1.8rem;
   font-family:'Anton',sans-serif;
   font-weight:900;
-  color:#101010; /* dark text for contrast */
-  background:linear-gradient(90deg, var(--warm-red), var(--warm-gold), var(--warm-red), var(--warm-gold));
-  background-size:400% 100%;
-  animation:moveBanner 5s linear infinite;
+  color:#0f0f0f;
+  background:linear-gradient(90deg, var(--lime), #ffffff, var(--lime));
+  background-size:300% 100%;
+  animation:moveBanner 6s linear infinite;
   border-radius:10px;
   -webkit-text-stroke:1px rgba(255,255,255,0.85);
   text-shadow:0 2px 4px rgba(0,0,0,0.35);
-  box-shadow:0 0 14px rgba(var(--gold-rgb),0.35);
+  box-shadow:0 0 14px rgba(var(--lime-rgb),0.35);
 }
 
 @keyframes moveBanner{
@@ -279,10 +295,10 @@ button:hover{ background-color:#8f3b2d; }
   border-radius:10px;
   padding:14px 18px;
   margin-bottom:20px;
-  box-shadow:0 0 8px rgba(var(--gold-rgb),0.2);
+  box-shadow:0 0 8px rgba(var(--lime-rgb),0.2);
   font-size:.95rem;
   line-height:1.5;
-  color:var(--bone);
+  color:var(--text);
 }
 
 .scoring-box.tight div{ margin:4px 0; }
