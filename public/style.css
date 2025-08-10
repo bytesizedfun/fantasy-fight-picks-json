@@ -160,16 +160,28 @@ button:hover {
   margin-left: 4px;
 }
 
+/* ===== Flashy Leaderboard Title ===== */
 .leader-title {
   font-family: 'Anton', sans-serif;
-  font-size: 2.2rem;
-  color: #e6b13f;
+  font-size: 2.8rem;
+  font-weight: 900;
   text-align: center;
   margin-top: 40px;
-  letter-spacing: 2px;
-  border-bottom: 2px solid #e6b13f;
-  padding-bottom: 8px;
-  text-shadow: 0 0 6px rgba(230, 177, 63, 0.5);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #FFD700, #fff6c1, #FFD700);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerTitle 4s linear infinite;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.5);
+  border-bottom: 3px solid #e6b13f;
+  padding-bottom: 10px;
+}
+
+@keyframes shimmerTitle {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
 
 /* ===== Leaderboard readability & alignment ===== */
@@ -190,7 +202,7 @@ button:hover {
   border-radius: 6px;
   font-weight: bold;
   display: grid;
-  grid-template-columns: 40px auto 60px; /* Rank/Crown | Name | Points */
+  grid-template-columns: 40px auto 60px;
   align-items: center;
   border-left: 5px solid #e6b13f;
   color: #f5f0e6;
@@ -253,7 +265,7 @@ button:hover {
   font-weight: bold;
 }
 
-/* ===== Champ banner ===== */
+/* ===== Flashy Champ Banner (matches leaderboard title) ===== */
 .champ-banner {
   margin: 10px 0 20px 0;
   padding: 12px 0;
@@ -261,19 +273,14 @@ button:hover {
   font-size: 1.8rem;
   font-family: 'Anton', sans-serif;
   font-weight: 900;
-  color: #111111;
-  background: linear-gradient(90deg, #b8402f, #ffd700, #b8402f, #ffd700);
-  background-size: 400% 100%;
-  animation: moveBanner 5s linear infinite;
+  background: linear-gradient(90deg, #FFD700, #fff6c1, #FFD700);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerTitle 4s linear infinite;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.5);
   border-radius: 10px;
-  -webkit-text-stroke: 1px rgba(255,255,255,0.85);
-  text-shadow: 0 2px 4px rgba(0,0,0,0.35);
   box-shadow: 0 0 14px rgba(255,215,0,0.35);
-}
-
-@keyframes moveBanner {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
 }
 
 /* Scoring Section */
