@@ -204,17 +204,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? "(Decision)"
                 : `in Round <span class="${roundClass}">${round}</span>`;
 
-              const scoreText = hasResult ? ` <span class="points">+${score} pts</span>` : "";
+              // Build a cleaner card layout: fight name header, details line, points chip
+              const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
-                <p class="scored-pick">
-                  <span class="fight-name">${fight}</span>
-                  <span class="user-pick">
-                    <span class="${winnerClass}">${winner}</span> ${dogIcon} by 
+                <div class="scored-pick">
+                  <div class="fight-name">${fight}</div>
+                  <div class="user-pick">
+                    <span class="${winnerClass}">${winner}</span> ${dogIcon} by
                     <span class="${methodClass}">${method}</span> ${roundText}
-                    ${scoreText}
-                  </span>
-                </p>`;
+                  </div>
+                  ${pointsChip}
+                </div>`;
             });
           });
       });
@@ -262,6 +263,16 @@ document.addEventListener("DOMContentLoaded", () => {
         prevScore = score;
         rank++;
       });
+
+      // Glow all tied #1 entries (keep crowns as-is)
+      const lis = board.querySelectorAll("li");
+      if (lis.length > 0) {
+        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
+        lis.forEach(li => {
+          const val = parseInt(li.lastElementChild.textContent, 10);
+          if (val === topScore) li.classList.add("tied-first");
+        });
+      }
 
       const totalFights = fightsData.length;
       const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
