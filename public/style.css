@@ -1,9 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Teko:wght@500;600;700&display=swap');
 
+/* ===== Brand palette (single source of truth) ===== */
+:root {
+  --gold: #e6b13f;             /* brand gold */
+  --gold-rgb: 230, 177, 63;    /* for rgba() glows */
+  --bg-dark: #161616;
+  --panel: #1f1f1f;
+  --tile: #2a2a2a;
+  --tile-alt: #2c2c2c;
+  --text: #f5f0e6;
+  --accent: #b8402f;           /* warm red accent */
+}
+
 body {
   font-family: 'Teko', sans-serif;
-  background-color: #161616;
-  color: #f5f0e6;
+  background-color: var(--bg-dark);
+  color: var(--text);
   padding: 20px;
   margin: 0;
 }
@@ -18,7 +30,7 @@ body {
   max-width: 540px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #1f1f1f;
+  background-color: var(--panel);
   border-radius: 10px;
   box-shadow: 0 0 12px rgba(0,0,0,0.6);
 }
@@ -28,12 +40,12 @@ body {
   padding: 12px;
   border-radius: 6px;
   background-color: #2b2b2b;
-  border: 2px solid #b8402f;
+  border: 2px solid var(--accent);
   box-shadow: 0 0 10px rgba(184, 64, 47, 0.5);
 }
 
 .fight h3 {
-  color: #f5f0e6;
+  color: var(--text);
   margin-top: 0;
 }
 
@@ -66,8 +78,8 @@ input[type="text"], select {
 }
 
 button {
-  background-color: #b8402f;
-  color: #f5f0e6;
+  background-color: var(--accent);
+  color: var(--text);
   padding: 10px 16px;
   border: none;
   border-radius: 4px;
@@ -86,7 +98,7 @@ button:hover {
 
 #welcome {
   font-size: 1.5rem;
-  color: #f5f0e6;
+  color: var(--text);
   text-align: center;
   margin: 20px 0;
   font-weight: bold;
@@ -95,7 +107,7 @@ button:hover {
 }
 
 #myPicks h3 {
-  color: #e6b13f;
+  color: var(--gold); /* unified */
   margin-bottom: 10px;
   text-align: center;
   text-transform: uppercase;
@@ -103,10 +115,10 @@ button:hover {
 }
 
 #myPicks p {
-  background-color: #2c2c2c;
+  background-color: var(--tile-alt);
   padding: 10px 12px;
   margin: 8px 0;
-  border-left: 4px solid #e6b13f;
+  border-left: 4px solid var(--gold); /* unified */
   border-radius: 4px;
   font-size: 1rem;
   line-height: 1.5;
@@ -130,18 +142,11 @@ button:hover {
   letter-spacing: 0.3px;
 }
 
-.correct {
-  color: #4CAF50;
-  font-weight: bold;
-}
-
-.wrong {
-  color: #e74c3c;
-  font-weight: bold;
-}
+.correct { color: #4CAF50; font-weight: bold; }
+.wrong   { color: #e74c3c; font-weight: bold; }
 
 .points {
-  color: gold;
+  color: var(--gold); /* unified */
   font-weight: bold;
 }
 
@@ -150,31 +155,24 @@ button:hover {
   font-weight: bold;
 }
 
-.correct .dog-icon {
-  color: #4CAF50;
-  margin-left: 4px;
-}
+.correct .dog-icon { color: #4CAF50; margin-left: 4px; }
+.wrong .dog-icon   { color: #e74c3c; margin-left: 4px; }
 
-.wrong .dog-icon {
-  color: #e74c3c;
-  margin-left: 4px;
-}
-
-/* ===== Leaderboard Title (matching username gold style) ===== */
+/* ===== Leaderboard Title (matches username gold styling) ===== */
 .leader-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Bebas Neue', sans-serif; /* distinct from champ banner */
   font-size: 3rem;
   font-weight: 900;
   text-align: center;
   margin-top: 40px;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #f7d774;
+  color: var(--gold); /* unified */
   text-shadow:
     0 0 2px rgba(0,0,0,0.9),
-    0 0 8px rgba(247,215,116,0.45);
+    0 0 8px rgba(var(--gold-rgb),0.45); /* unified glow */
   -webkit-text-stroke: 0.6px rgba(0,0,0,0.5);
-  border-bottom: 3px solid #e6b13f;
+  border-bottom: 3px solid var(--gold); /* unified */
   padding-bottom: 10px;
 }
 
@@ -184,26 +182,26 @@ button:hover {
   margin-top: 20px;
   background: #1c1c1c;
   border-radius: 12px;
-  border: 3px solid #e6b13f;
-  box-shadow: 0 0 12px rgba(230, 177, 63, 0.18);
+  border: 3px solid var(--gold); /* unified */
+  box-shadow: 0 0 12px rgba(var(--gold-rgb),0.18); /* unified */
   list-style: none;
 }
 
 #leaderboard li {
-  background: #2a2a2a;
+  background: var(--tile);
   padding: 12px 16px;
   margin: 8px 0;
   border-radius: 6px;
   font-weight: bold;
   display: grid;
-  grid-template-columns: 40px auto 60px;
+  grid-template-columns: 40px auto 60px; /* Rank/Crown | Name | Points */
   align-items: center;
-  border-left: 5px solid #e6b13f;
-  color: #f5f0e6;
+  border-left: 5px solid var(--gold); /* unified */
+  color: var(--text);
   font-size: 1.2rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Bebas Neue', sans-serif; /* flashier, consistent */
   transition: all 0.3s ease;
   text-shadow: 0 1px 0 rgba(0,0,0,0.75);
 }
@@ -240,11 +238,12 @@ button:hover {
   50% { transform: translateY(-4px); text-shadow: 0 0 12px #fff; }
 }
 
+/* Champion names in leaderboard: unified gold */
 .champ-glow {
-  color: #f7d774 !important;
+  color: var(--gold) !important;
   text-shadow:
     0 0 2px rgba(0,0,0,0.9),
-    0 0 8px rgba(247,215,116,0.45);
+    0 0 8px rgba(var(--gold-rgb),0.45);
   -webkit-text-stroke: 0.6px rgba(0,0,0,0.5);
   font-size: 1.4rem;
 }
@@ -255,11 +254,9 @@ button:hover {
   border-left: 5px solid brown !important;
 }
 
-.current-user {
-  font-weight: bold;
-}
+.current-user { font-weight: bold; }
 
-/* ===== Champ banner (unchanged) ===== */
+/* ===== Champ banner (left exactly as your file) ===== */
 .champ-banner {
   margin: 10px 0 20px 0;
   padding: 12px 0;
@@ -284,16 +281,14 @@ button:hover {
 
 /* Scoring Section */
 .scoring-box.tight {
-  background-color: #2c2c2c;
+  background-color: var(--tile-alt);
   border-radius: 10px;
   padding: 14px 18px;
   margin-bottom: 20px;
-  box-shadow: 0 0 8px rgba(230, 177, 63, 0.2);
+  box-shadow: 0 0 8px rgba(var(--gold-rgb),0.2); /* unified */
   font-size: 0.95rem;
   line-height: 1.5;
-  color: #f5f0e6;
+  color: var(--text);
 }
 
-.scoring-box.tight div {
-  margin: 4px 0;
-}
+.scoring-box.tight div { margin: 4px 0; }
