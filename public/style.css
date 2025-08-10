@@ -172,22 +172,15 @@ button:hover {
   text-shadow: 0 0 6px rgba(230, 177, 63, 0.5);
 }
 
-/* ===== Leaderboard (reduced haze, crisper text) ===== */
+/* ===== Leaderboard readability ===== */
 #leaderboard {
   padding: 16px;
   margin-top: 20px;
   background: #1c1c1c;
   border-radius: 12px;
   border: 3px solid #e6b13f;
-  box-shadow: 0 0 12px rgba(230, 177, 63, 0.18); /* softer than before */
-  /* removed: animation: pulse-gold 2s infinite; */
+  box-shadow: 0 0 12px rgba(230, 177, 63, 0.18);
   list-style: none;
-}
-
-@keyframes pulse-gold {
-  0% { box-shadow: 0 0 10px #e6b13f; }
-  50% { box-shadow: 0 0 30px #e6b13f; }
-  100% { box-shadow: 0 0 10px #e6b13f; }
 }
 
 #leaderboard li {
@@ -201,12 +194,18 @@ button:hover {
   justify-content: space-between;
   border-left: 5px solid #e6b13f;
   color: #f5f0e6;
-  font-size: 1.1rem;
+  font-size: 1.2rem; /* bump */
   text-transform: uppercase;
   letter-spacing: 1px;
   font-family: 'Anton', sans-serif;
   transition: all 0.3s ease;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.75); /* subtle dark edge for readability */
+  text-shadow: 0 1px 0 rgba(0,0,0,0.75);
+}
+
+#leaderboard li .rank-number {
+  font-size: 1.4rem; /* bigger rank numbers */
+  font-weight: 900;
+  margin-right: 8px;
 }
 
 #leaderboard li:hover {
@@ -226,14 +225,13 @@ button:hover {
   50% { transform: translateY(-4px); text-shadow: 0 0 12px #fff; }
 }
 
-/* Champion entries: keep gold but make it readable */
 .champ-glow {
   color: #f7d774 !important;
   text-shadow:
-    0 0 2px rgba(0,0,0,0.9),     /* tight dark outline */
-    0 0 8px rgba(247,215,116,0.45); /* softer gold glow */
+    0 0 2px rgba(0,0,0,0.9),
+    0 0 8px rgba(247,215,116,0.45);
   -webkit-text-stroke: 0.6px rgba(0,0,0,0.5);
-  font-size: 1.2rem;
+  font-size: 1.4rem; /* bigger champion name in leaderboard */
 }
 
 .loser {
@@ -246,19 +244,20 @@ button:hover {
   font-weight: bold;
 }
 
-/* ===== Champ banner (high-contrast text) ===== */
+/* ===== Champ banner ===== */
 .champ-banner {
   margin: 10px 0 20px 0;
   padding: 12px 0;
   text-align: center;
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #111111; /* dark text for contrast on bright gradient */
+  font-size: 1.8rem; /* bigger */
+  font-family: 'Anton', sans-serif; /* clean bold display font */
+  font-weight: 900;
+  color: #111111;
   background: linear-gradient(90deg, #b8402f, #ffd700, #b8402f, #ffd700);
   background-size: 400% 100%;
-  animation: moveBanner 5s linear infinite; /* kept your animation */
+  animation: moveBanner 5s linear infinite;
   border-radius: 10px;
-  -webkit-text-stroke: 1px rgba(255,255,255,0.85); /* light stroke for clarity */
+  -webkit-text-stroke: 1px rgba(255,255,255,0.85);
   text-shadow: 0 2px 4px rgba(0,0,0,0.35);
   box-shadow: 0 0 14px rgba(255,215,0,0.35);
 }
