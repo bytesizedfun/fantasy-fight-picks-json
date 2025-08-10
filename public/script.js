@@ -196,10 +196,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? (matchRound ? "correct" : "wrong")
                 : "";
 
-              const dogIcon = isUnderdog && hasResult
-                ? `<span class="${matchWinner ? "correct" : "wrong"}">🐶</span>`
+              const dogIcon = hasResult && matchWinner && isUnderdog
+                ? `<span class="correct">🐶</span>`
                 : "";
-
               const roundText = method === "Decision"
                 ? "(Decision)"
                 : `in Round <span class="${roundClass}">${round}</span>`;
