@@ -164,7 +164,37 @@ button:hover {
 
 /* Mobile */
 @media (max-width: 600px) {
+  /* Logo smaller */
   .logo-banner { max-width: 170px; margin-bottom: 12px; }
+
+  /* Fighter labels stacked vertically */
+  .fight label {
+    display: block;
+    margin: 8px 0;
+    line-height: 1.35;
+  }
+
+  /* Full-width dropdowns */
+  .fight select {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  /* Center submit button */
+  #submitBtn {
+    display: block;
+    width: 100%;
+    margin: 12px auto 0;
+  }
+
+  /* Center "No picks submitted." message */
+  #myPicks > p {
+    text-align: center;
+    margin: 12px 0;
+    opacity: 0.9;
+  }
+
+  /* Scored picks tighter */
   .scored-pick { padding: 9px 10px; gap: 6px; }
   .scored-pick .fight-name { font-size: .98rem; }
   .scored-pick .points { font-size: .9rem; padding: 3px 8px; }
