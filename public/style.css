@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Teko:wght@500;600;700&display=swap');
 
 body {
   font-family: 'Teko', sans-serif;
@@ -162,21 +162,21 @@ button:hover {
 
 /* ===== Flashy Leaderboard Title ===== */
 .leader-title {
-  font-family: 'Anton', sans-serif;
-  font-size: 2.8rem;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3rem;
   font-weight: 900;
   text-align: center;
   margin-top: 40px;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
   text-transform: uppercase;
   background: linear-gradient(90deg, #FFD700, #fff6c1, #FFD700);
   background-size: 300% 100%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shimmerTitle 4s linear infinite;
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.5);
+  text-shadow: 0 0 14px rgba(255, 215, 0, 0.9), 0 0 24px rgba(255, 215, 0, 0.6);
   border-bottom: 3px solid #e6b13f;
-  padding-bottom: 10px;
+  padding-bottom: 12px;
 }
 
 @keyframes shimmerTitle {
@@ -209,13 +209,13 @@ button:hover {
   font-size: 1.2rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: 'Anton', sans-serif;
+  font-family: 'Bebas Neue', sans-serif;
   transition: all 0.3s ease;
   text-shadow: 0 1px 0 rgba(0,0,0,0.75);
 }
 
 #leaderboard li .rank-number {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   font-weight: 900;
   text-align: center;
 }
@@ -265,7 +265,7 @@ button:hover {
   font-weight: bold;
 }
 
-/* ===== Flashy Champ Banner (matches leaderboard title) ===== */
+/* ===== Champ banner (unchanged from your file) ===== */
 .champ-banner {
   margin: 10px 0 20px 0;
   padding: 12px 0;
@@ -273,14 +273,19 @@ button:hover {
   font-size: 1.8rem;
   font-family: 'Anton', sans-serif;
   font-weight: 900;
-  background: linear-gradient(90deg, #FFD700, #fff6c1, #FFD700);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shimmerTitle 4s linear infinite;
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.5);
+  color: #111111;
+  background: linear-gradient(90deg, #b8402f, #ffd700, #b8402f, #ffd700);
+  background-size: 400% 100%;
+  animation: moveBanner 5s linear infinite;
   border-radius: 10px;
+  -webkit-text-stroke: 1px rgba(255,255,255,0.85);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.35);
   box-shadow: 0 0 14px rgba(255,215,0,0.35);
+}
+
+@keyframes moveBanner {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
 
 /* Scoring Section */
