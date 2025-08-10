@@ -172,7 +172,7 @@ button:hover {
   text-shadow: 0 0 6px rgba(230, 177, 63, 0.5);
 }
 
-/* ===== Leaderboard readability ===== */
+/* ===== Leaderboard readability & alignment ===== */
 #leaderboard {
   padding: 16px;
   margin-top: 20px;
@@ -189,12 +189,12 @@ button:hover {
   margin: 8px 0;
   border-radius: 6px;
   font-weight: bold;
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px auto 60px; /* Rank/Crown | Name | Points */
   align-items: center;
-  justify-content: space-between;
   border-left: 5px solid #e6b13f;
   color: #f5f0e6;
-  font-size: 1.2rem; /* bump */
+  font-size: 1.2rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   font-family: 'Anton', sans-serif;
@@ -203,9 +203,19 @@ button:hover {
 }
 
 #leaderboard li .rank-number {
-  font-size: 1.4rem; /* bigger rank numbers */
+  font-size: 1.4rem;
   font-weight: 900;
-  margin-right: 8px;
+  text-align: center;
+}
+
+#leaderboard li .name-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#leaderboard li .points-cell {
+  text-align: right;
 }
 
 #leaderboard li:hover {
@@ -216,7 +226,6 @@ button:hover {
 .crown {
   animation: crownBounce 1.5s infinite ease-in-out;
   display: inline-block;
-  margin-right: 6px;
   vertical-align: middle;
 }
 
@@ -231,7 +240,7 @@ button:hover {
     0 0 2px rgba(0,0,0,0.9),
     0 0 8px rgba(247,215,116,0.45);
   -webkit-text-stroke: 0.6px rgba(0,0,0,0.5);
-  font-size: 1.4rem; /* bigger champion name in leaderboard */
+  font-size: 1.4rem;
 }
 
 .loser {
@@ -249,8 +258,8 @@ button:hover {
   margin: 10px 0 20px 0;
   padding: 12px 0;
   text-align: center;
-  font-size: 1.8rem; /* bigger */
-  font-family: 'Anton', sans-serif; /* clean bold display font */
+  font-size: 1.8rem;
+  font-family: 'Anton', sans-serif;
   font-weight: 900;
   color: #111111;
   background: linear-gradient(90deg, #b8402f, #ffd700, #b8402f, #ffd700);
