@@ -12,12 +12,29 @@
   --shadow-dark: rgba(0,0,0,0.6);
 }
 
+/* === Base Layout === */
 body {
   background: var(--bg-dark);
   color: var(--text-main);
   font-family: 'Orbitron', sans-serif;
   margin: 0;
   padding: 20px;
+}
+
+/* === Logo Banner === */
+.logo-banner {
+  display: block;
+  max-width: 220px;
+  width: 100%;
+  height: auto;
+  margin: 0 auto 15px auto;
+}
+
+@media (max-width: 480px) {
+  .logo-banner {
+    max-width: 160px;
+    margin-bottom: 12px;
+  }
 }
 
 /* Panels */
@@ -29,14 +46,6 @@ body {
   border-radius: 16px;
   border: 2px solid rgba(255,255,255,0.08);
   box-shadow: 0 0 40px rgba(0, 245, 255, 0.05);
-}
-
-/* === Logo (formatted like your old .logo-banner) === */
-#logo_fighter {
-  max-width: 220px;
-  display: block;
-  margin: 0 auto 10px;
-  height: auto;
 }
 
 /* Champion Banner */
@@ -68,7 +77,6 @@ body {
 }
 
 #leaderboard li {
-  position: relative; /* enables crown-driven row glow */
   background: rgba(255,255,255,0.04);
   margin: 10px 0;
   padding: 14px;
@@ -86,7 +94,8 @@ body {
   transform: translateX(4px);
 }
 
-#leaderboard li:first-child {
+#leaderboard li:first-child,
+#leaderboard li.tied-first {
   border-left-color: var(--neon-cyan);
   background: rgba(0,245,255,0.1);
   box-shadow: 0 0 14px rgba(0,245,255,0.5);
@@ -96,31 +105,6 @@ body {
 @keyframes pulseChampion {
   0%,100% { box-shadow: 0 0 14px rgba(0,245,255,0.5); }
   50% { box-shadow: 0 0 28px rgba(255,0,60,0.6); }
-}
-
-/* === Make ALL crowned ties glow like #1 (no JS, no :has) === */
-.crown, .crown-anim, .leader-crown { position: relative; z-index: 1; }
-.crown::before, .crown-anim::before, .leader-crown::before {
-  content: "";
-  position: absolute;
-  /* anchor to nearest positioned ancestor (the LI) */
-  inset: -2px;
-  border-radius: 12px;
-  background: rgba(0,245,255,0.10);
-  box-shadow: 0 0 14px rgba(0,245,255,0.5);
-  pointer-events: none;
-  z-index: 0;
-}
-.crown::after, .crown-anim::after, .leader-crown::after {
-  content: "";
-  position: absolute;
-  left: -2px; top: -2px; bottom: -2px;
-  width: 8px;
-  border-radius: 10px 0 0 10px;
-  background: var(--neon-cyan);
-  opacity: 0.95;
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* Fight Blocks */
@@ -160,17 +144,4 @@ button:hover {
   background: var(--neon-red);
   color: white;
   box-shadow: 0 0 14px rgba(255,0,60,0.5);
-}
-
-/* Mobile */
-@media (max-width: 600px) {
-  body { padding: 12px; }
-  #app { padding: 16px; }
-  .champ-banner { font-size: 1.4rem; padding: 10px; }
-  #leaderboard li {
-    grid-template-columns: 36px auto 50px;
-    padding: 10px;
-    font-size: 0.95rem;
-  }
-  #logo_fighter { max-width: 180px; }
 }
