@@ -12,13 +12,13 @@
   --shadow-dark: rgba(0,0,0,0.6);
 }
 
-/* Base */
 body {
   background: var(--bg-dark);
   color: var(--text-main);
   font-family: 'Orbitron', sans-serif;
   margin: 0;
   padding: 20px;
+  overflow-x: hidden; /* Prevent accidental horizontal scroll */
 }
 
 /* Panels */
@@ -30,6 +30,21 @@ body {
   border-radius: 16px;
   border: 2px solid rgba(255,255,255,0.08);
   box-shadow: 0 0 40px rgba(0, 245, 255, 0.05);
+}
+
+/* Logo Styling */
+#logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px auto 30px auto; /* Top and bottom breathing space */
+}
+
+#logo img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
 }
 
 /* Champion Banner */
@@ -78,24 +93,11 @@ body {
   transform: translateX(4px);
 }
 
-/* IMPORTANT: Use your existing bouncing-crown markers to style all tied #1s.
-   Any <li> containing .crown / .crown-anim / .leader-crown gets the champion glow.
-   No JS changes required. */
-#leaderboard li:has(.crown),
-#leaderboard li:has(.crown-anim),
-#leaderboard li:has(.leader-crown) {
+#leaderboard li:first-child {
   border-left-color: var(--neon-cyan);
   background: rgba(0,245,255,0.1);
   box-shadow: 0 0 14px rgba(0,245,255,0.5);
   animation: pulseChampion 1.8s infinite;
-}
-
-/* Remove the old "first-child = champion" special case so ties all glow equally */
-#leaderboard li:first-child {
-  border-left-color: var(--silver);
-  background: rgba(255,255,255,0.04);
-  box-shadow: none;
-  animation: none;
 }
 
 @keyframes pulseChampion {
@@ -103,16 +105,7 @@ body {
   50% { box-shadow: 0 0 28px rgba(255,0,60,0.6); }
 }
 
-/* Optional: crown alignment polish if you use an inline icon element */
-.leader-crown, .crown, .crown-anim {
-  display: inline-block;
-  font-size: 1.1em;
-  line-height: 1;
-  transform-origin: bottom center;
-  margin-right: 6px;
-}
-
-/* Fight Blocks (generic) */
+/* Fight Blocks */
 .fight {
   background: rgba(255,255,255,0.03);
   padding: 14px;
@@ -127,91 +120,10 @@ body {
   margin: 0 0 8px 0;
 }
 
-/* Pick Results base colors (kept) */
+/* Pick Results */
 .correct { color: var(--success); text-shadow: 0 0 6px var(--success); }
-.wrong   { color: var(--error);   text-shadow: 0 0 6px var(--error); }
-.points  { color: var(--neon-cyan); font-weight: bold; }
-
-/* =========================
-   "Your Picks" Clean Layout
-   ========================= */
-/* Grid of pick cards */
-#yourPicks {
-  margin-top: 18px;
-  display: grid;
-  gap: 12px;
-}
-
-/* Make each pick card a neat, flexible row with chips + right-aligned points */
-#yourPicks .fight {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  padding: 14px;
-}
-
-/* Title takes full width on its own line */
-#yourPicks .fight > h3 {
-  flex: 1 1 100%;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-}
-
-/* Winner / Method / Round become compact chips */
-#yourPicks .fight .winner,
-#yourPicks .fight .method,
-#yourPicks .fight .round {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  font-size: 0.9rem;
-  line-height: 1;
-  color: var(--text-main);
-}
-
-/* Subtle separators for readability (skip before the first chip) */
-#yourPicks .fight .method::before,
-#yourPicks .fight .round::before {
-  content: "•";
-  margin: 0 6px 0 2px;
-  opacity: 0.6;
-}
-
-/* Keep your correctness colors but as chip accents too */
-#yourPicks .fight .winner.correct,
-#yourPicks .fight .method.correct,
-#yourPicks .fight .round.correct {
-  color: var(--success);
-  box-shadow: inset 0 0 8px rgba(47,255,160,0.35);
-}
-#yourPicks .fight .winner.wrong,
-#yourPicks .fight .method.wrong,
-#yourPicks .fight .round.wrong {
-  color: var(--error);
-  box-shadow: inset 0 0 8px rgba(255,78,78,0.35);
-}
-
-/* Underdog tag if you already append 🐶 or a class */
-#yourPicks .fight .winner.underdog::after {
-  content: " 🐶";
-}
-
-/* Points: make a pill and push it to the far right of the row */
-#yourPicks .fight .points {
-  margin-left: auto;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(0,245,255,0.12);
-  border: 1px solid var(--neon-cyan);
-  color: var(--neon-cyan);
-  font-weight: 900;
-  text-shadow: 0 0 6px var(--neon-cyan);
-  letter-spacing: 0.02em;
-  font-size: 0.95rem;
-}
+.wrong { color: var(--error); text-shadow: 0 0 6px var(--error); }
+.points { color: var(--neon-cyan); font-weight: bold; }
 
 /* Buttons */
 button {
@@ -232,30 +144,12 @@ button:hover {
   box-shadow: 0 0 14px rgba(255,0,60,0.5);
 }
 
-/* =================
-   Mobile refinements
-   ================= */
-@media (max-width: 600px) {
-  body { padding: 10px; }
-
-  #app { padding: 14px; }
-
-  .champ-banner {
-    font-size: 1.4rem;
-    padding: 10px;
+/* Mobile logo scaling */
+@media (max-width: 768px) {
+  #logo {
+    margin: 10px auto 20px auto;
   }
-
-  #leaderboard li {
-    grid-template-columns: 36px auto 50px;
-    padding: 10px;
-    font-size: 0.9rem;
+  #logo img {
+    max-width: 85%;
   }
-
-  #yourPicks { gap: 10px; }
-  #yourPicks .fight { padding: 12px; gap: 8px; }
-  #yourPicks .fight > h3 { font-size: 0.95rem; }
-  #yourPicks .fight .winner,
-  #yourPicks .fight .method,
-  #yourPicks .fight .round { font-size: 0.85rem; padding: 6px 8px; }
-  #yourPicks .fight .points { font-size: 0.9rem; padding: 6px 10px; }
 }
