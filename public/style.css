@@ -172,14 +172,15 @@ button:hover {
   text-shadow: 0 0 6px rgba(230, 177, 63, 0.5);
 }
 
+/* ===== Leaderboard readability tweaks ===== */
 #leaderboard {
   padding: 16px;
   margin-top: 20px;
-  background: #1c1c1c;
+  background: #161616; /* darker for contrast */
   border-radius: 12px;
   border: 3px solid #e6b13f;
-  box-shadow: 0 0 20px rgba(230, 177, 63, 0.3);
-  animation: pulse-gold 2s infinite;
+  box-shadow: 0 0 8px rgba(230, 177, 63, 0.18); /* softer */
+  /* animation: pulse-gold 2s infinite;  -- removed to kill the haze */
   list-style: none;
 }
 
@@ -190,7 +191,7 @@ button:hover {
 }
 
 #leaderboard li {
-  background: #2a2a2a;
+  background: #212121; /* slightly darker tile */
   padding: 12px 16px;
   margin: 8px 0;
   border-radius: 6px;
@@ -199,16 +200,17 @@ button:hover {
   align-items: center;
   justify-content: space-between;
   border-left: 5px solid #e6b13f;
-  color: #f5f0e6;
-  font-size: 1.1rem;
+  color: #ffffff;
+  font-size: 1.15rem; /* small bump */
   text-transform: uppercase;
   letter-spacing: 1px;
   font-family: 'Anton', sans-serif;
   transition: all 0.3s ease;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.7); /* crisp dark edge for readability */
 }
 
 #leaderboard li:hover {
-  background-color: #383838;
+  background-color: #2a2a2a;
   transform: scale(1.02);
 }
 
@@ -224,9 +226,13 @@ button:hover {
   50% { transform: translateY(-4px); text-shadow: 0 0 12px #fff; }
 }
 
+/* Champion entries: keep gold but add dark outline, reduce glow blur */
 .champ-glow {
-  color: #FFD700 !important;
-  text-shadow: 0 0 8px #FFD700, 0 0 14px #FFD700;
+  color: #f7d774 !important;
+  text-shadow:
+    0 0 2px rgba(0,0,0,0.9),     /* tight dark outline */
+    0 0 8px rgba(247,215,116,0.45); /* soft gold glow */
+  -webkit-text-stroke: 0.6px rgba(0,0,0,0.5);
   font-size: 1.2rem;
 }
 
@@ -240,24 +246,55 @@ button:hover {
   font-weight: bold;
 }
 
+/* ===== Champ banner readability tweaks (no HTML changes) ===== */
 .champ-banner {
+  position: relative;
   margin: 10px 0 20px 0;
-  padding: 12px 0;
+  padding: 14px 0;
   text-align: center;
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #FFD700;
+  font-size: 1.5rem; /* bump size */
+  font-weight: 800;
+  color: #111111; /* dark text for high contrast on bright gradient */
   background: linear-gradient(90deg, #b8402f, #ffd700, #b8402f, #ffd700);
   background-size: 400% 100%;
   animation: moveBanner 5s linear infinite;
   border-radius: 10px;
-  text-shadow: 0 0 6px #FFD700, 0 0 10px #FFD700;
-  box-shadow: 0 0 20px #FFD700;
+  /* light stroke + subtle drop shadow to keep text readable over any color */
+  -webkit-text-stroke: 1px rgba(255,255,255,0.85);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.35);
+  box-shadow: 0 0 14px rgba(255,215,0,0.35);
+  overflow: hidden; /* contain ::before overlay */
+}
+
+/* soft overlay to tame the brightest parts of the gradient behind the text */
+.champ-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.18),
+    rgba(0,0,0,0.06),
+    rgba(0,0,0,0.18)
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.champ-banner > * {
+  position: relative;
+  z-index: 1; /* ensure text sits above overlay */
 }
 
 @keyframes moveBanner {
   0% { background-position: 0% 50%; }
   100% { background-position: 100% 50%; }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  #leaderboard { animation: none !important; }
+  .champ-banner { animation: none !important; }
 }
 
 /* Scoring Section */
