@@ -1,309 +1,129 @@
-/* === Fonts: matched to poster ===
-   - Anton: chunky display (matches THE SMASHING MACHINE title)
-   - Cinzel: Trajan-style serif (matches actor-name billing)
-*/
-@import url('https://fonts.googleapis.com/css2?family=Anton:wght@400;700&family=Cinzel:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap');
 
-/* ===== Smashing Machine palette (single source of truth) ===== */
-:root{
-  --ink:#0b0b0b;          /* page background */
-  --panel:#121212;        /* cards/panels */
-  --tile:#181818;         /* list tiles */
-  --tile-alt:#1f1f1f;     /* alt tiles */
-
-  --text:#f2f2ec;         /* off-white text */
-  --muted:#cfd3c6;
-
-  /* exact sampled lime from poster text */
-  --lime:#e3d963;
-  --lime-rgb:227,217,100;
-
-  --error:#e7554f;
-  --success:#46c16a;
-
-  --shadow:rgba(0,0,0,0.65);
-  --divider:rgba(255,255,255,0.06);
+:root {
+  --bg-dark: #0b0b0d;
+  --bg-panel: #141416;
+  --neon-cyan: #00f5ff;
+  --neon-red: #ff003c;
+  --silver: #b0b3b8;
+  --success: #2fffa0;
+  --error: #ff4e4e;
+  --text-main: #e4e6eb;
+  --shadow-dark: rgba(0,0,0,0.6);
 }
 
-/* ===== Base ===== */
-body{
-  font-family:'Anton',sans-serif;
-  background-color:var(--ink);
-  color:var(--text);
-  padding:20px;
-  margin:0;
+body {
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Orbitron', sans-serif;
+  margin: 0;
+  padding: 20px;
 }
 
-.logo-banner{
-  max-width:220px;
-  display:block;
-  margin:0 auto 10px;
+/* Panels */
+#app {
+  max-width: 580px;
+  margin: auto;
+  padding: 20px;
+  background: var(--bg-panel);
+  border-radius: 16px;
+  border: 2px solid rgba(255,255,255,0.08);
+  box-shadow: 0 0 40px rgba(0, 245, 255, 0.05);
 }
 
-#app{
-  max-width:540px;
-  margin:0 auto;
-  padding:20px;
-  background-color:var(--panel);
-  border-radius:12px;
-  border:1px solid var(--divider);
-  box-shadow:0 0 20px rgba(0,0,0,0.45);
+/* Champion Banner */
+.champ-banner {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  background: linear-gradient(120deg, rgba(0,245,255,0.2), rgba(255,0,60,0.2), rgba(0,245,255,0.2));
+  background-size: 300% 300%;
+  animation: bannerGlow 6s ease infinite;
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid var(--neon-cyan);
+  text-shadow: 0 0 12px var(--neon-cyan), 0 0 24px var(--neon-red);
 }
 
-/* ===== Fight blocks ===== */
-.fight{
-  margin-bottom:20px;
-  padding:14px;
-  border-radius:10px;
-  background-color:var(--tile);
-  border:2px solid var(--lime);
-  box-shadow:0 0 12px rgba(var(--lime-rgb),0.18);
+@keyframes bannerGlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-.fight h3{
-  color:var(--text);
-  margin:0 0 8px 0;
-  font-weight:700;
-  letter-spacing:.5px;
-  font-family:'Cinzel',serif;   /* poster billing look */
-  text-transform:none;
+/* Leaderboard */
+#leaderboard {
+  list-style: none;
+  padding: 0;
+  margin-top: 20px;
 }
 
-.fight label{
-  display:block;
-  margin:6px 0;
-  font-size:1rem;
-  line-height:1.4;
-  cursor:pointer;
+#leaderboard li {
+  background: rgba(255,255,255,0.04);
+  margin: 10px 0;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 50px auto 60px;
+  align-items: center;
+  border-radius: 10px;
+  border-left: 4px solid var(--silver);
+  transition: all 0.3s ease;
 }
 
-.fight label span{ margin-left:4px; }
-
-.fight input[type="radio"]{
-  margin-right:8px;
-  transform:scale(1.2);
-  vertical-align:middle;
+#leaderboard li:hover {
+  border-left-color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0,245,255,0.4);
+  transform: translateX(4px);
 }
 
-/* ===== Inputs ===== */
-input[type="text"],select{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  border-radius:8px;
-  border:1px solid var(--divider);
-  background-color:#212121;
-  color:#fff;
-  font-family:'Anton',sans-serif;
+#leaderboard li:first-child {
+  border-left-color: var(--neon-cyan);
+  background: rgba(0,245,255,0.1);
+  box-shadow: 0 0 14px rgba(0,245,255,0.5);
+  animation: pulseChampion 1.8s infinite;
 }
 
-/* ===== Buttons (lime) ===== */
-button{
-  background-color:var(--lime);
-  color:#101010;
-  padding:12px 16px;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
-  width:100%;
-  font-weight:800;
-  margin-top:12px;
-  font-family:'Anton',sans-serif;
-  font-size:1.25rem;
-  letter-spacing:1px;
-  box-shadow:0 10px 24px rgba(var(--lime-rgb),0.28);
-  transition:transform .08s ease, box-shadow .2s ease, background-color .2s ease;
-}
-button:hover{ background-color:#d9cd5b; } /* slightly warmer hover, same family */
-button:active{ transform:translateY(1px); box-shadow:0 6px 18px rgba(var(--lime-rgb),0.25); }
-
-/* ===== Headings / Welcome ===== */
-#welcome{
-  font-size:1.5rem;
-  color:var(--text);
-  text-align:center;
-  margin:20px 0;
-  font-weight:800;
-  letter-spacing:2px;
-  text-transform:uppercase;
-  border-bottom:1px solid var(--divider);
-  padding-bottom:8px;
-  font-family:'Cinzel',serif;   /* poster billing style */
+@keyframes pulseChampion {
+  0%,100% { box-shadow: 0 0 14px rgba(0,245,255,0.5); }
+  50% { box-shadow: 0 0 28px rgba(255,0,60,0.6); }
 }
 
-/* ===== Your Picks ===== */
-#myPicks h3{
-  color:var(--lime);
-  margin-bottom:10px;
-  text-align:center;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  font-family:'Anton',sans-serif; /* poster title style */
-  font-size:2rem;
+/* Fight Blocks */
+.fight {
+  background: rgba(255,255,255,0.03);
+  padding: 14px;
+  margin-bottom: 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 10px rgba(0,245,255,0.05);
 }
 
-#myPicks p{
-  background-color:var(--tile-alt);
-  padding:10px 12px;
-  margin:8px 0;
-  border-left:4px solid var(--lime);
-  border-radius:8px;
-  font-size:1rem;
-  line-height:1.5;
-  color:#ffffff;
-  font-family:'Anton',sans-serif;
+.fight h3 {
+  color: var(--neon-cyan);
+  margin: 0 0 8px 0;
 }
 
-.fight-name{
-  font-weight:700;
-  color:#ffffff;
-  display:block;
-  margin-bottom:2px;
-  font-size:1.1rem;
-  letter-spacing:.5px;
-  font-family:'Cinzel',serif;
+/* Pick Results */
+.correct { color: var(--success); text-shadow: 0 0 6px var(--success); }
+.wrong { color: var(--error); text-shadow: 0 0 6px var(--error); }
+.points { color: var(--neon-cyan); font-weight: bold; }
+
+/* Buttons */
+button {
+  background: var(--neon-cyan);
+  color: var(--bg-dark);
+  font-weight: 900;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 14px rgba(0,245,255,0.4);
 }
-
-.user-pick{ font-style:italic; color:var(--muted); font-size:.95rem; letter-spacing:.3px; }
-
-.correct{ color:var(--success); font-weight:bold; }
-.wrong{ color:var(--error); font-weight:bold; }
-
-.points{ color:var(--lime); font-weight:bold; }
-
-.underdog{ color:#ffa161; font-weight:bold; } /* small orange pop */
-
-.correct .dog-icon{ color:var(--success); margin-left:4px; }
-.wrong .dog-icon{ color:var(--error); margin-left:4px; }
-
-/* ===== Leaderboard Title (lime) ===== */
-.leader-title{
-  font-family:'Anton',sans-serif;
-  font-size:3rem;
-  font-weight:900;
-  text-align:center;
-  margin-top:40px;
-  letter-spacing:3px;
-  text-transform:uppercase;
-  color:var(--lime);
-  text-shadow:0 0 10px rgba(var(--lime-rgb),0.30);
-  -webkit-text-stroke:.6px rgba(0,0,0,0.45);
-  border-bottom:3px solid var(--lime);
-  padding-bottom:10px;
+button:hover {
+  background: var(--neon-red);
+  color: white;
+  box-shadow: 0 0 14px rgba(255,0,60,0.5);
 }
-
-/* ===== Leaderboard ===== */
-#leaderboard{
-  padding:16px;
-  margin-top:20px;
-  background:var(--tile);
-  border-radius:12px;
-  border:3px solid var(--lime);
-  box-shadow:0 0 14px rgba(var(--lime-rgb),0.2);
-  list-style:none;
-  font-family:'Anton',sans-serif;
-}
-
-#leaderboard li{
-  background:var(--tile-alt);
-  padding:12px 16px;
-  margin:8px 0;
-  border-radius:10px;
-  font-weight:bold;
-  display:grid;
-  grid-template-columns:40px auto 60px; /* Rank/Crown | Name | Points */
-  align-items:center;
-  border-left:5px solid var(--lime);
-  color:var(--text);
-  font-size:1.2rem;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  transition:all .25s ease;
-  text-shadow:0 1px 0 var(--shadow);
-}
-#leaderboard li:hover{ background-color:#232323; transform:scale(1.02); }
-
-#leaderboard li .rank-number{
-  font-size:1.5rem;
-  font-weight:900;
-  text-align:center;
-  color:var(--text);
-  font-family:'Anton',sans-serif;
-}
-
-#leaderboard li .name-cell{
-  display:flex;
-  align-items:center;
-  gap:6px;
-}
-
-#leaderboard li .points-cell{
-  text-align:right;
-  color:var(--lime);
-  font-weight:900;
-}
-
-/* === Make 1st place match the banner exactly === */
-/* Use either :first-child or add .is-first for ties */
-#leaderboard li:first-child .name-cell,
-#leaderboard li.is-first .name-cell,
-#leaderboard li .name-cell.champ-glow{
-  background:linear-gradient(90deg, var(--lime), #ffffff, var(--lime));
-  background-size:300% 100%;
-  -webkit-background-clip:text; background-clip:text;
-  color:transparent;
-  animation:bannerSlide 6s linear infinite;
-  -webkit-text-stroke:1px rgba(255,255,255,0.85);
-  text-shadow:0 2px 4px rgba(0,0,0,0.35);
-  font-size:1.4rem;
-}
-
-/* Crowns + champion highlighting (lime) */
-.crown{
-  animation:crownBounce 1.5s infinite ease-in-out;
-  display:inline-block;
-  vertical-align:middle;
-  filter: drop-shadow(0 0 6px rgba(var(--lime-rgb),0.6));
-}
-@keyframes crownBounce{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-4px);} }
-
-.loser{
-  background-color:#231818 !important;
-  color:#d4c6c6 !important;
-  border-left:5px solid #6b2e2e !important;
-}
-
-.current-user{ font-weight:900; }
-
-/* ===== Champion banner (lime, high-contrast, matches poster) ===== */
-.champ-banner{
-  margin:12px 0 20px 0;
-  padding:14px 0;
-  text-align:center;
-  font-size:1.9rem;
-  font-family:'Anton',sans-serif;
-  font-weight:900;
-  color:#0f0f0f;
-  background:linear-gradient(90deg, var(--lime), #ffffff, var(--lime));
-  background-size:300% 100%;
-  animation:bannerSlide 6s linear infinite;
-  border-radius:12px;
-  -webkit-text-stroke:1px rgba(255,255,255,0.85);
-  text-shadow:0 2px 4px rgba(0,0,0,0.35);
-  box-shadow:0 0 16px rgba(var(--lime-rgb),0.35);
-}
-@keyframes bannerSlide{ 0%{background-position:0% 50%;} 100%{background-position:100% 50%;} }
-
-/* ===== Scoring Box ===== */
-.scoring-box.tight{
-  background-color:var(--tile);
-  border-radius:12px;
-  padding:14px 18px;
-  margin-bottom:20px;
-  box-shadow:0 0 10px rgba(var(--lime-rgb),0.2);
-  font-size:.95rem;
-  line-height:1.5;
-  color:var(--text);
-  font-family:'Anton',sans-serif;
-}
-.scoring-box.tight div{ margin:4px 0; }
