@@ -1,31 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Teko:wght@500;600;700&display=swap');
 
-/* ===== Brand palette: Smashing Machine theme ===== */
+/* ===== Smashing Machine palette (single source of truth) ===== */
 :root{
-  --ink: #0b0b0b;            /* page background (near-black) */
-  --panel: #121212;          /* cards/panels */
-  --tile: #181818;           /* list tiles */
-  --tile-alt: #1f1f1f;       /* alt tiles */
-  --text: #f2f2ec;           /* off-white text */
-  --text-muted:#cfd3c6;
+  --ink: #0b0b0b;          /* page background */
+  --panel: #121212;        /* cards/panels */
+  --tile: #181818;         /* list tiles */
+  --tile-alt: #1f1f1f;     /* alt tiles */
 
-  --lime: #d7e34f;           /* acid-lime headline/cta */
-  --lime-rgb: 215,227,79;
+  --text: #f2f2ec;         /* off-white text */
+  --muted: #cfd3c6;
 
-  --cta: #d7e34f;            /* buttons = lime */
-  --cta-hover: #c7d43f;
+  --lime: #d6e34f;         /* acid-lime accent */
+  --lime-rgb: 214,227,79;
 
-  --orange: #ff7a3c;         /* optional accent (underdog, small pops) */
-  --error: #e74c3c;
-  --success: #4caf50;
-
-  /* Reserved ONLY for inside the leaderboard rows (per your request) */
-  --warm-gold: #e6b13f;
-  --gold-rgb: 230,177,63;
+  --error: #e7554f;
+  --success: #46c16a;
 
   --shadow: rgba(0,0,0,0.65);
+  --divider: rgba(255,255,255,0.06);
 }
 
+/* ===== Base ===== */
 body{
   font-family:'Teko',sans-serif;
   background-color:var(--ink);
@@ -45,32 +40,34 @@ body{
   margin:0 auto;
   padding:20px;
   background-color:var(--panel);
-  border-radius:10px;
-  box-shadow:0 0 12px rgba(0,0,0,0.6);
-  border:1px solid rgba(255,255,255,0.04);
+  border-radius:12px;
+  border:1px solid var(--divider);
+  box-shadow:0 0 20px rgba(0,0,0,0.45);
 }
 
 /* ===== Fight blocks ===== */
 .fight{
   margin-bottom:20px;
-  padding:12px;
-  border-radius:8px;
+  padding:14px;
+  border-radius:10px;
   background-color:var(--tile);
   border:2px solid var(--lime);
-  box-shadow:0 0 10px rgba(var(--lime-rgb),0.18);
+  box-shadow:0 0 12px rgba(var(--lime-rgb),0.18);
 }
 
 .fight h3{
   color:var(--text);
-  margin-top:0;
+  margin:0 0 8px 0;
+  font-weight:700;
+  letter-spacing:.5px;
 }
 
 .fight label{
   display:block;
   margin:6px 0;
   font-size:1rem;
-  cursor:pointer;
   line-height:1.4;
+  cursor:pointer;
 }
 
 .fight label span{ margin-left:4px; }
@@ -84,33 +81,35 @@ body{
 /* ===== Inputs ===== */
 input[type="text"],select{
   width:100%;
-  padding:8px;
+  padding:10px;
   margin:6px 0;
-  border-radius:6px;
-  border:1px solid rgba(255,255,255,0.08);
-  background-color:#222;
+  border-radius:8px;
+  border:1px solid var(--divider);
+  background-color:#212121;
   color:#fff;
 }
 
 /* ===== Buttons (lime) ===== */
 button{
-  background-color:var(--cta);
+  background-color:var(--lime);
   color:#101010;
-  padding:10px 16px;
+  padding:12px 16px;
   border:none;
-  border-radius:8px;
+  border-radius:10px;
   cursor:pointer;
   width:100%;
   font-weight:800;
-  margin-top:10px;
+  margin-top:12px;
   font-family:'Teko',sans-serif;
   font-size:1.25rem;
   letter-spacing:1px;
-  box-shadow:0 6px 18px rgba(var(--lime-rgb),0.25);
+  box-shadow:0 10px 24px rgba(var(--lime-rgb),0.28);
+  transition:transform .08s ease, box-shadow .2s ease, background-color .2s ease;
 }
+button:hover{ background-color:#c9d743; }
+button:active{ transform:translateY(1px); box-shadow:0 6px 18px rgba(var(--lime-rgb),0.25); }
 
-button:hover{ background-color:var(--cta-hover); }
-
+/* ===== Headings / Welcome ===== */
 #welcome{
   font-size:1.5rem;
   color:var(--text);
@@ -119,15 +118,19 @@ button:hover{ background-color:var(--cta-hover); }
   font-weight:bold;
   letter-spacing:2px;
   text-transform:uppercase;
+  border-bottom:1px solid var(--divider);
+  padding-bottom:8px;
 }
 
 /* ===== Your Picks ===== */
 #myPicks h3{
-  color:var(--lime); /* lime, not gold */
+  color:var(--lime);
   margin-bottom:10px;
   text-align:center;
   text-transform:uppercase;
   letter-spacing:1px;
+  font-family:'Bebas Neue',sans-serif;
+  font-size:2rem;
 }
 
 #myPicks p{
@@ -135,10 +138,9 @@ button:hover{ background-color:var(--cta-hover); }
   padding:10px 12px;
   margin:8px 0;
   border-left:4px solid var(--lime);
-  border-radius:6px;
+  border-radius:8px;
   font-size:1rem;
   line-height:1.5;
-  font-family:'Teko',sans-serif;
   color:#ffffff;
 }
 
@@ -151,19 +153,19 @@ button:hover{ background-color:var(--cta-hover); }
   letter-spacing:.5px;
 }
 
-.user-pick{ font-style:italic; color:var(--text-muted); font-size:.95rem; letter-spacing:.3px; }
+.user-pick{ font-style:italic; color:var(--muted); font-size:.95rem; letter-spacing:.3px; }
 
 .correct{ color:var(--success); font-weight:bold; }
 .wrong{ color:var(--error); font-weight:bold; }
 
 .points{ color:var(--lime); font-weight:bold; }
 
-.underdog{ color:var(--orange); font-weight:bold; }
+.underdog{ color:#ffa161; font-weight:bold; } /* small orange pop */
 
 .correct .dog-icon{ color:var(--success); margin-left:4px; }
 .wrong .dog-icon{ color:var(--error); margin-left:4px; }
 
-/* ===== Leaderboard Title (lime, NOT gold) ===== */
+/* ===== Leaderboard Title (lime) ===== */
 .leader-title{
   font-family:'Bebas Neue',sans-serif;
   font-size:3rem;
@@ -173,44 +175,42 @@ button:hover{ background-color:var(--cta-hover); }
   letter-spacing:3px;
   text-transform:uppercase;
   color:var(--lime);
-  text-shadow:
-    0 0 2px rgba(0,0,0,0.9),
-    0 0 8px rgba(var(--lime-rgb),0.35);
+  text-shadow:0 0 10px rgba(var(--lime-rgb),0.3);
   -webkit-text-stroke:.6px rgba(0,0,0,0.45);
   border-bottom:3px solid var(--lime);
   padding-bottom:10px;
 }
 
-/* ===== Leaderboard container ===== */
+/* ===== Leaderboard ===== */
 #leaderboard{
   padding:16px;
   margin-top:20px;
   background:var(--tile);
   border-radius:12px;
-  border:3px solid var(--lime); /* frame uses lime */
-  box-shadow:0 0 12px rgba(var(--lime-rgb),0.18);
+  border:3px solid var(--lime);
+  box-shadow:0 0 14px rgba(var(--lime-rgb),0.2);
   list-style:none;
 }
 
-/* ===== Leaderboard rows (ONLY place that uses gold) ===== */
 #leaderboard li{
   background:var(--tile-alt);
   padding:12px 16px;
   margin:8px 0;
-  border-radius:8px;
+  border-radius:10px;
   font-weight:bold;
   display:grid;
   grid-template-columns:40px auto 60px; /* Rank/Crown | Name | Points */
   align-items:center;
-  border-left:5px solid var(--warm-gold);      /* gold edge */
+  border-left:5px solid var(--lime);
   color:var(--text);
   font-size:1.2rem;
   text-transform:uppercase;
   letter-spacing:1px;
   font-family:'Bebas Neue',sans-serif;
-  transition:all .3s ease;
+  transition:all .25s ease;
   text-shadow:0 1px 0 var(--shadow);
 }
+#leaderboard li:hover{ background-color:#232323; transform:scale(1.02); }
 
 #leaderboard li .rank-number{
   font-size:1.5rem;
@@ -227,78 +227,62 @@ button:hover{ background-color:var(--cta-hover); }
 
 #leaderboard li .points-cell{
   text-align:right;
-  color:var(--warm-gold);     /* gold points */
+  color:var(--lime);
   font-weight:900;
 }
 
-#leaderboard li:hover{
-  background-color:#232323;
-  transform:scale(1.02);
-}
-
+/* Crowns + champion highlighting (lime, not gold) */
 .crown{
   animation:crownBounce 1.5s infinite ease-in-out;
   display:inline-block;
   vertical-align:middle;
-  filter: drop-shadow(0 0 6px rgba(var(--gold-rgb),0.6));
+  filter: drop-shadow(0 0 6px rgba(var(--lime-rgb),0.6));
 }
+@keyframes crownBounce{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-4px);} }
 
-@keyframes crownBounce{
-  0%,100%{ transform:translateY(0); }
-  50%{ transform:translateY(-4px); }
-}
-
-/* Champion names inside leaderboard: gold */
 .champ-glow{
-  color:var(--warm-gold) !important;
-  text-shadow:
-    0 0 2px rgba(0,0,0,0.9),
-    0 0 8px rgba(var(--gold-rgb),0.45);
+  color:var(--lime) !important;
+  text-shadow:0 0 8px rgba(var(--lime-rgb),0.45);
   -webkit-text-stroke:.6px rgba(0,0,0,0.45);
   font-size:1.4rem;
 }
 
 .loser{
-  background-color:#2a1e1e !important;
-  color:#d0a373 !important;
-  border-left:5px solid #6b3a2f !important;
+  background-color:#231818 !important;
+  color:#d4c6c6 !important;
+  border-left:5px solid #6b2e2e !important;
 }
 
-.current-user{ font-weight:bold; }
+.current-user{ font-weight:900; }
 
-/* ===== Champ banner (lime theme, high contrast) ===== */
+/* ===== Champion banner (lime, high-contrast, no gold) ===== */
 .champ-banner{
-  margin:10px 0 20px 0;
-  padding:12px 0;
+  margin:12px 0 20px 0;
+  padding:14px 0;
   text-align:center;
-  font-size:1.8rem;
+  font-size:1.9rem;
   font-family:'Anton',sans-serif;
   font-weight:900;
   color:#0f0f0f;
   background:linear-gradient(90deg, var(--lime), #ffffff, var(--lime));
   background-size:300% 100%;
-  animation:moveBanner 6s linear infinite;
-  border-radius:10px;
+  animation:bannerSlide 6s linear infinite;
+  border-radius:12px;
   -webkit-text-stroke:1px rgba(255,255,255,0.85);
   text-shadow:0 2px 4px rgba(0,0,0,0.35);
-  box-shadow:0 0 14px rgba(var(--lime-rgb),0.35);
+  box-shadow:0 0 16px rgba(var(--lime-rgb),0.35);
 }
+@keyframes bannerSlide{ 0%{background-position:0% 50%;} 100%{background-position:100% 50%;} }
 
-@keyframes moveBanner{
-  0%{ background-position:0% 50%; }
-  100%{ background-position:100% 50%; }
-}
-
-/* ===== Scoring Section ===== */
+/* ===== Scoring Box ===== */
 .scoring-box.tight{
   background-color:var(--tile);
-  border-radius:10px;
+  border-radius:12px;
   padding:14px 18px;
   margin-bottom:20px;
-  box-shadow:0 0 8px rgba(var(--lime-rgb),0.2);
+  box-shadow:0 0 10px rgba(var(--lime-rgb),0.2);
   font-size:.95rem;
   line-height:1.5;
   color:var(--text);
 }
-
 .scoring-box.tight div{ margin:4px 0; }
