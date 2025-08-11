@@ -7,63 +7,79 @@ document.addEventListener("DOMContentLoaded", () => {
   const champBanner = document.getElementById("champBanner");
   const punchSound = new Audio("punch.mp3");
 
-  // --- Hall cache ---
-  let hallByUser = null; // { username: {crowns, crown_rate, events_played} }
+  // Escape helper for safe HTML injection
+  const esc = (s) => String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
-  // --- Create "This Week | Hall" tabs (no HTML edits needed) ---
+  // --- All-Time cache (refetched on tab click for freshness) ---
+  let allTimeByUser = null;
+
+  // --- Build "Weekly | All-Time" tabs ---
   const leaderboardEl = document.getElementById("leaderboard");
+
   let tabsBar = document.getElementById("boardTabs");
+  const tabsHtml = `
+    <button type="button" id="tabWeekly"  class="tab-btn" aria-pressed="true">Weekly</button>
+    <button type="button" id="tabAllTime" class="tab-btn" aria-pressed="false">All-Time</button>
+  `;
   if (!tabsBar) {
     tabsBar = document.createElement("div");
     tabsBar.id = "boardTabs";
     tabsBar.style.display = "flex";
     tabsBar.style.gap = "8px";
     tabsBar.style.margin = "12px 0";
-    tabsBar.innerHTML = `
-      <button id="tabWeekly" class="tab-btn" aria-pressed="true">This Week</button>
-      <button id="tabHall" class="tab-btn" aria-pressed="false">Hall</button>
-    `;
+    tabsBar.innerHTML = tabsHtml;
     if (leaderboardEl) leaderboardEl.before(tabsBar);
+  } else {
+    tabsBar.innerHTML = tabsHtml;
   }
 
-  // Holder for Hall list
-  let hallList = document.getElementById("hallBoard");
-  if (!hallList) {
-    hallList = document.createElement("ul");
-    hallList.id = "hallBoard";
-    hallList.style.display = "none";
-    hallList.style.listStyle = "none";
-    hallList.style.padding = "0";
-    if (leaderboardEl) leaderboardEl.after(hallList);
+  // Holder for All-Time list
+  let allTimeList = document.getElementById("allTimeBoard") || document.getElementById("hallBoard");
+  if (!allTimeList) {
+    allTimeList = document.createElement("ul");
+    allTimeList.id = "allTimeBoard";
+    allTimeList.style.display = "none";
+    allTimeList.style.listStyle = "none";
+    allTimeList.style.padding = "0";
+    if (leaderboardEl) leaderboardEl.after(allTimeList);
+  } else {
+    allTimeList.id = "allTimeBoard";
+    allTimeList.style.display = "none";
   }
 
-  function setTabs(showHall) {
+  function setTabs(showAllTime) {
     if (!leaderboardEl) return;
-    const weeklyBtn = document.getElementById("tabWeekly");
-    const hallBtn = document.getElementById("tabHall");
-    if (showHall) {
+    const weeklyBtn  = document.getElementById("tabWeekly");
+    const allTimeBtn = document.getElementById("tabAllTime");
+    if (showAllTime) {
       leaderboardEl.style.display = "none";
-      hallList.style.display = "block";
+      allTimeList.style.display = "block";
       weeklyBtn?.setAttribute("aria-pressed", "false");
-      hallBtn?.setAttribute("aria-pressed", "true");
-      loadHall(); // fetch/render Hall on demand
+      allTimeBtn?.setAttribute("aria-pressed", "true");
+      // Force a fresh fetch each time you open All-Time so it stays up to date
+      allTimeByUser = null;
+      loadAllTime();
     } else {
       leaderboardEl.style.display = "block";
-      hallList.style.display = "none";
+      allTimeList.style.display = "none";
       weeklyBtn?.setAttribute("aria-pressed", "true");
-      hallBtn?.setAttribute("aria-pressed", "false");
+      allTimeBtn?.setAttribute("aria-pressed", "false");
     }
   }
 
-  tabsBar?.addEventListener("click", (e) => {
-    if (e.target.id === "tabWeekly") setTabs(false);
-    if (e.target.id === "tabHall") setTabs(true);
-  });
+  // Direct listeners + preventDefault to avoid autoscroll/form submit issues
+  const weeklyBtn  = document.getElementById("tabWeekly");
+  const allTimeBtn = document.getElementById("tabAllTime");
+  weeklyBtn?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setTabs(false); });
+  allTimeBtn?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setTabs(true);  });
 
   // --- Login / username (localStorage) ---
   let username = localStorage.getItem("username");
 
-  // IMPORTANT: scope the login button so it doesn't grab the Hall tabs
   const loginBtn = usernamePrompt?.querySelector("button");
   if (loginBtn) {
     loginBtn.addEventListener("click", () => {
@@ -103,7 +119,6 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "block";
         }
 
-        // Weekly first; Hall loads when user clicks the tab
         loadMyPicks();
         loadLeaderboard();
       });
@@ -120,16 +135,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const div = document.createElement("div");
           div.className = "fight";
+
+          // Build safely with escaped attributes/text
+          const nameKey = `${esc(fight)}-winner`;
           div.innerHTML = `
-            <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1} ${dog1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2} ${dog2}</label>
-            <select name="${fight}-method">
+            <h3>${esc(fight)}</h3>
+            <label><input type="radio" name="${nameKey}" value="${esc(fighter1)}">${esc(fighter1)} ${dog1}</label>
+            <label><input type="radio" name="${nameKey}" value="${esc(fighter2)}">${esc(fighter2)} ${dog2}</label>
+            <select name="${esc(fight)}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
             </select>
-            <select name="${fight}-round">
+            <select name="${esc(fight)}-round">
               <option value="1">Round 1</option>
               <option value="2">Round 2</option>
               <option value="3">Round 3</option>
@@ -170,9 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     for (const fight of fights) {
       const fightName = fight.querySelector("h3").innerText;
-      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
+      const nameKey = `${fightName}-winner`.replace(/&/g,"&amp;").replace(/"/g,"&quot;"); // align with esc()
+      const winner = fight.querySelector(`input[name="${nameKey}"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${esc(fightName)}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${esc(fightName)}-round"]`);
       const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
 
       if (!winner || !method) {
@@ -255,21 +274,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? (matchRound ? "correct" : "wrong")
                 : "";
 
-              const dogIcon = hasResult && matchWinner && isUnderdog
-                ? `<span class="correct">🐶</span>`
-                : "";
-              const roundText = method === "Decision"
-                ? "(Decision)"
-                : `in Round <span class="${roundClass}">${round}</span>`;
-
+              const dogIcon = hasResult && matchWinner && isUnderdog ? `<span class="correct">🐶</span>` : "";
+              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
               const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
                 <div class="scored-pick">
-                  <div class="fight-name">${fight}</div>
+                  <div class="fight-name">${esc(fight)}</div>
                   <div class="user-pick">
-                    <span class="${winnerClass}">${winner}</span> ${dogIcon} by
-                    <span class="${methodClass}">${method}</span> ${roundText}
+                    <span class="${winnerClass}">${esc(winner)}</span> ${dogIcon} by
+                    <span class="${methodClass}">${esc(method)}</span> ${roundText}
                   </div>
                   ${pointsChip}
                 </div>`;
@@ -296,12 +310,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (score !== prevScore) actualRank = rank;
 
         const li = document.createElement("li");
-        let displayName = user;
+        let displayName = esc(user);
         let classes = [];
 
         if (leaderboardData.champs?.includes(user)) {
           classes.push("champ-glow");
-          displayName = `<span class="crown">👑</span> ${displayName}`;
+          displayName = `<span class="crown">👑</span> ${esc(user)}`;
         }
 
         if (index === scores.length - 1) {
@@ -314,7 +328,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         li.className = classes.join(" ");
-        // NOTE: Hall chips removed from weekly view
+        // Weekly shows only weekly stats
         li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
         board.appendChild(li);
 
@@ -322,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // Glow all tied #1 entries (keep crowns as-is)
+      // Glow all tied #1 entries
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -332,7 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // Champion banner only after all fights completed
+      // Show banner only if all results complete
       const totalFights = fightsData.length;
       const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
         res => res.winner && res.method
@@ -351,46 +365,47 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function fetchHall() {
-    if (hallByUser) return Promise.resolve(hallByUser);
+  function fetchAllTime() {
+    // Always fetch fresh when opening All-Time
     return fetch("/api/hall")
       .then(r => r.json())
       .then(rows => {
-        hallByUser = {};
+        const map = {};
         (rows || []).forEach(r => {
-          hallByUser[r.username] = {
+          map[r.username] = {
             crowns: Number(r.crowns) || 0,
             crown_rate: Number(r.crown_rate) || 0,
             events_played: Number(r.events_played) || 0
           };
         });
-        return hallByUser;
+        allTimeByUser = map;
+        return allTimeByUser;
       })
       .catch(() => {
-        hallByUser = {};
-        return hallByUser;
+        allTimeByUser = {};
+        return allTimeByUser;
       });
   }
 
-  function loadHall() {
-    fetchHall().then(() => {
-      const rows = Object.entries(hallByUser)
+  function loadAllTime() {
+    fetchAllTime().then(() => {
+      const rows = Object.entries(allTimeByUser)
         .map(([user, h]) => ({ user, ...h }))
         .sort((a, b) => {
-          // same order as server: crown_rate desc, crowns desc, events desc, name asc
+          // same order as backend: crown_rate desc, crowns desc, events desc, name asc
           if (b.crown_rate !== a.crown_rate) return b.crown_rate - a.crown_rate;
           if (b.crowns !== a.crowns) return b.crowns - a.crowns;
           if (b.events_played !== a.events_played) return b.events_played - a.events_played;
           return (a.user || "").localeCompare(b.user || "");
         });
 
-      hallList.innerHTML = "";
+      allTimeList.innerHTML = "";
 
       if (!rows.length) {
         const li = document.createElement("li");
         li.className = "empty";
-        li.textContent = "No Hall data yet.";
-        hallList.appendChild(li);
+        li.textContent = "No All-Time data yet.";
+        allTimeList.appendChild(li);
         return;
       }
 
@@ -405,10 +420,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         li.innerHTML = `
           <span>#${rank}</span>
-          <span>${row.user}</span>
+          <span>${esc(row.user)}</span>
           <span>👑 x${row.crowns} • ${pct}% • ${row.events_played} events</span>
         `;
-        hallList.appendChild(li);
+        allTimeList.appendChild(li);
       });
     });
   }
