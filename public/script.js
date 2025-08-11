@@ -12,8 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Create "This Week | Hall" tabs (no HTML edits needed) ---
   const leaderboardEl = document.getElementById("leaderboard");
-  const leaderboardWrap = leaderboardEl?.parentElement || document.body;
-
   let tabsBar = document.getElementById("boardTabs");
   if (!tabsBar) {
     tabsBar = document.createElement("div");
@@ -28,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (leaderboardEl) leaderboardEl.before(tabsBar);
   }
 
+  // Holder for Hall list
   let hallList = document.getElementById("hallBoard");
   if (!hallList) {
     hallList = document.createElement("ul");
@@ -47,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hallList.style.display = "block";
       weeklyBtn?.setAttribute("aria-pressed", "false");
       hallBtn?.setAttribute("aria-pressed", "true");
-      loadHall();
+      loadHall(); // fetch/render Hall on demand
     } else {
       leaderboardEl.style.display = "block";
       hallList.style.display = "none";
@@ -61,10 +60,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "tabHall") setTabs(true);
   });
 
-  // --- Login / username ---
+  // --- Login / username (localStorage) ---
   let username = localStorage.getItem("username");
 
-  // IMPORTANT: scope the login button to the usernamePrompt so we don't grab the Hall tabs
+  // IMPORTANT: scope the login button so it doesn't grab the Hall tabs
   const loginBtn = usernamePrompt?.querySelector("button");
   if (loginBtn) {
     loginBtn.addEventListener("click", () => {
@@ -104,11 +103,9 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "block";
         }
 
-        // Prefetch Hall for chips
-        fetchHall().finally(() => {
-          loadMyPicks();
-          loadLeaderboard();
-        });
+        // Weekly first; Hall loads when user clicks the tab
+        loadMyPicks();
+        loadLeaderboard();
       });
   }
 
@@ -202,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.style.display = "none";
           submitBtn.style.display = "none";
           loadMyPicks();
-          fetchHall().finally(loadLeaderboard);
+          loadLeaderboard();
         } else {
           alert(data.error || "Something went wrong.");
           submitBtn.disabled = false;
@@ -281,41 +278,10 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function fetchHall() {
-    if (hallByUser) return Promise.resolve(hallByUser);
-    return fetch("/api/hall")
-      .then(r => r.json())
-      .then(rows => {
-        hallByUser = {};
-        (rows || []).forEach(r => {
-          hallByUser[r.username] = {
-            crowns: Number(r.crowns) || 0,
-            crown_rate: Number(r.crown_rate) || 0,
-            events_played: Number(r.events_played) || 0
-          };
-        });
-        return hallByUser;
-      })
-      .catch(() => {
-        hallByUser = {};
-        return hallByUser;
-      });
-  }
-
-  function hallChipFor(user) {
-    if (!hallByUser || !hallByUser[user]) return "";
-    const h = hallByUser[user];
-    const pct = Math.round((h.crown_rate || 0) * 100);
-    const crowns = h.crowns || 0;
-    const ev = h.events_played || 0;
-    return `<span class="hall-chip"> • 👑 x${crowns} • ${pct}% • ${ev} events</span>`;
-  }
-
   function loadLeaderboard() {
     Promise.all([
       fetch("/api/fights").then(r => r.json()),
-      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json()),
-      fetchHall()
+      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
     ]).then(([fightsData, leaderboardData]) => {
       const board = document.getElementById("leaderboard");
       board.innerHTML = "";
@@ -348,7 +314,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         li.className = classes.join(" ");
-        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}${hallChipFor(user)}</span><span>${score} pts</span>`;
+        // NOTE: Hall chips removed from weekly view
+        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
         board.appendChild(li);
 
         prevScore = score;
@@ -384,6 +351,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function fetchHall() {
+    if (hallByUser) return Promise.resolve(hallByUser);
+    return fetch("/api/hall")
+      .then(r => r.json())
+      .then(rows => {
+        hallByUser = {};
+        (rows || []).forEach(r => {
+          hallByUser[r.username] = {
+            crowns: Number(r.crowns) || 0,
+            crown_rate: Number(r.crown_rate) || 0,
+            events_played: Number(r.events_played) || 0
+          };
+        });
+        return hallByUser;
+      })
+      .catch(() => {
+        hallByUser = {};
+        return hallByUser;
+      });
+  }
+
   function loadHall() {
     fetchHall().then(() => {
       const rows = Object.entries(hallByUser)
@@ -397,13 +385,30 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
       hallList.innerHTML = "";
-      let r = 1;
-      rows.forEach(row => {
+
+      if (!rows.length) {
         const li = document.createElement("li");
-        const pct = Math.round((row.crown_rate || 0) * 100);
-        li.innerHTML = `<span>#${r}</span> <span>${row.user} • 👑 x${row.crowns} • ${pct}% • ${row.events_played} events</span>`;
+        li.className = "empty";
+        li.textContent = "No Hall data yet.";
         hallList.appendChild(li);
-        r++;
+        return;
+      }
+
+      rows.forEach((row, idx) => {
+        const rank = idx + 1;
+        const pct = Math.round((row.crown_rate || 0) * 100);
+
+        const li = document.createElement("li");
+        let classes = [];
+        if (row.user === username) classes.push("current-user");
+        li.className = classes.join(" ");
+
+        li.innerHTML = `
+          <span>#${rank}</span>
+          <span>${row.user}</span>
+          <span>👑 x${row.crowns} • ${pct}% • ${row.events_played} events</span>
+        `;
+        hallList.appendChild(li);
       });
     });
   }
