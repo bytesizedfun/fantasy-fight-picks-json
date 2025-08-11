@@ -7,11 +7,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const champBanner = document.getElementById("champBanner");
   const punchSound = new Audio("punch.mp3");
 
-  // --- lightweight Hall cache ---
+  // --- Hall cache ---
   let hallByUser = null; // { username: {crowns, crown_rate, events_played} }
 
-  // --- Create a simple toggle for Weekly vs Hall (no HTML changes needed) ---
-  const leaderboardWrap = document.getElementById("leaderboard")?.parentElement || document.body;
+  // --- Create "This Week | Hall" tabs (no HTML edits needed) ---
+  const leaderboardEl = document.getElementById("leaderboard");
+  const leaderboardWrap = leaderboardEl?.parentElement || document.body;
+
   let tabsBar = document.getElementById("boardTabs");
   if (!tabsBar) {
     tabsBar = document.createElement("div");
@@ -23,11 +25,9 @@ document.addEventListener("DOMContentLoaded", () => {
       <button id="tabWeekly" class="tab-btn" aria-pressed="true">This Week</button>
       <button id="tabHall" class="tab-btn" aria-pressed="false">Hall</button>
     `;
-    // Insert just above the leaderboard list
-    const boardEl = document.getElementById("leaderboard");
-    if (boardEl) boardEl.before(tabsBar);
+    if (leaderboardEl) leaderboardEl.before(tabsBar);
   }
-  // Create Hall list holder
+
   let hallList = document.getElementById("hallBoard");
   if (!hallList) {
     hallList = document.createElement("ul");
@@ -35,26 +35,24 @@ document.addEventListener("DOMContentLoaded", () => {
     hallList.style.display = "none";
     hallList.style.listStyle = "none";
     hallList.style.padding = "0";
-    const boardEl = document.getElementById("leaderboard");
-    if (boardEl) boardEl.after(hallList);
+    if (leaderboardEl) leaderboardEl.after(hallList);
   }
 
   function setTabs(showHall) {
+    if (!leaderboardEl) return;
     const weeklyBtn = document.getElementById("tabWeekly");
     const hallBtn = document.getElementById("tabHall");
-    const weeklyList = document.getElementById("leaderboard");
-
     if (showHall) {
-      weeklyList.style.display = "none";
+      leaderboardEl.style.display = "none";
       hallList.style.display = "block";
-      weeklyBtn.setAttribute("aria-pressed", "false");
-      hallBtn.setAttribute("aria-pressed", "true");
-      loadHall(); // ensure it's filled
+      weeklyBtn?.setAttribute("aria-pressed", "false");
+      hallBtn?.setAttribute("aria-pressed", "true");
+      loadHall();
     } else {
-      weeklyList.style.display = "block";
+      leaderboardEl.style.display = "block";
       hallList.style.display = "none";
-      weeklyBtn.setAttribute("aria-pressed", "true");
-      hallBtn.setAttribute("aria-pressed", "false");
+      weeklyBtn?.setAttribute("aria-pressed", "true");
+      hallBtn?.setAttribute("aria-pressed", "false");
     }
   }
 
@@ -63,20 +61,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "tabHall") setTabs(true);
   });
 
+  // --- Login / username ---
   let username = localStorage.getItem("username");
+
+  // IMPORTANT: scope the login button to the usernamePrompt so we don't grab the Hall tabs
+  const loginBtn = usernamePrompt?.querySelector("button");
+  if (loginBtn) {
+    loginBtn.addEventListener("click", () => {
+      const input = usernameInput.value.trim();
+      if (!input) return alert("Please enter your name.");
+      username = input;
+      localStorage.setItem("username", username);
+      finalizeLogin(username);
+    });
+  }
 
   if (username) {
     usernameInput.value = username;
     finalizeLogin(username);
   }
-
-  document.querySelector("button").addEventListener("click", () => {
-    const input = usernameInput.value.trim();
-    if (!input) return alert("Please enter your name.");
-    username = input;
-    localStorage.setItem("username", username);
-    finalizeLogin(username);
-  });
 
   function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
@@ -101,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "block";
         }
 
-        // Pull Hall once early so we can show chips on weekly board
+        // Prefetch Hall for chips
         fetchHall().finally(() => {
           loadMyPicks();
           loadLeaderboard();
@@ -193,13 +196,12 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          punchSound.play();
+          try { punchSound.play(); } catch (_) {}
           alert("Picks submitted!");
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
           loadMyPicks();
-          // Refresh Hall & board in case submissions affect later views
           fetchHall().finally(loadLeaderboard);
         } else {
           alert(data.error || "Something went wrong.");
@@ -281,7 +283,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function fetchHall() {
     if (hallByUser) return Promise.resolve(hallByUser);
-    // GET /api/hall → code.gs doGet?action=getHall
     return fetch("/api/hall")
       .then(r => r.json())
       .then(rows => {
@@ -307,7 +308,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const pct = Math.round((h.crown_rate || 0) * 100);
     const crowns = h.crowns || 0;
     const ev = h.events_played || 0;
-    // Compact, readable chip
     return `<span class="hall-chip"> • 👑 x${crowns} • ${pct}% • ${ev} events</span>`;
   }
 
@@ -315,7 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Promise.all([
       fetch("/api/fights").then(r => r.json()),
       fetch("/api/leaderboard", { method: "POST" }).then(r => r.json()),
-      fetchHall() // ensure hallByUser is ready for chips
+      fetchHall()
     ]).then(([fightsData, leaderboardData]) => {
       const board = document.getElementById("leaderboard");
       board.innerHTML = "";
@@ -340,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (index === scores.length - 1) {
           classes.push("loser");
-          displayName = `💩 ${displayName}`; // (visual only; no tracking)
+          displayName = `💩 ${displayName}`; // visual only; not tracked
         }
 
         if (user === username) {
@@ -365,6 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
+      // Champion banner only after all fights completed
       const totalFights = fightsData.length;
       const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
         res => res.winner && res.method
@@ -388,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const rows = Object.entries(hallByUser)
         .map(([user, h]) => ({ user, ...h }))
         .sort((a, b) => {
-          // mirror server sorting: crown_rate desc, crowns desc, events desc, name asc
+          // same order as server: crown_rate desc, crowns desc, events desc, name asc
           if (b.crown_rate !== a.crown_rate) return b.crown_rate - a.crown_rate;
           if (b.crowns !== a.crowns) return b.crowns - a.crowns;
           if (b.events_played !== a.events_played) return b.events_played - a.events_played;
