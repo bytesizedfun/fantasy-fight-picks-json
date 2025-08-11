@@ -5,6 +5,9 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ✅ Google Apps Script Web App URL
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+
 app.use(express.json());
 app.use(express.static("public"));
 
@@ -25,6 +28,7 @@ app.get("/api/fights", async (req, res) => {
     const fights = await response.json();
     res.json(fights);
   } catch (error) {
+    console.error("getFights error:", error);
     res.status(500).json({ error: "Failed to fetch fights" });
   }
 });
@@ -45,6 +49,7 @@ app.post("/api/submit", async (req, res) => {
     const result = await response.json();
     res.json(result);
   } catch (error) {
+    console.error("submitPicks error:", error);
     res.status(500).json({ error: "Failed to submit picks" });
   }
 });
@@ -60,6 +65,7 @@ app.post("/api/picks", async (req, res) => {
     const result = await response.json();
     res.json(result);
   } catch (error) {
+    console.error("getUserPicks error:", error);
     res.status(500).json({ error: "Failed to fetch picks" });
   }
 });
@@ -75,13 +81,23 @@ app.post("/api/leaderboard", async (req, res) => {
     const result = await response.json();
     res.json(result);
   } catch (error) {
+    console.error("getLeaderboard error:", error);
     res.status(500).json({ error: "Failed to fetch leaderboard" });
+  }
+});
+
+// ✅ NEW: Hall endpoint (for Hall tab + 👑 chips)
+app.get("/api/hall", async (req, res) => {
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`);
+    const rows = await response.json();
+    res.json(rows);
+  } catch (error) {
+    console.error("getHall error:", error);
+    res.status(500).json([]);
   }
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-// ✅ Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
