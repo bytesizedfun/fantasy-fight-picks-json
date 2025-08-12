@@ -7,20 +7,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const champBanner = document.getElementById("champBanner");
   const punchSound = new Audio("punch.mp3");
 
+  // Tabs
+  const leaderboardEl = document.getElementById("leaderboard");
+  const allTimeList = document.getElementById("allTimeBoard");
+  const weeklyTabBtn = document.getElementById("tabWeekly");
+  const allTimeTabBtn = document.getElementById("tabAllTime");
+
   let username = localStorage.getItem("username");
 
-  if (username) {
-    usernameInput.value = username;
-    finalizeLogin(username);
-  }
-
-  document.querySelector("button").addEventListener("click", () => {
+  // ---- login flow (keep original, but expose a safe global for inline onclick) ----
+  function doLogin() {
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
     username = input;
     localStorage.setItem("username", username);
     finalizeLogin(username);
-  });
+  }
+  // inline handler support
+  window.lockUsername = doLogin;
+
+  if (username) {
+    usernameInput.value = username;
+    finalizeLogin(username);
+  }
 
   function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
@@ -85,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const methodSelect = fight.querySelector(`select[name$="-method"]`);
           const roundSelect = fight.querySelector(`select[name$="-round"]`);
 
-        methodSelect.addEventListener("change", () => {
+          methodSelect.addEventListener("change", () => {
             roundSelect.disabled = methodSelect.value === "Decision";
             if (roundSelect.disabled) roundSelect.value = "";
             else roundSelect.value = "1";
@@ -134,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          punchSound.play();
+          try { punchSound.play(); } catch(_) {}
           alert("Picks submitted!");
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
@@ -149,7 +158,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  submitBtn.addEventListener("click", submitPicks);
+  // inline handler support
+  window.submitPicks = submitPicks;
 
   function loadMyPicks() {
     fetch("/api/picks", {
@@ -183,9 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 score += 1;
                 if (matchMethod) {
                   score += 1;
-                  if (method !== "Decision" && matchRound) {
-                    score += 1;
-                  }
+                  if (method !== "Decision" && matchRound) score += 1;
                 }
                 if (isUnderdog) score += 2;
               }
@@ -196,14 +204,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? (matchRound ? "correct" : "wrong")
                 : "";
 
-              const dogIcon = hasResult && matchWinner && isUnderdog
-                ? `<span class="correct">🐶</span>`
-                : "";
+              const dogIcon = hasResult && matchWinner && isUnderdog ? `<span class="correct">🐶</span>` : "";
               const roundText = method === "Decision"
                 ? "(Decision)"
                 : `in Round <span class="${roundClass}">${round}</span>`;
 
-              // Build a cleaner card layout: fight name header, details line, points chip
               const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
@@ -251,9 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
           displayName = `💩 ${displayName}`;
         }
 
-        if (user === username) {
-          classes.push("current-user");
-        }
+        if (user === username) classes.push("current-user");
 
         li.className = classes.join(" ");
         li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
@@ -263,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // Glow all tied #1 entries (keep crowns as-is)
+      // Glow tied #1s
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -278,11 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
         res => res.winner && res.method
       ).length;
 
-      if (
-        leaderboardData.champMessage &&
-        totalFights > 0 &&
-        completedResults === totalFights
-      ) {
+      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
         champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
       } else {
@@ -291,16 +290,62 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // -----------------------
-  // ADDED: tiny shims so inline HTML onclicks don't throw errors.
-  // They just trigger the already-bound listeners you have above.
-  // -----------------------
-  window.lockUsername = function () {
-    const btn = document.querySelector("#usernamePrompt button") || document.querySelector("button");
-    if (btn) btn.click();
-  };
-  window.submitPicks = function () {
-    const btn = document.getElementById("submitBtn");
-    if (btn) btn.click();
-  };
+  // ---------- All-Time (calls your getHall via /api/hall) ----------
+  function loadAllTime() {
+    fetch("/api/hall")
+      .then(r => r.json())
+      .then(rows => {
+        const data = (rows || []).map(r => ({
+          user: r.username,
+          crowns: Number(r.crowns) || 0,
+          events: Number(r.events_played) || 0,
+          rate: Number(r.crown_rate) || 0
+        })).sort((a,b) => {
+          if (b.rate !== a.rate) return b.rate - a.rate;
+          if (b.crowns !== a.crowns) return b.crowns - a.crowns;
+          if (b.events !== a.events) return b.events - a.events;
+          return (a.user||"").localeCompare(b.user||"");
+        });
+
+        allTimeList.innerHTML = "";
+        if (!data.length) {
+          allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
+          return;
+        }
+
+        const topRate = data[0].rate;
+        data.forEach((row, idx) => {
+          const pct = Math.round(row.rate * 100);
+          const li = document.createElement("li");
+          const classes = [];
+          if (row.user === username) classes.push("current-user");
+          if (row.rate === topRate) classes.push("tied-first");
+          li.className = classes.join(" ");
+          li.innerHTML = `
+            <span>#${idx+1}</span>
+            <span>${row.user}</span>
+            <span>👑 x${row.crowns} • ${pct}% • ${row.events} events</span>
+          `;
+          allTimeList.appendChild(li);
+        });
+      })
+      .catch(() => {
+        allTimeList.innerHTML = "<li>All-Time unavailable.</li>";
+      });
+  }
+
+  // Tab toggle
+  weeklyTabBtn.addEventListener("click", () => {
+    leaderboardEl.style.display = "block";
+    allTimeList.style.display = "none";
+    weeklyTabBtn.setAttribute("aria-pressed","true");
+    allTimeTabBtn.setAttribute("aria-pressed","false");
+  });
+  allTimeTabBtn.addEventListener("click", () => {
+    leaderboardEl.style.display = "none";
+    allTimeList.style.display = "block";
+    weeklyTabBtn.setAttribute("aria-pressed","false");
+    allTimeTabBtn.setAttribute("aria-pressed","true");
+    loadAllTime();
+  });
 });
