@@ -108,7 +108,7 @@ body {
   margin: 10px 0;
   padding: 14px;
   display: grid;
-  grid-template-columns: 50px auto 60px;
+  grid-template-columns: 50px minmax(0,1fr) 60px;
   align-items: center;
   border-radius: 10px;
   border-left: 4px solid var(--silver);
@@ -151,23 +151,23 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
 #allTimeBoard { list-style:none; padding:0; margin-top:20px; overflow-x: hidden; }
 #allTimeBoard li { 
   background: rgba(255,255,255,0.04);
-  margin: 10px 0; padding: 12px 14px;
+  margin: 10px 0; padding: 14px 16px;
   display: grid; align-items: center;
   border-radius: 10px; border-left: 4px solid var(--silver);
   transition: all .25s ease;
-  overflow: hidden; /* clip any stray overflow */
+  overflow: hidden;
 }
 
-/* HARDENED GRID: middle column can shrink, numbers stay fixed width */
+/* Hardened grid: middle can shrink, numbers fixed */
 #allTimeBoard li.at-five { 
-  grid-template-columns: 60px minmax(0,1fr) 100px 90px 130px;
+  grid-template-columns: 60px minmax(0,1fr) 90px 80px 80px;
   column-gap: 10px;
 }
 #allTimeBoard .board-header.at-five {
-  grid-template-columns: 60px minmax(0,1fr) 100px 90px 130px;
+  grid-template-columns: 60px minmax(0,1fr) 90px 80px 80px;
 }
 
-/* Header row clearly distinct */
+/* Header distinct */
 #allTimeBoard .board-header{
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
@@ -175,13 +175,13 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   font-weight: 900;
   text-transform: uppercase;
   color: var(--silver);
+  letter-spacing: .04em;
 }
 #allTimeBoard .board-header .hdr-right { text-align: right; }
 
-/* Ensure cells can shrink */
+/* Cells can shrink; player never wraps */
 #allTimeBoard li.at-five > span { min-width: 0; }
-
-/* Player cell: no wrap, ellipsis, doesn’t push layout */
+#allTimeBoard li .rank { font-weight:900; white-space: nowrap; }
 #allTimeBoard li .user{
   font-weight:900; letter-spacing:.02em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -197,7 +197,7 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   text-shadow: none;
 }
 
-/* Row states */
+/* States */
 #allTimeBoard li:hover{
   border-left-color:var(--neon-cyan);
   box-shadow:0 0 12px rgba(0,245,255,0.4);
@@ -212,15 +212,10 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   outline:2px solid rgba(0,245,255,0.35);
   box-shadow:0 0 10px rgba(0,245,255,0.35) inset;
 }
-#allTimeBoard li .rank{ font-weight:900; }
 
-/* Skeleton rows (match 5 columns) */
-#allTimeBoard li.skeleton {
-  display:grid; align-items:center;
-  background: rgba(255,255,255,0.03);
-  border-left: 4px solid transparent;
-}
-#allTimeBoard li.skeleton.at-five { grid-template-columns: 60px minmax(0,1fr) 100px 90px 130px; column-gap:10px; }
+/* Skeleton rows */
+#allTimeBoard li.skeleton { display:grid; align-items:center; background: rgba(255,255,255,0.03); border-left: 4px solid transparent; }
+#allTimeBoard li.skeleton.at-five { grid-template-columns: 60px minmax(0,1fr) 90px 80px 80px; column-gap:10px; }
 #allTimeBoard li.skeleton .sk-block,
 #allTimeBoard li.skeleton .sk-line{
   display:block; height:14px; border-radius:6px;
@@ -338,11 +333,10 @@ button:hover {
   .scored-pick .fight-name { font-size: .98rem; }
   .scored-pick .points { font-size: .9rem; padding: 3px 8px; }
 
-  #leaderboard li { grid-template-columns: 44px auto 64px; padding: 12px; }
+  #leaderboard li { grid-template-columns: 44px minmax(0,1fr) 64px; padding: 12px; }
 
-  /* All-Time 5-col shrinks nicely */
   #allTimeBoard li.at-five,
   #allTimeBoard .board-header.at-five {
-    grid-template-columns: 44px minmax(0,1fr) 80px 72px 96px;
+    grid-template-columns: 44px minmax(0,1fr) 78px 64px 72px;
   }
 }
