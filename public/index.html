@@ -57,45 +57,18 @@
     <ul id="leaderboard"></ul>
 
     <!-- All-Time list -->
-    <ul id="allTimeBoard" style="display:none;"></ul>
+    <ul id="allTimeBoard" style="display:none;">
+      <!-- Static, 5-cell header that matches the row grid -->
+      <li class="board-header">
+        <span>Rank</span>
+        <span>Player</span>
+        <span>Rate</span>
+        <span>Crowns</span>
+        <span>Events</span>
+      </li>
+    </ul>
   </div>
 
   <script src="script.js"></script>
-
-  <!-- Header normalizer (safe, additive; does NOT change your JS logic) -->
-  <script>
-    (function () {
-      const ready = fn => (document.readyState !== 'loading') ? fn() : document.addEventListener('DOMContentLoaded', fn);
-      ready(() => {
-        const ul = document.getElementById('allTimeBoard');
-        if (!ul) return;
-
-        // Remove stray empty text nodes at top
-        Array.from(ul.childNodes).slice(0, 5).forEach(n => {
-          if (n.nodeType === 3 && !n.textContent.trim()) ul.removeChild(n);
-        });
-
-        // If there's already a proper 5-cell header, keep it; hide any extras later
-        const existingHeader = ul.querySelector('li.board-header');
-        const valid = existingHeader && existingHeader.children && existingHeader.children.length === 5;
-
-        if (!valid) {
-          const hdr = document.createElement('li');
-          hdr.className = 'board-header';
-          ['Rank','Player','Rate','Crowns','Events'].forEach(t => {
-            const s = document.createElement('span');
-            s.textContent = t;
-            hdr.appendChild(s);
-          });
-          ul.insertBefore(hdr, ul.firstChild || null);
-        }
-
-        // If your script also renders a header, hide duplicates so only the first shows
-        ul.querySelectorAll('li.board-header:not(:first-child)').forEach(el => {
-          el.style.display = 'none';
-        });
-      });
-    })();
-  </script>
 </body>
 </html>
