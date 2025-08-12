@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fantasy Fight Picks</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+
+  <!-- Favicon -->
+  <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+
+  <!-- Fonts & Styles -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -14,22 +19,23 @@
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
-  <!-- Flashy Champion of the Week banner -->
-  <div id="champBanner" class="champ-banner" style="display: none;"></div>
+  <!-- Champion banner (shown when all fights are complete) -->
+  <div id="champBanner" class="champ-banner" style="display:none;"></div>
 
   <div id="app">
     <!-- Username prompt -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
-      <input type="text" id="usernameInput" />
-      <button onclick="lockUsername()">Lock In</button>
+      <input type="text" id="usernameInput" autocomplete="off" />
+      <!-- IMPORTANT: no inline onclick; JS binds this by id -->
+      <button id="lockBtn" type="button">Lock In</button>
     </div>
 
-    <!-- Welcome message -->
-    <h2 id="welcome" style="display: none;"></h2>
+    <!-- Welcome -->
+    <h2 id="welcome" style="display:none;"></h2>
 
     <!-- Scoring Rules -->
-    <div id="scoringRules" style="display: none;">
+    <div id="scoringRules" style="display:none;">
       <div class="scoring-box tight">
         <div>+1 pt for winner</div>
         <div>+1 pt for method (if winner is correct)</div>
@@ -38,18 +44,22 @@
       </div>
     </div>
 
-    <!-- Fight List -->
-    <div id="fightList" style="display: none;"></div>
-    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <!-- Fight List + Submit -->
+    <div id="fightList" style="display:none;"></div>
+    <!-- IMPORTANT: no inline onclick; JS binds this by id -->
+    <button id="submitBtn" type="button" style="display:none;">Submit Picks</button>
 
     <!-- My Picks -->
-    <div id="myPicks" style="margin-top: 20px;"></div>
+    <div id="myPicks" style="margin-top:20px;"></div>
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
+    <!-- The JS injects the Weekly / All-Time tabs near here -->
     <ul id="leaderboard"></ul>
+    <!-- The JS will also create an <ul id="allTimeBoard"> after this -->
   </div>
 
+  <!-- App script -->
   <script src="script.js"></script>
 </body>
 </html>
