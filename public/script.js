@@ -1,379 +1,106 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const welcome = document.getElementById("welcome");
-  const fightList = document.getElementById("fightList");
-  const submitBtn = document.getElementById("submitBtn");
-  const usernamePrompt = document.getElementById("usernamePrompt");
-  const usernameInput = document.getElementById("usernameInput");
-  const lockBtn = document.getElementById("lockBtn");
-  const champBanner = document.getElementById("champBanner");
-  const leaderboardEl = document.getElementById("leaderboard");
-  const allTimeList = document.getElementById("allTimeBoard");
-  const weeklyTabBtn = document.getElementById("tabWeekly");
-  const allTimeTabBtn = document.getElementById("tabAllTime");
-  const punchSound = new Audio("punch.mp3");
+const express = require("express");
+const fetch = require("node-fetch");
+const path = require("path");
 
-  // Escape helper
-  const esc = (s) => String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  // Kill default anchors like <a href="#">
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest('a[href="#"]');
-    if (a) { e.preventDefault(); e.stopImmediatePropagation(); }
-  }, true);
+// ✅ Google Apps Script Web App URL (your existing one)
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-  let username = localStorage.getItem("username");
-  let allTimeByUser = null;
+app.use(express.json());
+app.use(express.static("public"));
 
-  // Tabs
-  function setTabs(showAllTime) {
-    const y = window.scrollY;
-    if (showAllTime) {
-      leaderboardEl.style.display = "none";
-      allTimeList.style.display = "block";
-      weeklyTabBtn.setAttribute("aria-pressed", "false");
-      allTimeTabBtn.setAttribute("aria-pressed", "true");
-      allTimeByUser = null;
-      loadAllTime();
-    } else {
-      leaderboardEl.style.display = "block";
-      allTimeList.style.display = "none";
-      weeklyTabBtn.setAttribute("aria-pressed", "true");
-      allTimeTabBtn.setAttribute("aria-pressed", "false");
-    }
-    requestAnimationFrame(() => {
-      const html = document.documentElement;
-      const prev = html.style.scrollBehavior;
-      html.style.scrollBehavior = "auto";
-      window.scrollTo(0, y);
-      html.style.scrollBehavior = prev || "";
-    });
+// ✅ Updated Lockout Time: August 9, 2025 @ 4:00 PM ET
+const lockoutTime = new Date("2025-08-09T16:00:00-04:00");
+
+// ✅ Endpoint to check lockout status (for frontend)
+app.get("/api/lockout", (req, res) => {
+  const now = new Date();
+  const locked = now >= lockoutTime;
+  res.json({ locked });
+});
+
+// ✅ Fetch Fights
+app.get("/api/fights", async (req, res) => {
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    const fights = await response.json();
+    res.json(fights);
+  } catch (error) {
+    console.error("getFights error:", error);
+    res.status(500).json({ error: "Failed to fetch fights" });
   }
-  weeklyTabBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopImmediatePropagation(); setTabs(false); });
-  allTimeTabBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopImmediatePropagation(); setTabs(true); });
+});
 
-  // Login
-  if (lockBtn) {
-    lockBtn.addEventListener("click", (e) => {
-      e.preventDefault(); e.stopImmediatePropagation();
-      const input = usernameInput.value.trim();
-      if (!input) return alert("Please enter your name.");
-      username = input;
-      localStorage.setItem("username", username);
-      finalizeLogin(username);
-    });
-  }
-  if (username) {
-    usernameInput.value = username;
-    finalizeLogin(username);
+// ✅ Submit Picks (with lockout logic)
+app.post("/api/submit", async (req, res) => {
+  const now = new Date();
+  if (now >= lockoutTime) {
+    return res.json({ success: false, error: "⛔ Picks are locked. The event has started." });
   }
 
-  function finalizeLogin(name) {
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
-    welcome.style.display = "block";
-    document.getElementById("scoringRules").style.display = "block";
-
-    fetch("/api/picks", {
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: name })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success && data.picks.length > 0) {
-        localStorage.setItem("submitted", "true");
-        fightList.style.display = "none";
-        submitBtn.style.display = "none";
-      } else {
-        localStorage.removeItem("submitted");
-        loadFights();
-        submitBtn.style.display = "block";
-      }
-      loadMyPicks();
-      loadLeaderboard();
+      body: JSON.stringify({ action: "submitPicks", ...req.body }),
+      headers: { "Content-Type": "application/json" }
     });
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
+    console.error("submitPicks error:", error);
+    res.status(500).json({ error: "Failed to submit picks" });
   }
+});
 
-  function loadFights() {
-    fetch("/api/fights")
-      .then(res => res.json())
-      .then(data => {
-        fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
-          const dog1 = underdog === "Fighter 1" ? "🐶" : "";
-          const dog2 = underdog === "Fighter 2" ? "🐶" : "";
-
-          const div = document.createElement("div");
-          div.className = "fight";
-          const key = encodeURIComponent(fight);
-
-          div.innerHTML = `
-            <h3>${esc(fight)}</h3>
-            <label><input type="radio" name="${key}-winner" value="${esc(fighter1)}">${esc(fighter1)} ${dog1}</label>
-            <label><input type="radio" name="${key}-winner" value="${esc(fighter2)}">${esc(fighter2)} ${dog2}</label>
-            <select name="${key}-method">
-              <option value="Decision">Decision</option>
-              <option value="KO/TKO">KO/TKO</option>
-              <option value="Submission">Submission</option>
-            </select>
-            <select name="${key}-round">
-              <option value="">--</option>
-              <option value="1">Round 1</option>
-              <option value="2">Round 2</option>
-              <option value="3">Round 3</option>
-              <option value="4">Round 4</option>
-              <option value="5">Round 5</option>
-            </select>
-          `;
-          fightList.appendChild(div);
-        });
-
-        document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector(`select[name$="-method"]`);
-          const roundSelect = fight.querySelector(`select[name$="-round"]`);
-          methodSelect.addEventListener("change", () => {
-            roundSelect.disabled = methodSelect.value === "Decision";
-            if (roundSelect.disabled) roundSelect.value = "";
-            else if (!roundSelect.value) roundSelect.value = "1";
-          });
-          if (methodSelect.value === "Decision") { roundSelect.disabled = true; roundSelect.value = ""; }
-        });
-
-        fightList.style.display = "block";
-        submitBtn.style.display = "block";
-      });
-  }
-
-  function gatherPicksOrAlert() {
-    const picks = [];
-    const fights = document.querySelectorAll(".fight");
-    for (const fight of fights) {
-      const fightName = fight.querySelector("h3").innerText;
-      const key = encodeURIComponent(fightName);
-      const winner = fight.querySelector(`input[name="${key}-winner"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${key}-method"]`)?.value;
-      const roundRaw = fight.querySelector(`select[name="${key}-round"]`);
-      const round = roundRaw && !roundRaw.disabled ? (roundRaw.value || "") : "";
-      if (!winner || !method) {
-        alert(`Please complete all picks. Missing data for "${fightName}".`);
-        return null;
-      }
-      picks.push({ fight: fightName, winner, method, round });
-    }
-    return picks;
-  }
-
-  function submitPicks() {
-    const picks = gatherPicksOrAlert();
-    if (!picks) return;
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting...";
-
-    fetch("/api/submit", {
+// ✅ Get User Picks
+app.post("/api/picks", async (req, res) => {
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, picks })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        try { punchSound.play(); } catch (_) {}
-        alert("Picks submitted!");
-        localStorage.setItem("submitted", "true");
-        fightList.style.display = "none";
-        submitBtn.style.display = "none";
-        loadMyPicks();
-        loadLeaderboard();
-      } else {
-        alert(data.error || "Something went wrong.");
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit Picks";
-      }
+      body: JSON.stringify({ action: "getUserPicks", ...req.body }),
+      headers: { "Content-Type": "application/json" }
     });
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
+    console.error("getUserPicks error:", error);
+    res.status(500).json({ error: "Failed to fetch picks" });
   }
-  submitBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopImmediatePropagation(); submitPicks(); });
+});
 
-  function loadMyPicks() {
-    fetch("/api/picks", {
+// ✅ Get Leaderboard (Weekly)
+app.post("/api/leaderboard", async (req, res) => {
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
-    })
-    .then(res => res.json())
-    .then(data => {
-      const myPicksDiv = document.getElementById("myPicks");
-      myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-      if (!data.success || !data.picks.length) {
-        myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
-        return;
-      }
-      fetch("/api/leaderboard", { method: "POST" })
-      .then(res => res.json())
-      .then(resultData => {
-        const fightResults = resultData.fightResults || {};
-        data.picks.forEach(({ fight, winner, method, round }) => {
-          let score = 0;
-          const actual = fightResults[fight] || {};
-          const hasResult = actual.winner && actual.method;
-          const matchWinner = hasResult && winner === actual.winner;
-          const matchMethod = hasResult && method === actual.method;
-          const matchRound = hasResult && round == actual.round;
-          const isUnderdog = actual.underdog === "Y";
-
-          if (matchWinner) {
-            score += 1;
-            if (matchMethod) {
-              score += 1;
-              if (method !== "Decision" && matchRound) score += 1;
-            }
-            if (isUnderdog) score += 2;
-          }
-
-          const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
-          const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-          const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
-            ? (matchRound ? "correct" : "wrong") : "";
-
-          const dogIcon = hasResult && matchWinner && isUnderdog ? `<span class="correct">🐶</span>` : "";
-          const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
-          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
-
-          myPicksDiv.innerHTML += `
-            <div class="scored-pick">
-              <div class="fight-name">${esc(fight)}</div>
-              <div class="user-pick">
-                <span class="${winnerClass}">${esc(winner)}</span> ${dogIcon} by
-                <span class="${methodClass}">${esc(method)}</span> ${roundText}
-              </div>
-              ${pointsChip}
-            </div>`;
-        });
-      });
+      body: JSON.stringify({ action: "getLeaderboard" }),
+      headers: { "Content-Type": "application/json" }
     });
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
+    console.error("getLeaderboard error:", error);
+    res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
+});
 
-  function loadLeaderboard() {
-    Promise.all([
-      fetch("/api/fights").then(r => r.json()),
-      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
-    ])
-    .then(([fightsData, leaderboardData]) => {
-      const board = leaderboardEl;
-      board.innerHTML = "";
-
-      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
-
-      let rank = 1, prevScore = null, actualRank = 1;
-      scores.forEach(([user, score], index) => {
-        if (score !== prevScore) actualRank = rank;
-
-        const li = document.createElement("li");
-        let displayName = esc(user);
-        const classes = [];
-
-        if (leaderboardData.champs?.includes(user)) {
-          classes.push("champ-glow");
-          displayName = `<span class="crown">👑</span> ${esc(user)}`;
-        }
-        if (index === scores.length - 1) {
-          classes.push("loser");
-          displayName = `💩 ${displayName}`;
-        }
-        if (user === username) classes.push("current-user");
-
-        li.className = classes.join(" ");
-        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
-        board.appendChild(li);
-
-        prevScore = score; rank++;
-      });
-
-      // Highlight ties at #1
-      const lis = board.querySelectorAll("li");
-      if (lis.length > 0) {
-        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
-        lis.forEach(li => {
-          const val = parseInt(li.lastElementChild.textContent, 10);
-          if (val === topScore) li.classList.add("tied-first");
-        });
-      }
-
-      // Banner only if all fights complete
-      const totalFights = fightsData.length;
-      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
-        res => res.winner && res.method
-      ).length;
-      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
-        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
-        champBanner.style.display = "block";
-      } else {
-        champBanner.style.display = "none";
-      }
+// ✅ All-Time (Hall) — reads champions sheet summary from Apps Script
+app.get("/api/hall", async (req, res) => {
+  try {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
+      headers: { "Cache-Control": "no-cache" }
     });
+    const result = await response.json();
+    res.set("Cache-Control", "no-store");
+    res.json(result);
+  } catch (error) {
+    console.error("getHall error:", error);
+    res.status(500).json([]);
   }
+});
 
-  function fetchAllTime() {
-    return fetch("/api/hall")
-      .then(r => r.json())
-      .then(rows => {
-        const map = {};
-        (rows || []).forEach(r => {
-          map[r.username] = {
-            crowns: Number(r.crowns) || 0,
-            crown_rate: Number(r.crown_rate) || 0,
-            events_played: Number(r.events_played) || 0
-          };
-        });
-        allTimeByUser = map;
-        return allTimeByUser;
-      })
-      .catch(() => { allTimeByUser = {}; return allTimeByUser; });
-  }
-
-  function loadAllTime() {
-    fetchAllTime().then(() => {
-      const rows = Object.entries(allTimeByUser)
-        .map(([user, h]) => ({ user, ...h }))
-        .sort((a, b) => {
-          if (b.crown_rate !== a.crown_rate) return b.crown_rate - a.crown_rate;
-          if (b.crowns !== a.crowns) return b.crowns - a.crowns;
-          if (b.events_played !== a.events_played) return b.events_played - a.events_played;
-          return (a.user || "").localeCompare(b.user || "");
-        });
-
-      allTimeList.innerHTML = "";
-      if (!rows.length) {
-        const li = document.createElement("li");
-        li.className = "empty";
-        li.textContent = "No All-Time data yet.";
-        allTimeList.appendChild(li);
-        return;
-      }
-
-      const topRate = rows.length ? (rows[0].crown_rate || 0) : 0;
-
-      rows.forEach((row, idx) => {
-        const rank = idx + 1;
-        const pct = Math.round((row.crown_rate || 0) * 100);
-
-        const li = document.createElement("li");
-        const classes = [];
-        if (row.user === username) classes.push("current-user");
-        if ((row.crown_rate || 0) === topRate) classes.push("tied-first");
-        li.className = classes.join(" ");
-
-        li.innerHTML = `
-          <span>#${rank}</span>
-          <span>${esc(row.user)}</span>
-          <span>👑 x${row.crowns} • ${pct}% • ${row.events_played} events</span>
-        `;
-        allTimeList.appendChild(li);
-      });
-    });
-  }
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
