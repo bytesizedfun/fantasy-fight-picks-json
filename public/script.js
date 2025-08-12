@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = localStorage.getItem("username");
 
-  // -------- Inline handlers exposed for HTML --------
+  // ---- login handlers (used by HTML onclick) ----
   function doLogin() {
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // -------- Fights --------
+  // ---- fights ----
   function loadFights() {
     fetch("/api/fights")
       .then(res => res.json())
@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // -------- My Picks --------
+  // ---- my picks ----
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -222,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // -------- Weekly board --------
+  // ---- weekly board ----
   function loadLeaderboard() {
     Promise.all([
       fetch("/api/fights").then(r => r.json()),
@@ -262,7 +262,6 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // tie highlight
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -287,7 +286,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // ALL-TIME: PRELOAD + RENDER
+  // ALL-TIME (preload + render, tie-safe)
   // =========================
   let allTimeLoaded = false;
   let allTimeData = [];
@@ -295,12 +294,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function fetchWithTimeout(url, ms = 6000) {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { signal: controller.signal })
-      .finally(() => clearTimeout(t));
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
   }
 
   function sortAllTime(rows) {
-    // ignore any header/blank rows just in case
     const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
     return cleaned
       .map(r => ({
@@ -320,14 +317,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderAllTimeSkeleton(rows = 6, minHeight = 0) {
     allTimeList.style.minHeight = minHeight ? `${minHeight}px` : "";
     allTimeList.innerHTML = "";
-    // simple skeleton rows that match the 5-column layout
     for (let i = 0; i < rows; i++) {
       const li = document.createElement("li");
       li.className = "skeleton at-five";
       li.innerHTML = `
         <span class="sk-block"></span>
         <span class="sk-line"></span>
-        <span class="sk-line short"></span>
+        <span class="sk-block short"></span>
         <span class="sk-block short"></span>
         <span class="sk-block short"></span>
       `;
@@ -343,9 +339,13 @@ document.addEventListener("DOMContentLoaded", () => {
       <span>Player</span>
       <span class="hdr-right">Rate</span>
       <span class="hdr-right">Crowns</span>
-      <span class="hdr-right">Events&nbsp;Played</span>
+      <span class="hdr-right">Events</span>
     `;
     allTimeList.appendChild(li);
+  }
+
+  function rowsEqual(a, b) {
+    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
   }
 
   function drawAllTime(data) {
@@ -357,25 +357,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderAllTimeHeader();
 
-    const topRate = data[0]?.rate ?? 0;
-    const medal = (i) => (i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`);
+    // Rank with ties (competition ranking): 1,1,1,4...
+    let rank = 0;
+    let prev = null;
 
     data.forEach((row, idx) => {
+      rank = (idx === 0 || !rowsEqual(row, prev)) ? (idx + 1) : rank;
+      const isTop = rank === 1;
+
       const li = document.createElement("li");
       const classes = [];
       if (row.user === username) classes.push("current-user");
-      if (row.rate === topRate) classes.push("tied-first");
+      if (isTop) classes.push("tied-first");
       li.className = classes.join(" ") + " at-five";
 
+      const rankLabel = isTop ? "🥇" : `#${rank}`;
       const pct = (row.rate * 100).toFixed(1) + "%";
+
       li.innerHTML = `
-        <span class="rank">${medal(idx)}</span>
-        <span class="user">${row.user}</span>
+        <span class="rank">${rankLabel}</span>
+        <span class="user" title="${row.user}">${row.user}</span>
         <span class="num">${pct}</span>
         <span class="num">${row.crowns}</span>
         <span class="num">${row.events}</span>
       `;
       allTimeList.appendChild(li);
+      prev = row;
     });
   }
 
@@ -386,18 +393,14 @@ document.addEventListener("DOMContentLoaded", () => {
         allTimeData = sortAllTime(rows);
         allTimeLoaded = true;
       })
-      .catch(() => { /* silent; retry on tab open */ });
+      .catch(() => {});
   }
 
   function loadAllTimeInteractive() {
-    if (allTimeLoaded) {
-      drawAllTime(allTimeData);
-      return;
-    }
+    if (allTimeLoaded) { drawAllTime(allTimeData); return; }
     const panelHeight = leaderboardEl.offsetHeight || 260;
     renderAllTimeSkeleton(6, panelHeight);
 
-    // fetch with one retry
     fetchWithTimeout("/api/hall", 6000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(rows => {
@@ -418,12 +421,10 @@ document.addEventListener("DOMContentLoaded", () => {
             allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`;
           });
       })
-      .finally(() => {
-        setTimeout(() => { allTimeList.style.minHeight = ""; }, 0);
-      });
+      .finally(() => setTimeout(() => { allTimeList.style.minHeight = ""; }, 0));
   }
 
-  // -------- Tabs --------
+  // ---- tabs ----
   weeklyTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
     leaderboardEl.style.display = "block";
@@ -434,13 +435,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   allTimeTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
-    loadAllTimeInteractive();   // draw/fetch first
+    loadAllTimeInteractive();
     leaderboardEl.style.display = "none";
     allTimeList.style.display = "block";
     weeklyTabBtn.setAttribute("aria-pressed","false");
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
 
-  // Preload All-Time so first click is instant
+  // initial
+  if (!username) {
+    // show username prompt by default
+  }
   preloadAllTime();
 });
