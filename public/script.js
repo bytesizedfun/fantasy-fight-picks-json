@@ -4,29 +4,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
-  const lockBtn = document.getElementById("lockBtn"); // <-- new
+  const lockBtn = document.getElementById("lockBtn");
   const champBanner = document.getElementById("champBanner");
   const punchSound = new Audio("punch.mp3");
 
-  // Escape helper
+  // Escape helper for safe HTML text/attrs
   const esc = (s) => String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-  // Kill any <a href="#"> default nav anywhere
+  // Kill default anchors like <a href="#"> anywhere (prevents scroll jumps)
   document.addEventListener("click", (e) => {
     const a = e.target.closest('a[href="#"]');
     if (a) { e.preventDefault(); e.stopImmediatePropagation(); }
   }, true);
 
-  // --- All-Time cache (refetched on tab click for freshness) ---
+  // Cache for All-Time
   let allTimeByUser = null;
 
-  // --- Build "Weekly | All-Time" tabs ---
+  // Build tabs (Weekly | All-Time)
   const leaderboardEl = document.getElementById("leaderboard");
-
   let tabsBar = document.getElementById("boardTabs");
   const tabsHtml = `
     <button type="button" id="tabWeekly"  class="tab-btn" aria-pressed="true">Weekly</button>
@@ -35,9 +34,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!tabsBar) {
     tabsBar = document.createElement("div");
     tabsBar.id = "boardTabs";
-    tabsBar.style.display = "flex";
-    tabsBar.style.gap = "8px";
-    tabsBar.style.margin = "12px 0";
     tabsBar.innerHTML = tabsHtml;
     if (leaderboardEl) leaderboardEl.before(tabsBar);
   } else {
@@ -59,7 +55,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setTabs(showAllTime) {
-    const y = window.scrollY; // preserve scroll
+    const y = window.scrollY; // preserve scroll position
+
     const weeklyBtn  = document.getElementById("tabWeekly");
     const allTimeBtn = document.getElementById("tabAllTime");
 
@@ -68,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
       allTimeList.style.display = "block";
       weeklyBtn?.setAttribute("aria-pressed", "false");
       allTimeBtn?.setAttribute("aria-pressed", "true");
-      allTimeByUser = null; // force refresh
+      allTimeByUser = null; // force reload
       loadAllTime();
     } else {
       leaderboardEl.style.display = "block";
@@ -86,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Tab listeners (no delegation; stop everything)
+  // Tab listeners (hardened)
   document.getElementById("tabWeekly")?.addEventListener("click", (e) => {
     e.preventDefault(); e.stopImmediatePropagation(); e.currentTarget.blur();
     setTabs(false);
@@ -96,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setTabs(true);
   });
 
-  // --- Login / username (localStorage) ---
+  // Username (localStorage)
   let username = localStorage.getItem("username");
 
   if (lockBtn) {
@@ -155,17 +152,20 @@ document.addEventListener("DOMContentLoaded", () => {
           const div = document.createElement("div");
           div.className = "fight";
 
-          const nameKey = `${esc(fight)}-winner`;
+          // Use a stable, safe key for form control names
+          const key = encodeURIComponent(fight);
+
           div.innerHTML = `
             <h3>${esc(fight)}</h3>
-            <label><input type="radio" name="${nameKey}" value="${esc(fighter1)}">${esc(fighter1)} ${dog1}</label>
-            <label><input type="radio" name="${nameKey}" value="${esc(fighter2)}">${esc(fighter2)} ${dog2}</label>
-            <select name="${esc(fight)}-method">
+            <label><input type="radio" name="${key}-winner" value="${esc(fighter1)}">${esc(fighter1)} ${dog1}</label>
+            <label><input type="radio" name="${key}-winner" value="${esc(fighter2)}">${esc(fighter2)} ${dog2}</label>
+            <select name="${key}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
               <option value="Submission">Submission</option>
             </select>
-            <select name="${esc(fight)}-round">
+            <select name="${key}-round">
+              <option value="">--</option>
               <option value="1">Round 1</option>
               <option value="2">Round 2</option>
               <option value="3">Round 3</option>
@@ -183,9 +183,13 @@ document.addEventListener("DOMContentLoaded", () => {
           methodSelect.addEventListener("change", () => {
             roundSelect.disabled = methodSelect.value === "Decision";
             if (roundSelect.disabled) roundSelect.value = "";
-            else roundSelect.value = "1";
+            else if (!roundSelect.value) roundSelect.value = "1";
           });
 
+          if (methodSelect.value === "Decision") {
+            roundSelect.disabled = true;
+            roundSelect.value = "";
+          }
         });
 
         fightList.style.display = "block";
@@ -193,30 +197,34 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function submitPicks() {
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting...";
-
+  function gatherPicksOrAlert() {
     const picks = [];
     const fights = document.querySelectorAll(".fight");
 
     for (const fight of fights) {
       const fightName = fight.querySelector("h3").innerText;
-      const nameKey = `${fightName}-winner`.replace(/&/g,"&amp;").replace(/"/g,"&quot;");
-      const winner = fight.querySelector(`input[name="${nameKey}"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${esc(fightName)}-method"]`)?.value;
-      const roundRaw = fight.querySelector(`select[name="${esc(fightName)}-round"]`);
-      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
+      const key = encodeURIComponent(fightName);
+      const winner = fight.querySelector(`input[name="${key}-winner"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${key}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${key}-round"]`);
+      const round = roundRaw && !roundRaw.disabled ? (roundRaw.value || "") : "";
 
       if (!winner || !method) {
         alert(`Please complete all picks. Missing data for "${fightName}".`);
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit Picks";
-        return;
+        return null;
       }
 
       picks.push({ fight: fightName, winner, method, round });
     }
+    return picks;
+  }
+
+  function submitPicks() {
+    const picks = gatherPicksOrAlert();
+    if (!picks) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
 
     fetch("/api/submit", {
       method: "POST",
@@ -278,9 +286,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 score += 1;
                 if (matchMethod) {
                   score += 1;
-                  if (method !== "Decision" && matchRound) {
-                    score += 1;
-                  }
+                  if (method !== "Decision" && matchRound) score += 1;
                 }
                 if (isUnderdog) score += 2;
               }
@@ -337,7 +343,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (index === scores.length - 1) {
           classes.push("loser");
-          displayName = `💩 ${displayName}`;
+          displayName = `💩 ${displayName}`; // visual only
         }
 
         if (user === username) {
@@ -355,4 +361,94 @@ document.addEventListener("DOMContentLoaded", () => {
       // Glow all tied #1 entries
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
-        const topScore = parseInt(lis[0].lastElementCh
+        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
+        lis.forEach(li => {
+          const val = parseInt(li.lastElementChild.textContent, 10);
+          if (val === topScore) li.classList.add("tied-first");
+        });
+      }
+
+      // Show banner only if all results complete
+      const totalFights = fightsData.length;
+      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
+        res => res.winner && res.method
+      ).length;
+
+      if (
+        leaderboardData.champMessage &&
+        totalFights > 0 &&
+        completedResults === totalFights
+      ) {
+        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
+        champBanner.style.display = "block";
+      } else {
+        champBanner.style.display = "none";
+      }
+    });
+  }
+
+  function fetchAllTime() {
+    return fetch("/api/hall")
+      .then(r => r.json())
+      .then(rows => {
+        const map = {};
+        (rows || []).forEach(r => {
+          map[r.username] = {
+            crowns: Number(r.crowns) || 0,
+            crown_rate: Number(r.crown_rate) || 0,
+            events_played: Number(r.events_played) || 0
+          };
+        });
+        allTimeByUser = map;
+        return allTimeByUser;
+      })
+      .catch(() => {
+        allTimeByUser = {};
+        return allTimeByUser;
+      });
+  }
+
+  function loadAllTime() {
+    fetchAllTime().then(() => {
+      const rows = Object.entries(allTimeByUser)
+        .map(([user, h]) => ({ user, ...h }))
+        .sort((a, b) => {
+          // order: crown_rate desc, crowns desc, events desc, name asc
+          if (b.crown_rate !== a.crown_rate) return b.crown_rate - a.crown_rate;
+          if (b.crowns !== a.crowns) return b.crowns - a.crowns;
+          if (b.events_played !== a.events_played) return b.events_played - a.events_played;
+          return (a.user || "").localeCompare(b.user || "");
+        });
+
+      allTimeList.innerHTML = "";
+
+      if (!rows.length) {
+        const li = document.createElement("li");
+        li.className = "empty";
+        li.textContent = "No All-Time data yet.";
+        allTimeList.appendChild(li);
+        return;
+      }
+
+      const topRate = rows.length ? (rows[0].crown_rate || 0) : 0;
+
+      rows.forEach((row, idx) => {
+        const rank = idx + 1;
+        const pct = Math.round((row.crown_rate || 0) * 100);
+
+        const li = document.createElement("li");
+        const classes = [];
+        if (row.user === username) classes.push("current-user");
+        if ((row.crown_rate || 0) === topRate) classes.push("tied-first");
+        li.className = classes.join(" ");
+
+        li.innerHTML = `
+          <span>#${rank}</span>
+          <span>${esc(row.user)}</span>
+          <span>👑 x${row.crowns} • ${pct}% • ${row.events_played} events</span>
+        `;
+        allTimeList.appendChild(li);
+      });
+    });
+  }
+});
