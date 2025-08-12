@@ -1,28 +1,35 @@
-const express = require("express");
-const fetch = require("node-fetch");
 const path = require("path");
+const express = require("express");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+/* ---------- Static / JSON ---------- */
 app.use(express.json());
-app.use(express.static("public"));
+const publicDir = path.join(__dirname, "public");
+app.use(express.static(publicDir, { maxAge: "1h" }));
 
-// ✅ Lockout Time (ET)
+/* ---------- Health check (Render) ---------- */
+app.get("/health", (_req, res) => res.sendStatus(200));
+
+/* ---------- Config ---------- */
 const lockoutTime = new Date("2025-08-09T16:00:00-04:00");
-
-// ✅ GAS Web App URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-// ---------- Lockout ----------
-app.get("/api/lockout", (req, res) => {
+/* Use built-in fetch (Node 18+/20+). Fallback loads node-fetch only if needed. */
+const _fetch = globalThis.fetch || ((...args) =>
+  import("node-fetch").then(({ default: f }) => f(...args))
+);
+
+/* ---------- Lockout ---------- */
+app.get("/api/lockout", (_req, res) => {
   res.json({ locked: new Date() >= lockoutTime });
 });
 
-// ---------- Fights ----------
-app.get("/api/fights", async (req, res) => {
+/* ---------- Fights ---------- */
+app.get("/api/fights", async (_req, res) => {
   try {
-    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    const r = await _fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
     res.json(await r.json());
   } catch (e) {
     console.error("getFights error:", e);
@@ -30,13 +37,13 @@ app.get("/api/fights", async (req, res) => {
   }
 });
 
-// ---------- Submit picks ----------
+/* ---------- Submit picks ---------- */
 app.post("/api/submit", async (req, res) => {
   if (new Date() >= lockoutTime) {
     return res.json({ success: false, error: "⛔ Picks are locked. The event has started." });
   }
   try {
-    const r = await fetch(GOOGLE_SCRIPT_URL, {
+    const r = await _fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "submitPicks", ...req.body })
@@ -48,10 +55,10 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// ---------- User picks ----------
+/* ---------- User picks ---------- */
 app.post("/api/picks", async (req, res) => {
   try {
-    const r = await fetch(GOOGLE_SCRIPT_URL, {
+    const r = await _fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "getUserPicks", ...req.body })
@@ -63,10 +70,10 @@ app.post("/api/picks", async (req, res) => {
   }
 });
 
-// ---------- Weekly leaderboard ----------
-app.post("/api/leaderboard", async (req, res) => {
+/* ---------- Weekly leaderboard ---------- */
+app.post("/api/leaderboard", async (_req, res) => {
   try {
-    const r = await fetch(GOOGLE_SCRIPT_URL, {
+    const r = await _fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "getLeaderboard" })
@@ -78,10 +85,10 @@ app.post("/api/leaderboard", async (req, res) => {
   }
 });
 
-// ---------- All-Time (Hall)  ✅ NEW ----------
-app.get("/api/hall", async (req, res) => {
+/* ---------- All-Time (Hall) ---------- */
+app.get("/api/hall", async (_req, res) => {
   try {
-    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
+    const r = await _fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
       headers: { "Cache-Control": "no-cache" }
     });
     res.set("Cache-Control", "no-store");
@@ -92,6 +99,12 @@ app.get("/api/hall", async (req, res) => {
   }
 });
 
+/* ---------- SPA fallback (serves /public/index.html) ---------- */
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
+
+/* ---------- Start ---------- */
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
