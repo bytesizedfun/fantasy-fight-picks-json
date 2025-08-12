@@ -11,19 +11,19 @@
   --text-main: #e4e6eb;
   --shadow-dark: rgba(0,0,0,0.6);
 
-  /* All-Time column system */
-  --rank-col:   56px;  /* medal/# */
-  --rate-col:   9ch;   /* '100.0%' */
-  --crowns-col: 6ch;
-  --events-col: 6ch;
-  --col-gap:    18px;
+  /* All-Time column system (rebalanced) */
+  --rank-col:   56px;   /* medal/# */
+  --rate-col:   6.5ch;  /* fits 100.0% */
+  --crowns-col: 3.5ch;  /* fits up to 999 */
+  --events-col: 3.5ch;  /* fits up to 999 */
+  --col-gap:    20px;   /* even breathing room */
 
   /* Mobile */
   --m-rank-col:   48px;
-  --m-rate-col:   8ch;
-  --m-crowns-col: 6ch;
-  --m-events-col: 6ch;
-  --m-col-gap:    12px;
+  --m-rate-col:   6ch;
+  --m-crowns-col: 3.5ch;
+  --m-events-col: 3.5ch;
+  --m-col-gap:    14px;
 }
 
 * { box-sizing: border-box; }
@@ -159,31 +159,32 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   50%{ text-shadow:0 0 14px #ffd700, 0 0 24px rgba(255,0,60,0.45) }
 }
 
-/* Submit button centered (desktop too) */
-#submitBtn{ display:block; margin:12px auto; }
+/* Submit button centered */
+#submitBtn { display:block; margin: 12px auto 0; }
 
 /* =========================
    All-Time Leaderboard
    ========================= */
-#allTimeBoard { list-style:none; padding:0; margin-top:20px; overflow-x:hidden; }
+#allTimeBoard { list-style:none; padding:0; margin-top:20px; overflow-x: hidden; }
 
 /* Base row look */
-#allTimeBoard li{
+#allTimeBoard li { 
   background: rgba(255,255,255,0.04);
   margin: 10px 0; padding: 14px 16px;
   display: grid; align-items: center;
   border-radius: 10px; border-left: 4px solid var(--silver);
-  transition: all .25s ease; overflow: hidden;
+  transition: all .25s ease;
+  overflow: hidden;
 }
 
-/* 1) FORCE the exact same grid on header + every row (no class dependency) */
+/* Header & rows share the exact grid */
 #allTimeBoard .board-header,
 #allTimeBoard li{
   grid-template-columns: var(--rank-col) minmax(0,1fr) var(--rate-col) var(--crowns-col) var(--events-col) !important;
   column-gap: var(--col-gap) !important;
 }
 
-/* 2) Header visuals */
+/* Header visuals */
 #allTimeBoard .board-header{
   background: rgba(255,255,255,0.06) !important;
   border: 1px solid rgba(255,255,255,0.08);
@@ -196,7 +197,7 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   padding-bottom: 16px;
 }
 
-/* 3) Nuke any pill/button styles that leak into header */
+/* Strip pill/button look from header descendants */
 #allTimeBoard .board-header *{
   background: none !important;
   border: 0 !important;
@@ -206,27 +207,35 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   border-radius: 0 !important;
 }
 
-/* 4) Make cells behave & align like rows */
+/* Make cells behave */
 #allTimeBoard .board-header > *,
-#allTimeBoard li > *{ min-width:0; line-height:1.1; }
-
-#allTimeBoard .board-header > *:nth-child(1),
-#allTimeBoard li > *:nth-child(1),
-#allTimeBoard .board-header > *:nth-child(2),
-#allTimeBoard li > *:nth-child(2){ justify-self:start; text-align:left; }
-
-#allTimeBoard .board-header > *:nth-child(2),
-#allTimeBoard li > *:nth-child(2){
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;
+#allTimeBoard li > *{
+  min-width: 0;
+  line-height: 1.1;
 }
 
-#allTimeBoard .board-header > *:nth-child(3),
-#allTimeBoard .board-header > *:nth-child(4),
-#allTimeBoard .board-header > *:nth-child(5),
+/* Player: never wrap; ellipsis; room before numbers */
+#allTimeBoard .board-header > *:nth-child(2),
+#allTimeBoard li > *:nth-child(2){
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px;
+}
+
+/* Data alignment (rows) */
+#allTimeBoard li > *:nth-child(1),
+#allTimeBoard li > *:nth-child(2){ justify-self:start; text-align:left; }
 #allTimeBoard li > *:nth-child(3),
 #allTimeBoard li > *:nth-child(4),
 #allTimeBoard li > *:nth-child(5){
-  justify-self:end; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; text-shadow:none;
+  justify-self:end; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums;
+}
+
+/* Header alignment: center numeric labels for nicer visual rhythm */
+#allTimeBoard .board-header > *:nth-child(1),
+#allTimeBoard .board-header > *:nth-child(2){ justify-self:start; text-align:left; }
+#allTimeBoard .board-header > *:nth-child(3),
+#allTimeBoard .board-header > *:nth-child(4),
+#allTimeBoard .board-header > *:nth-child(5){
+  justify-self:center; text-align:center; white-space:nowrap;
 }
 
 /* States */
@@ -245,8 +254,8 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   box-shadow:0 0 10px rgba(0,245,255,0.35) inset;
 }
 
-/* Skeleton rows (unchanged) */
-#allTimeBoard li.skeleton{ border-left-color:transparent; background:rgba(255,255,255,0.03); }
+/* Skeleton rows */
+#allTimeBoard li.skeleton { display:grid; align-items:center; background: rgba(255,255,255,0.03); border-left: 4px solid transparent; }
 #allTimeBoard li.skeleton .sk-block,
 #allTimeBoard li.skeleton .sk-line{
   display:block; height:14px; border-radius:6px;
@@ -356,7 +365,7 @@ button:hover {
   .logo-banner { max-width: 170px; margin-bottom: 12px; }
 
   .fight select { width: 100%; margin-top: 6px; }
-  #submitBtn { display: block; width: auto; margin: 12px auto; }
+  #submitBtn { display: block; margin: 12px auto 0; }
 
   #myPicks > p { text-align: center; margin: 12px 0; opacity: 0.9; }
 
@@ -366,7 +375,7 @@ button:hover {
 
   #leaderboard li { grid-template-columns: 44px minmax(0,1fr) 64px; padding: 12px; }
 
-  /* All-Time: same grid, tighter */
+  /* All-Time tighter grid */
   #allTimeBoard .board-header,
   #allTimeBoard li{
     grid-template-columns: var(--m-rank-col) minmax(0,1fr) var(--m-rate-col) var(--m-crowns-col) var(--m-events-col) !important;
