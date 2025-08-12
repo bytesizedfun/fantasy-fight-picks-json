@@ -12,6 +12,8 @@
   --shadow-dark: rgba(0,0,0,0.6);
 }
 
+* { box-sizing: border-box; }
+
 body {
   background: var(--bg-dark);
   color: var(--text-main);
@@ -20,18 +22,11 @@ body {
   padding: 20px;
 }
 
-/* Logo container */
-.banner-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 10px;
-}
-.logo-banner {
-  max-width: 200px;
-  height: auto;
-}
+/* Logo */
+.banner-container { display: flex; justify-content: center; margin-bottom: 10px; }
+.logo-banner { max-width: 200px; height: auto; }
 
-/* Panels */
+/* Panel */
 #app {
   max-width: 580px;
   margin: auto;
@@ -55,6 +50,7 @@ body {
   padding: 14px;
   border: 1px solid var(--neon-cyan);
   text-shadow: 0 0 12px var(--neon-cyan), 0 0 24px var(--neon-red);
+  margin-bottom: 10px;
 }
 @keyframes bannerGlow {
   0% { background-position: 0% 50%; }
@@ -62,19 +58,52 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-/* Welcome text centered */
-#welcome {
-  text-align: center;
-  margin: 10px 0 20px;
+/* Welcome */
+#welcome { text-align: center; margin: 10px 0 20px; }
+
+/* Scoring rules */
+.scoring-box {
+  display: grid;
+  gap: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.scoring-box.tight { gap: 4px; }
+
+/* Tabs */
+#boardTabs { display:flex; gap:8px; justify-content:center; margin:12px 0; }
+#boardTabs button{
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all .2s ease;
+  font-weight: 900;
+}
+#boardTabs button[aria-pressed="true"]{
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0,245,255,0.35);
+  color: #fff;
 }
 
-/* Leaderboard */
-#leaderboard {
-  list-style: none;
-  padding: 0;
-  margin-top: 20px;
+/* Section title */
+.leader-title{
+  text-align:center;
+  margin-top: 18px;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px var(--neon-cyan), 0 0 12px var(--neon-red);
 }
-#leaderboard li {
+
+/* Weekly Leaderboard */
+#leaderboard { list-style: none; padding: 0; margin-top: 20px; }
+#leaderboard li{
   background: rgba(255,255,255,0.04);
   margin: 10px 0;
   padding: 14px;
@@ -90,13 +119,7 @@ body {
   box-shadow: 0 0 12px rgba(0,245,255,0.4);
   transform: translateX(4px);
 }
-#leaderboard li:first-child {
-  border-left-color: var(--neon-cyan);
-  background: rgba(0,245,255,0.1);
-  box-shadow: 0 0 14px rgba(0,245,255,0.5);
-  animation: pulseChampion 1.8s infinite;
-}
-/* Glow all tied #1s */
+#leaderboard li:first-child,
 #leaderboard li.tied-first {
   border-left-color: var(--neon-cyan);
   background: rgba(0,245,255,0.1);
@@ -108,6 +131,48 @@ body {
   50% { box-shadow: 0 0 28px rgba(255,0,60,0.6); }
 }
 
+/* All-Time Board (match Weekly) */
+#allTimeBoard { list-style: none; padding: 0; margin-top: 20px; }
+#allTimeBoard li{
+  background: rgba(255,255,255,0.04);
+  margin: 10px 0;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 50px auto 60px;
+  align-items: center;
+  border-radius: 10px;
+  border-left: 4px solid var(--silver);
+  transition: all 0.3s ease;
+}
+#allTimeBoard li:hover {
+  border-left-color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0,245,255,0.4);
+  transform: translateX(4px);
+}
+#allTimeBoard li:first-child,
+#allTimeBoard li.tied-first {
+  border-left-color: var(--neon-cyan);
+  background: rgba(0,245,255,0.1);
+  box-shadow: 0 0 14px rgba(0,245,255,0.5);
+  animation: pulseChampion 1.8s infinite;
+}
+
+/* Emphasis helpers */
+li.current-user {
+  outline: 2px solid rgba(0,245,255,0.35);
+  box-shadow: 0 0 10px rgba(0,245,255,0.35) inset;
+}
+li.loser { filter: saturate(0.8) brightness(0.95); }
+.crown{
+  display:inline-block; margin-right:6px;
+  text-shadow: 0 0 6px #ffd700, 0 0 10px rgba(255,0,60,0.25);
+  animation: crownPulse 2.2s ease-in-out infinite;
+}
+@keyframes crownPulse{
+  0%,100%{ text-shadow:0 0 6px #ffd700, 0 0 10px rgba(255,0,60,0.25) }
+  50%{ text-shadow:0 0 14px #ffd700, 0 0 24px rgba(255,0,60,0.45) }
+}
+
 /* Fight Blocks */
 .fight {
   background: rgba(255,255,255,0.03);
@@ -117,33 +182,35 @@ body {
   border: 1px solid rgba(255,255,255,0.06);
   box-shadow: inset 0 0 10px rgba(0,245,255,0.05);
 }
-.fight h3 {
-  color: var(--neon-cyan);
-  margin: 0 0 8px 0;
+.fight h3 { color: var(--neon-cyan); margin: 0 0 8px 0; }
+.fight label {
+  display: block;
+  margin: 8px 0;
+  line-height: 1.35;
+  cursor: pointer;
+  padding: 6px 6px;
+  border-radius: 8px;
+  transition: all .25s ease;
+}
+.fight label:hover {
+  background: rgba(0,245,255,0.08);
+  box-shadow: 0 0 10px rgba(0,245,255,0.35), 0 0 18px rgba(255,0,60,0.2);
 }
 
-/* Your Picks - clean cards */
-#myPicks { margin-top: 20px; display: grid; gap: 10px; }
-#myPicks h3 { margin: 0; text-align: center; color: var(--neon-cyan); }
-.scored-pick {
-  display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
-  background: rgba(255,255,255,0.04);
-  padding: 10px 12px; border-radius: 10px;
-  border-left: 4px solid var(--neon-cyan);
+/* Inputs / Buttons */
+.fight select,
+#usernameInput {
+  width: 100%;
+  background: #1a1a1a;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 16px;
+  min-height: 44px;
+  line-height: 1.2;
 }
-.scored-pick .fight-name {
-  font-weight: 900; letter-spacing: .03em; color: var(--text-main);
-  flex: 1 1 100%;
-}
-.scored-pick .points {
-  padding: 4px 10px; border-radius: 999px; margin-left: 6px;
-  background: rgba(0,245,255,0.12); border: 1px solid var(--neon-cyan);
-  color: var(--neon-cyan); font-weight: 900;
-}
-.correct { color: var(--success); text-shadow: 0 0 6px var(--success); }
-.wrong { color: var(--error); text-shadow: 0 0 6px var(--error); }
 
-/* Buttons */
 button {
   background: var(--neon-cyan);
   color: var(--bg-dark);
@@ -162,40 +229,50 @@ button:hover {
   box-shadow: 0 0 14px rgba(255,0,60,0.5);
 }
 
+/* Your Picks */
+#myPicks { margin-top: 20px; display: grid; gap: 10px; }
+#myPicks h3 { margin: 0; text-align: center; color: var(--neon-cyan); }
+.scored-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  background: rgba(255,255,255,0.04);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 4px solid var(--neon-cyan);
+}
+.scored-pick .fight-name {
+  font-weight: 900;
+  letter-spacing: .03em;
+  color: var(--text-main);
+  flex: 1 1 100%;
+}
+.scored-pick .points {
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-left: 6px;
+  background: rgba(0,245,255,0.12);
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-weight: 900;
+}
+.correct { color: var(--success); text-shadow: 0 0 6px var(--success); }
+.wrong { color: var(--error); text-shadow: 0 0 6px var(--error); }
+
 /* Mobile */
 @media (max-width: 600px) {
-  /* Logo smaller */
   .logo-banner { max-width: 170px; margin-bottom: 12px; }
 
-  /* Fighter labels stacked vertically */
-  .fight label {
-    display: block;
-    margin: 8px 0;
-    line-height: 1.35;
-  }
+  .fight select { width: 100%; margin-top: 6px; }
+  #submitBtn { display: block; width: 100%; margin: 12px auto 0; }
 
-  /* Full-width dropdowns */
-  .fight select {
-    width: 100%;
-    margin-top: 6px;
-  }
+  #myPicks > p { text-align: center; margin: 12px 0; opacity: 0.9; }
 
-  /* Center submit button */
-  #submitBtn {
-    display: block;
-    width: 100%;
-    margin: 12px auto 0;
-  }
-
-  /* Center "No picks submitted." message */
-  #myPicks > p {
-    text-align: center;
-    margin: 12px 0;
-    opacity: 0.9;
-  }
-
-  /* Scored picks tighter */
   .scored-pick { padding: 9px 10px; gap: 6px; }
   .scored-pick .fight-name { font-size: .98rem; }
   .scored-pick .points { font-size: .9rem; padding: 3px 8px; }
+
+  #leaderboard li,
+  #allTimeBoard li { grid-template-columns: 44px auto 64px; padding: 12px; }
 }
