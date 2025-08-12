@@ -5,17 +5,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const champBanner = document.getElementById("champBanner");
-  const punchSound = new Audio("punch.mp3");
-
-  // Tabs
   const leaderboardEl = document.getElementById("leaderboard");
   const allTimeList = document.getElementById("allTimeBoard");
   const weeklyTabBtn = document.getElementById("tabWeekly");
   const allTimeTabBtn = document.getElementById("tabAllTime");
+  const punchSound = new Audio("punch.mp3");
 
   let username = localStorage.getItem("username");
 
-  // ---- login flow (keep original, but expose a safe global for inline onclick) ----
+  // -------- Inline handlers exposed for HTML --------
   function doLogin() {
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
@@ -23,8 +21,55 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("username", username);
     finalizeLogin(username);
   }
-  // inline handler support
   window.lockUsername = doLogin;
+
+  function submitPicks() {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+
+    const picks = [];
+    const fights = document.querySelectorAll(".fight");
+
+    for (const fight of fights) {
+      const fightName = fight.querySelector("h3").innerText;
+      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
+
+      if (!winner || !method) {
+        alert(`Please complete all picks. Missing data for "${fightName}".`);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
+        return;
+      }
+
+      picks.push({ fight: fightName, winner, method, round });
+    }
+
+    fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, picks })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          try { punchSound.play(); } catch(_) {}
+          alert("Picks submitted!");
+          localStorage.setItem("submitted", "true");
+          fightList.style.display = "none";
+          submitBtn.style.display = "none";
+          loadMyPicks();
+          loadLeaderboard();
+        } else {
+          alert(data.error || "Something went wrong.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Picks";
+        }
+      });
+  }
+  window.submitPicks = submitPicks;
 
   if (username) {
     usernameInput.value = username;
@@ -59,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
+  // -------- Fights --------
   function loadFights() {
     fetch("/api/fights")
       .then(res => res.json())
@@ -111,56 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function submitPicks() {
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting...";
-
-    const picks = [];
-    const fights = document.querySelectorAll(".fight");
-
-    for (const fight of fights) {
-      const fightName = fight.querySelector("h3").innerText;
-      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
-      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
-
-      if (!winner || !method) {
-        alert(`Please complete all picks. Missing data for "${fightName}".`);
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit Picks";
-        return;
-      }
-
-      picks.push({ fight: fightName, winner, method, round });
-    }
-
-    fetch("/api/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, picks })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          try { punchSound.play(); } catch(_) {}
-          alert("Picks submitted!");
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-          loadMyPicks();
-          loadLeaderboard();
-        } else {
-          alert(data.error || "Something went wrong.");
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Submit Picks";
-        }
-      });
-  }
-
-  // inline handler support
-  window.submitPicks = submitPicks;
-
+  // -------- My Picks --------
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -225,12 +222,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
+  // -------- Weekly board --------
   function loadLeaderboard() {
     Promise.all([
       fetch("/api/fights").then(r => r.json()),
       fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
     ]).then(([fightsData, leaderboardData]) => {
-      const board = document.getElementById("leaderboard");
+      const board = leaderboardEl;
       board.innerHTML = "";
 
       const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
@@ -250,12 +248,10 @@ document.addEventListener("DOMContentLoaded", () => {
           classes.push("champ-glow");
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
-
         if (index === scores.length - 1) {
           classes.push("loser");
           displayName = `💩 ${displayName}`;
         }
-
         if (user === username) classes.push("current-user");
 
         li.className = classes.join(" ");
@@ -266,7 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // Glow tied #1s
+      // tie highlight
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -290,62 +286,182 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ---------- All-Time (calls your getHall via /api/hall) ----------
-  function loadAllTime() {
-    fetch("/api/hall")
-      .then(r => r.json())
-      .then(rows => {
-        const data = (rows || []).map(r => ({
-          user: r.username,
-          crowns: Number(r.crowns) || 0,
-          events: Number(r.events_played) || 0,
-          rate: Number(r.crown_rate) || 0
-        })).sort((a,b) => {
-          if (b.rate !== a.rate) return b.rate - a.rate;
-          if (b.crowns !== a.crowns) return b.crowns - a.crowns;
-          if (b.events !== a.events) return b.events - a.events;
-          return (a.user||"").localeCompare(b.user||"");
-        });
+  // =========================
+  // ALL-TIME: PRELOAD + RENDER
+  // =========================
+  let allTimeLoaded = false;
+  let allTimeData = [];
 
-        allTimeList.innerHTML = "";
-        if (!data.length) {
-          allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
-          return;
-        }
+  // Fetch with timeout + 1 retry
+  function fetchWithTimeout(url, ms = 6000) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal })
+      .finally(() => clearTimeout(t));
+  }
 
-        const topRate = data[0].rate;
-        data.forEach((row, idx) => {
-          const pct = Math.round(row.rate * 100);
-          const li = document.createElement("li");
-          const classes = [];
-          if (row.user === username) classes.push("current-user");
-          if (row.rate === topRate) classes.push("tied-first");
-          li.className = classes.join(" ");
-          li.innerHTML = `
-            <span>#${idx+1}</span>
-            <span>${row.user}</span>
-            <span>👑 x${row.crowns} • ${pct}% • ${row.events} events</span>
-          `;
-          allTimeList.appendChild(li);
-        });
-      })
-      .catch(() => {
-        allTimeList.innerHTML = "<li>All-Time unavailable.</li>";
+  function sortAllTime(rows) {
+    return (rows || [])
+      .map(r => ({
+        user: r.username,
+        crowns: Number(r.crowns) || 0,
+        events: Number(r.events_played) || 0,
+        rate: Number(r.crown_rate) || 0
+      }))
+      .sort((a,b) => {
+        if (b.rate !== a.rate) return b.rate - a.rate;
+        if (b.crowns !== a.crowns) return b.crowns - a.crowns;
+        if (b.events !== a.events) return b.events - a.events;
+        return (a.user || "").localeCompare(b.user || "");
       });
   }
 
-  // Tab toggle
-  weeklyTabBtn.addEventListener("click", () => {
+  function renderAllTimeSkeleton(rows = 6, minHeight = 0) {
+    allTimeList.style.minHeight = minHeight ? `${minHeight}px` : "";
+    allTimeList.innerHTML = "";
+    for (let i = 0; i < rows; i++) {
+      const li = document.createElement("li");
+      li.className = "skeleton";
+      li.innerHTML = `
+        <span class="sk-block"></span>
+        <span class="sk-line"></span>
+        <span class="sk-line short"></span>
+      `;
+      allTimeList.appendChild(li);
+    }
+  }
+
+  function renderAllTimeHeader() {
+    const li = document.createElement("li");
+    li.className = "board-header";
+    li.innerHTML = `
+      <span>#</span>
+      <span>Player</span>
+      <span class="hdr-right">Rate • Crowns • Events</span>
+    `;
+    allTimeList.appendChild(li);
+  }
+
+  function drawAllTime(data) {
+    allTimeList.innerHTML = "";
+    if (!data.length) {
+      allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
+      return;
+    }
+
+    // Header
+    renderAllTimeHeader();
+
+    // Rows
+    const medal = (i) => (i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`);
+    const topRate = data[0]?.rate ?? 0;
+
+    data.forEach((row, idx) => {
+      const li = document.createElement("li");
+      const classes = [];
+      if (row.user === username) classes.push("current-user");
+      if (row.rate === topRate) classes.push("tied-first");
+      li.className = classes.join(" ");
+
+      const pct = (row.rate * 100).toFixed(1) + "%";
+      const fill = Math.min(100, Math.max(0, row.rate * 100));
+
+      li.innerHTML = `
+        <span class="rank">${medal(idx)}</span>
+        <span class="user">
+          ${row.user}
+          <span class="chips">
+            <span class="chip crown">👑 ${row.crowns}</span>
+            <span class="chip event">🎟 ${row.events}</span>
+          </span>
+        </span>
+        <span class="right">
+          <span class="rate">${pct}</span>
+          <span class="meter"><span class="fill" style="width:${fill}%"></span></span>
+        </span>
+      `;
+      allTimeList.appendChild(li);
+    });
+  }
+
+  function preloadAllTime() {
+    // kick off a background fetch so first click is instant
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(rows => {
+        allTimeData = sortAllTime(rows);
+        allTimeLoaded = true;
+      })
+      .catch(err => {
+        // silent: we’ll retry on tab click
+        console.debug("All-Time preload failed:", err?.message || err);
+      });
+  }
+
+  function loadAllTimeInteractive() {
+    // If already loaded, just draw
+    if (allTimeLoaded) {
+      drawAllTime(allTimeData);
+      return;
+    }
+
+    // Show skeleton sized to current weekly panel BEFORE we hide it
+    const panelHeight = leaderboardEl.offsetHeight || 260;
+    renderAllTimeSkeleton(6, panelHeight);
+
+    // Try fetch (timeout + 1 retry)
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(rows => {
+        allTimeData = sortAllTime(rows);
+        allTimeLoaded = true;
+        drawAllTime(allTimeData);
+      })
+      .catch(() => {
+        // retry once
+        return fetchWithTimeout("/api/hall", 6000)
+          .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+          .then(rows => {
+            allTimeData = sortAllTime(rows);
+            allTimeLoaded = true;
+            drawAllTime(allTimeData);
+          })
+          .catch(err => {
+            allTimeList.style.minHeight = "";
+            allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`;
+          });
+      })
+      .finally(() => {
+        // ensure minHeight cleared after draw
+        setTimeout(() => { allTimeList.style.minHeight = ""; }, 0);
+      });
+  }
+
+  // -------- Tabs (compute height BEFORE swapping) --------
+  weeklyTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
     leaderboardEl.style.display = "block";
     allTimeList.style.display = "none";
     weeklyTabBtn.setAttribute("aria-pressed","true");
     allTimeTabBtn.setAttribute("aria-pressed","false");
   });
-  allTimeTabBtn.addEventListener("click", () => {
+
+  allTimeTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    // draw/fetch first, then swap visibility (prevents “nothing shows” flash)
+    loadAllTimeInteractive();
     leaderboardEl.style.display = "none";
     allTimeList.style.display = "block";
     weeklyTabBtn.setAttribute("aria-pressed","false");
     allTimeTabBtn.setAttribute("aria-pressed","true");
-    loadAllTime();
   });
+
+  // -------- Preload All-Time in the background --------
+  preloadAllTime();
 });
