@@ -11,19 +11,19 @@
   --text-main: #e4e6eb;
   --shadow-dark: rgba(0,0,0,0.6);
 
-  /* All-Time column system (desktop) */
-  --col-rank:   60px;
-  --col-rate:   100px;
-  --col-crown:  90px;
-  --col-event:  90px;
-  --col-gap:    18px;
+  /* All-Time column system */
+  --rank-col: 56px;           /* left badge width */
+  --rate-col: 9ch;            /* 50.0% */
+  --crowns-col: 6ch;          /* up to 9999 */
+  --events-col: 7ch;          /* “Events” label is widest */
+  --col-gap: 18px;
 
-  /* All-Time column system (mobile) */
-  --m-col-rank: 50px;
-  --m-col-rate: 84px;
-  --m-col-crown:72px;
-  --m-col-event:72px;
-  --m-col-gap:  12px;
+  /* Mobile */
+  --m-rank-col: 48px;
+  --m-rate-col: 8ch;
+  --m-crowns-col: 6ch;
+  --m-events-col: 6.5ch;
+  --m-col-gap: 12px;
 }
 
 * { box-sizing: border-box; }
@@ -160,31 +160,29 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
 }
 
 /* =========================
-   All-Time (5-column table)
+   All-Time Leaderboard (mirrors Weekly)
    ========================= */
 #allTimeBoard { list-style:none; padding:0; margin-top:20px; overflow-x: hidden; }
 
-#allTimeBoard li { 
+/* Rows + header share the exact same grid */
+#allTimeBoard li,
+#allTimeBoard .board-header{
+  display:grid;
+  align-items:center;
   background: rgba(255,255,255,0.04);
-  margin: 10px 0; padding: 14px 16px;
-  display: grid; align-items: center;
-  border-radius: 10px; border-left: 4px solid var(--silver);
-  transition: all .25s ease;
-  overflow: hidden;
-}
-
-/* Base grid (desktop) – exact, even spacing that matches header */
-#allTimeBoard li.at-five,
-#allTimeBoard .board-header.at-five{
-  grid-template-columns: var(--col-rank) minmax(0,1fr) var(--col-rate) var(--col-crown) var(--col-event);
+  margin:10px 0;
+  padding:14px 16px;
+  border-radius:10px;
+  border-left:4px solid var(--silver);
+  grid-template-columns: var(--rank-col) minmax(0,1fr) var(--rate-col) var(--crowns-col) var(--events-col);
   column-gap: var(--col-gap);
 }
 
-/* Header distinct + readable */
+/* Header look */
 #allTimeBoard .board-header{
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
-  border-left: 4px solid transparent;
+  border-left-color: transparent;
   font-weight: 900;
   text-transform: uppercase;
   color: var(--silver);
@@ -193,40 +191,39 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   padding-bottom: 16px;
 }
 
-/* Make player never wrap; allow graceful ellipsis */
-#allTimeBoard li.at-five > span { min-width: 0; }
-#allTimeBoard li .user{
-  font-weight:900; letter-spacing:.02em;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+/* Make the middle (Player) safe: never wraps, clean ellipsis */
+#allTimeBoard li > span,
+#allTimeBoard .board-header > span{ min-width:0; }
+#allTimeBoard li > span:nth-child(2),
+#allTimeBoard .board-header > span:nth-child(2){
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
-/* Numeric columns: crisp alignment & tabular numerals */
-#allTimeBoard li .num,
-#allTimeBoard .board-header .hdr-right{
+/* Alignment like Weekly: left-left-right-right-right */
+#allTimeBoard li   > span:nth-child(1),
+#allTimeBoard .board-header > span:nth-child(1){ justify-self:start; text-align:left; white-space:nowrap; }
+#allTimeBoard li   > span:nth-child(2),
+#allTimeBoard .board-header > span:nth-child(2){ justify-self:start; text-align:left; padding-right:8px; }
+#allTimeBoard li   > span:nth-child(3),
+#allTimeBoard .board-header > span:nth-child(3),
+#allTimeBoard li   > span:nth-child(4),
+#allTimeBoard .board-header > span:nth-child(4),
+#allTimeBoard li   > span:nth-child(5),
+#allTimeBoard .board-header > span:nth-child(5){ justify-self:end; text-align:right; }
+
+/* Numeric columns: perfect lining with tabular numerals */
+#allTimeBoard li   > span:nth-child(3),
+#allTimeBoard li   > span:nth-child(4),
+#allTimeBoard li   > span:nth-child(5),
+#allTimeBoard .board-header > span:nth-child(3),
+#allTimeBoard .board-header > span:nth-child(4),
+#allTimeBoard .board-header > span:nth-child(5){
   font-variant-numeric: tabular-nums;
-  text-shadow: none;
+  white-space: nowrap;
+  text-shadow:none;
 }
 
-/* ===== PERFECT PER-COLUMN ALIGNMENT (no HTML/JS changes) ===== */
-/* 1: Rank  2: Player  3: Rate  4: Crowns  5: Events */
-#allTimeBoard li.at-five > span:nth-child(1),
-#allTimeBoard .board-header.at-five > span:nth-child(1){
-  justify-self: start; text-align: left; white-space: nowrap;
-}
-#allTimeBoard li.at-five > span:nth-child(2),
-#allTimeBoard .board-header.at-five > span:nth-child(2){
-  justify-self: start; text-align: left; padding-right: 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-#allTimeBoard li.at-five > span:nth-child(3),
-#allTimeBoard .board-header.at-five > span:nth-child(3),
-#allTimeBoard li.at-five > span:nth-child(4),
-#allTimeBoard .board-header.at-five > span:nth-child(4),
-#allTimeBoard li.at-five > span:nth-child(5),
-#allTimeBoard .board-header.at-five > span:nth-child(5){
-  justify-self: end; text-align: right; white-space: nowrap;
-}
-
-/* Hover/States */
+/* States (match weekly vibe) */
 #allTimeBoard li:hover{
   border-left-color:var(--neon-cyan);
   box-shadow:0 0 12px rgba(0,245,255,0.4);
@@ -242,11 +239,15 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   box-shadow:0 0 10px rgba(0,245,255,0.35) inset;
 }
 
-/* Skeleton rows */
-#allTimeBoard li.skeleton { display:grid; align-items:center; background: rgba(255,255,255,0.03); border-left: 4px solid transparent; }
-#allTimeBoard li.skeleton.at-five { 
-  grid-template-columns: var(--col-rank) minmax(0,1fr) var(--col-rate) var(--col-crown) var(--col-event);
-  column-gap: var(--col-gap);
+/* Subtle zebra for readability */
+#allTimeBoard li:nth-child(odd):not(.board-header){
+  background: rgba(255,255,255,0.05);
+}
+
+/* Skeleton rows (keep grid identical) */
+#allTimeBoard li.skeleton{
+  border-left-color: transparent;
+  background: rgba(255,255,255,0.03);
 }
 #allTimeBoard li.skeleton .sk-block,
 #allTimeBoard li.skeleton .sk-line{
@@ -367,10 +368,10 @@ button:hover {
 
   #leaderboard li { grid-template-columns: 44px minmax(0,1fr) 64px; padding: 12px; }
 
-  #allTimeBoard li.at-five,
-  #allTimeBoard .board-header.at-five{
-    grid-template-columns: var(--m-col-rank) minmax(0,1fr) var(--m-col-rate) var(--m-col-crown) var(--m-col-event);
+  /* Mirror same grid on mobile */
+  #allTimeBoard li,
+  #allTimeBoard .board-header{
+    grid-template-columns: var(--m-rank-col) minmax(0,1fr) var(--m-rate-col) var(--m-crowns-col) var(--m-events-col);
     column-gap: var(--m-col-gap);
   }
-  #allTimeBoard li{ padding: 14px 14px; }
 }
