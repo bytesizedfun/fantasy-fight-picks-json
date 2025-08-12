@@ -10,6 +10,20 @@
   --error: #ff4e4e;
   --text-main: #e4e6eb;
   --shadow-dark: rgba(0,0,0,0.6);
+
+  /* All-Time column system (desktop) */
+  --col-rank:   60px;
+  --col-rate:   100px;
+  --col-crown:  90px;
+  --col-event:  90px;
+  --col-gap:    18px;
+
+  /* All-Time column system (mobile) */
+  --m-col-rank: 50px;
+  --m-col-rate: 84px;
+  --m-col-crown:72px;
+  --m-col-event:72px;
+  --m-col-gap:  12px;
 }
 
 * { box-sizing: border-box; }
@@ -149,6 +163,7 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
    All-Time (5-column table)
    ========================= */
 #allTimeBoard { list-style:none; padding:0; margin-top:20px; overflow-x: hidden; }
+
 #allTimeBoard li { 
   background: rgba(255,255,255,0.04);
   margin: 10px 0; padding: 14px 16px;
@@ -158,16 +173,14 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   overflow: hidden;
 }
 
-/* Hardened grid: middle can shrink, numbers fixed */
-#allTimeBoard li.at-five { 
-  grid-template-columns: 60px minmax(0,1fr) 90px 80px 80px;
-  column-gap: 10px;
-}
-#allTimeBoard .board-header.at-five {
-  grid-template-columns: 60px minmax(0,1fr) 90px 80px 80px;
+/* Base grid (desktop) – exact, even spacing that matches header */
+#allTimeBoard li.at-five,
+#allTimeBoard .board-header.at-five{
+  grid-template-columns: var(--col-rank) minmax(0,1fr) var(--col-rate) var(--col-crown) var(--col-event);
+  column-gap: var(--col-gap);
 }
 
-/* Header distinct */
+/* Header distinct + readable */
 #allTimeBoard .board-header{
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
@@ -175,29 +188,45 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   font-weight: 900;
   text-transform: uppercase;
   color: var(--silver);
-  letter-spacing: .04em;
+  letter-spacing: .06em;
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
-#allTimeBoard .board-header .hdr-right { text-align: right; }
 
-/* Cells can shrink; player never wraps */
+/* Make player never wrap; allow graceful ellipsis */
 #allTimeBoard li.at-five > span { min-width: 0; }
-#allTimeBoard li .rank { font-weight:900; white-space: nowrap; }
 #allTimeBoard li .user{
   font-weight:900; letter-spacing:.02em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* Numeric columns aligned & tidy */
+/* Numeric columns: crisp alignment & tabular numerals */
 #allTimeBoard li .num,
 #allTimeBoard .board-header .hdr-right{
-  justify-self: end;
-  text-align: right;
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   text-shadow: none;
 }
 
-/* States */
+/* ===== PERFECT PER-COLUMN ALIGNMENT (no HTML/JS changes) ===== */
+/* 1: Rank  2: Player  3: Rate  4: Crowns  5: Events */
+#allTimeBoard li.at-five > span:nth-child(1),
+#allTimeBoard .board-header.at-five > span:nth-child(1){
+  justify-self: start; text-align: left; white-space: nowrap;
+}
+#allTimeBoard li.at-five > span:nth-child(2),
+#allTimeBoard .board-header.at-five > span:nth-child(2){
+  justify-self: start; text-align: left; padding-right: 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+#allTimeBoard li.at-five > span:nth-child(3),
+#allTimeBoard .board-header.at-five > span:nth-child(3),
+#allTimeBoard li.at-five > span:nth-child(4),
+#allTimeBoard .board-header.at-five > span:nth-child(4),
+#allTimeBoard li.at-five > span:nth-child(5),
+#allTimeBoard .board-header.at-five > span:nth-child(5){
+  justify-self: end; text-align: right; white-space: nowrap;
+}
+
+/* Hover/States */
 #allTimeBoard li:hover{
   border-left-color:var(--neon-cyan);
   box-shadow:0 0 12px rgba(0,245,255,0.4);
@@ -215,7 +244,10 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
 
 /* Skeleton rows */
 #allTimeBoard li.skeleton { display:grid; align-items:center; background: rgba(255,255,255,0.03); border-left: 4px solid transparent; }
-#allTimeBoard li.skeleton.at-five { grid-template-columns: 60px minmax(0,1fr) 90px 80px 80px; column-gap:10px; }
+#allTimeBoard li.skeleton.at-five { 
+  grid-template-columns: var(--col-rank) minmax(0,1fr) var(--col-rate) var(--col-crown) var(--col-event);
+  column-gap: var(--col-gap);
+}
 #allTimeBoard li.skeleton .sk-block,
 #allTimeBoard li.skeleton .sk-line{
   display:block; height:14px; border-radius:6px;
@@ -336,62 +368,9 @@ button:hover {
   #leaderboard li { grid-template-columns: 44px minmax(0,1fr) 64px; padding: 12px; }
 
   #allTimeBoard li.at-five,
-  #allTimeBoard .board-header.at-five {
-    grid-template-columns: 44px minmax(0,1fr) 78px 64px 72px;
-  }
-}
-
-/* === All-Time Leaderboard polish overrides (place at end) === */
-
-/* Bigger gutters + consistent column widths (desktop) */
-#allTimeBoard li.at-five,
-#allTimeBoard .board-header.at-five{
-  /* Rank | Player | Rate | Crowns | Events */
-  grid-template-columns: 60px minmax(0,1fr) 96px 88px 88px;
-  column-gap: 16px; /* breathing room */
-}
-
-/* Header readability */
-#allTimeBoard .board-header{
-  letter-spacing: .06em;
-  padding-top: 16px;
-  padding-bottom: 16px;
-}
-
-/* Player column breathing room */
-#allTimeBoard li .user{
-  padding-right: 8px;
-}
-
-/* Tight, even numeric alignment */
-#allTimeBoard li .num{
-  justify-self: end;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Rank column spacing */
-#allTimeBoard li .rank{
-  white-space: nowrap;
-  text-align: left;
-}
-
-/* Row height & vertical rhythm */
-#allTimeBoard li{
-  padding: 16px 18px;
-}
-
-/* Subtle zebra */
-#allTimeBoard li:nth-child(odd):not(.board-header){
-  background: rgba(255,255,255,0.05);
-}
-
-/* Mobile tuning */
-@media (max-width: 600px){
-  #allTimeBoard li.at-five,
   #allTimeBoard .board-header.at-five{
-    grid-template-columns: 50px minmax(0,1fr) 80px 72px 72px;
-    column-gap: 12px;
+    grid-template-columns: var(--m-col-rank) minmax(0,1fr) var(--m-col-rate) var(--m-col-crown) var(--m-col-event);
+    column-gap: var(--m-col-gap);
   }
   #allTimeBoard li{ padding: 14px 14px; }
 }
