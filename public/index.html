@@ -2,12 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fantasy Fight Picks</title>
-
-  <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
-
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -17,22 +14,23 @@
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
-  <!-- Champion banner -->
-  <div id="champBanner" class="champ-banner" style="display:none;"></div>
+  <!-- Flashy Champion of the Week banner -->
+  <div id="champBanner" class="champ-banner" style="display: none;"></div>
 
   <div id="app">
     <!-- Username prompt -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
-      <input type="text" id="usernameInput" autocomplete="off" />
+      <input type="text" id="usernameInput" />
+      <!-- IMPORTANT: no inline onclick; JS binds to #lockBtn -->
       <button id="lockBtn" type="button">Lock In</button>
     </div>
 
-    <!-- Welcome -->
-    <h2 id="welcome" style="display:none;"></h2>
+    <!-- Welcome message -->
+    <h2 id="welcome" style="display: none;"></h2>
 
     <!-- Scoring Rules -->
-    <div id="scoringRules" style="display:none;">
+    <div id="scoringRules" style="display: none;">
       <div class="scoring-box tight">
         <div>+1 pt for winner</div>
         <div>+1 pt for method (if winner is correct)</div>
@@ -41,23 +39,26 @@
       </div>
     </div>
 
-    <!-- Fight List + Submit -->
-    <div id="fightList" style="display:none;"></div>
-    <button id="submitBtn" type="button" style="display:none;">Submit Picks</button>
+    <!-- Fight List -->
+    <div id="fightList" style="display: none;"></div>
+    <!-- IMPORTANT: no inline onclick; JS binds to #submitBtn -->
+    <button id="submitBtn" type="button" style="display: none;">Submit Picks</button>
 
     <!-- My Picks -->
-    <div id="myPicks" style="margin-top:20px;"></div>
+    <div id="myPicks" style="margin-top: 20px;"></div>
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
 
-    <!-- Tabs are now in HTML (no JS injection) -->
+    <!-- Tabs are here in HTML so the page never looks empty -->
     <div id="boardTabs">
-      <button type="button" id="tabWeekly"  class="tab-btn" aria-pressed="true">Weekly</button>
+      <button type="button" id="tabWeekly" class="tab-btn" aria-pressed="true">Weekly</button>
       <button type="button" id="tabAllTime" class="tab-btn" aria-pressed="false">All-Time</button>
     </div>
 
+    <!-- Weekly board -->
     <ul id="leaderboard"></ul>
+    <!-- All-Time board -->
     <ul id="allTimeBoard" style="display:none;"></ul>
   </div>
 
