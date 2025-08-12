@@ -22,8 +22,7 @@
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
-      <!-- IMPORTANT: no inline onclick; JS binds to #lockBtn -->
-      <button id="lockBtn" type="button">Lock In</button>
+      <button onclick="lockUsername()">Lock In</button>
     </div>
 
     <!-- Welcome message -->
@@ -41,25 +40,14 @@
 
     <!-- Fight List -->
     <div id="fightList" style="display: none;"></div>
-    <!-- IMPORTANT: no inline onclick; JS binds to #submitBtn -->
-    <button id="submitBtn" type="button" style="display: none;">Submit Picks</button>
+    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
     <!-- My Picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
-
-    <!-- Tabs are here in HTML so the page never looks empty -->
-    <div id="boardTabs">
-      <button type="button" id="tabWeekly" class="tab-btn" aria-pressed="true">Weekly</button>
-      <button type="button" id="tabAllTime" class="tab-btn" aria-pressed="false">All-Time</button>
-    </div>
-
-    <!-- Weekly board -->
     <ul id="leaderboard"></ul>
-    <!-- All-Time board -->
-    <ul id="allTimeBoard" style="display:none;"></ul>
   </div>
 
   <script src="script.js"></script>
