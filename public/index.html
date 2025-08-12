@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fantasy Fight Picks</title>
 
-  <!-- Favicon -->
   <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
 
-  <!-- Fonts & Styles -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -19,7 +17,7 @@
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
-  <!-- Champion banner (shown when all fights are complete) -->
+  <!-- Champion banner -->
   <div id="champBanner" class="champ-banner" style="display:none;"></div>
 
   <div id="app">
@@ -52,9 +50,15 @@
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
-    <!-- Tabs injected here by script.js -->
+
+    <!-- Tabs are now in HTML (no JS injection) -->
+    <div id="boardTabs">
+      <button type="button" id="tabWeekly"  class="tab-btn" aria-pressed="true">Weekly</button>
+      <button type="button" id="tabAllTime" class="tab-btn" aria-pressed="false">All-Time</button>
+    </div>
+
     <ul id="leaderboard"></ul>
-    <!-- All-Time list is created after this by script.js -->
+    <ul id="allTimeBoard" style="display:none;"></ul>
   </div>
 
   <script src="script.js"></script>
