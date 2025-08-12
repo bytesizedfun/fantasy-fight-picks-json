@@ -12,10 +12,10 @@
   --shadow-dark: rgba(0,0,0,0.6);
 
   /* All-Time grid sizing */
-  --rank-col: 56px;
-  --rate-col: 9ch;     /* fits 100.0% cleanly */
-  --crowns-col: 6ch;
-  --events-col: 6ch;
+  --rank-col: 56px;   /* medal/# */
+  --rate-col: 9ch;    /* “100.0%” */
+  --crowns-col: 6ch;  /* up to 9999 */
+  --events-col: 6ch;  /* up to 9999 */
   --col-gap: 18px;
 
   /* Mobile */
@@ -164,7 +164,7 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
    ========================= */
 #allTimeBoard { list-style:none; padding:0; margin-top:20px; overflow-x: hidden; }
 
-/* Base row look */
+/* Row base */
 #allTimeBoard li { 
   background: rgba(255,255,255,0.04);
   margin: 10px 0; padding: 14px 16px;
@@ -182,7 +182,7 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   column-gap: var(--col-gap) !important;
 }
 
-/* Header polish */
+/* Header look */
 #allTimeBoard .board-header{
   background: rgba(255,255,255,0.06) !important;
   border: 1px solid rgba(255,255,255,0.08);
@@ -195,17 +195,28 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   padding-bottom: 16px;
 }
 
-/* Dedupe: if your JS also adds a header, keep only the first */
+/* If JS ever adds another header, hide duplicates */
 #allTimeBoard .board-header:not(:first-child){ display:none !important; }
 
-/* Ensure children behave as columns (works with span/div/text) */
+/* Make any child element act like a proper cell (span/div/button/etc.) */
 #allTimeBoard .board-header > *,
 #allTimeBoard li > *{
   min-width: 0;
   line-height: 1.1;
 }
 
-/* Player column: never wrap; ellipsis; space from numbers */
+/* ——— CRITICAL RESET: remove pill/button styling from header cells ——— */
+#allTimeBoard .board-header > *{
+  display:block;
+  background:none !important;
+  border:none !important;
+  box-shadow:none !important;
+  padding:0 !important;
+  margin:0 !important;
+  border-radius:0 !important;
+}
+
+/* Player column never wraps; trims cleanly */
 #allTimeBoard .board-header > *:nth-child(2),
 #allTimeBoard li > *:nth-child(2){
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px;
@@ -228,7 +239,7 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   font-variant-numeric: tabular-nums; text-shadow: none;
 }
 
-/* Hover/States */
+/* States */
 #allTimeBoard li:hover{
   border-left-color:var(--neon-cyan);
   box-shadow:0 0 12px rgba(0,245,255,0.4);
