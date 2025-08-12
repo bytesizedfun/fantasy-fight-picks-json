@@ -47,7 +47,17 @@
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
+
+    <!-- Tabs -->
+    <div id="boardTabs" style="display:flex;gap:8px;justify-content:center;margin:12px 0;">
+      <button type="button" id="tabWeekly" aria-pressed="true">Weekly</button>
+      <button type="button" id="tabAllTime" aria-pressed="false">All-Time</button>
+    </div>
+
+    <!-- Weekly board -->
     <ul id="leaderboard"></ul>
+    <!-- All-Time board -->
+    <ul id="allTimeBoard" style="display:none;"></ul>
   </div>
 
   <script src="script.js"></script>
