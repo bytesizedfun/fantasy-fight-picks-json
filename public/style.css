@@ -13,7 +13,7 @@
 
   /* All-Time grid sizing */
   --rank-col: 56px;   /* medal/# */
-  --rate-col: 9ch;    /* “100.0%” */
+  --rate-col: 9ch;    /* fits '100.0%' cleanly */
   --crowns-col: 6ch;  /* up to 9999 */
   --events-col: 6ch;  /* up to 9999 */
   --col-gap: 18px;
@@ -175,8 +175,8 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
 }
 
 /* LOCK header & rows to the exact same grid */
-#allTimeBoard .board-header,
-#allTimeBoard li{
+#allTimeBoard .board-header.at-five,
+#allTimeBoard li.at-five{
   display: grid !important;
   grid-template-columns: var(--rank-col) minmax(0,1fr) var(--rate-col) var(--crowns-col) var(--events-col) !important;
   column-gap: var(--col-gap) !important;
@@ -190,33 +190,33 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   font-weight: 900;
   text-transform: uppercase;
   color: var(--silver);
-  letter-spacing: .06em;
+  letter-spacing: .02em; /* reduced to avoid "random spacing" look */
   padding-top: 16px;
   padding-bottom: 16px;
 }
 
-/* If JS ever adds another header, hide duplicates */
-#allTimeBoard .board-header:not(:first-child){ display:none !important; }
+/* If some other code inserts a second header, hide duplicates */
+#allTimeBoard .board-header.at-five ~ .board-header{ display:none !important; }
 
-/* Make any child element act like a proper cell (span/div/button/etc.) */
+/* Make every child behave like a clean cell (span/div/etc.) */
 #allTimeBoard .board-header > *,
 #allTimeBoard li > *{
   min-width: 0;
   line-height: 1.1;
 }
 
-/* ——— CRITICAL RESET: remove pill/button styling from header cells ——— */
+/* Nuke any pill/button styles from header cells */
 #allTimeBoard .board-header > *{
-  display:block;
-  background:none !important;
-  border:none !important;
-  box-shadow:none !important;
-  padding:0 !important;
-  margin:0 !important;
-  border-radius:0 !important;
+  display: block !important;
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
 }
 
-/* Player column never wraps; trims cleanly */
+/* Player column: never wraps; ellipsis; space from numbers */
 #allTimeBoard .board-header > *:nth-child(2),
 #allTimeBoard li > *:nth-child(2){
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px;
@@ -238,6 +238,13 @@ li.loser { filter: saturate(0.85) brightness(0.95); }
   justify-self: end; text-align: right; white-space: nowrap;
   font-variant-numeric: tabular-nums; text-shadow: none;
 }
+
+/* Also map rows safely by position (if row spans lack classes) */
+#allTimeBoard li.at-five > span:nth-child(1){ justify-self:start; text-align:left; white-space:nowrap; }
+#allTimeBoard li.at-five > span:nth-child(2){ justify-self:start; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px; }
+#allTimeBoard li.at-five > span:nth-child(3),
+#allTimeBoard li.at-five > span:nth-child(4),
+#allTimeBoard li.at-five > span:nth-child(5){ justify-self:end; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
 
 /* States */
 #allTimeBoard li:hover{
@@ -377,8 +384,8 @@ button:hover {
   #leaderboard li { grid-template-columns: 44px minmax(0,1fr) 64px; padding: 12px; }
 
   /* All-Time: same locked grid, tighter */
-  #allTimeBoard .board-header,
-  #allTimeBoard li{
+  #allTimeBoard .board-header.at-five,
+  #allTimeBoard li.at-five{
     grid-template-columns: var(--m-rank-col) minmax(0,1fr) var(--m-rate-col) var(--m-crowns-col) var(--m-events-col) !important;
     column-gap: var(--m-col-gap) !important;
     padding: 12px 14px;
