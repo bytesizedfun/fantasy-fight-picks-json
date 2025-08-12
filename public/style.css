@@ -340,3 +340,58 @@ button:hover {
     grid-template-columns: 44px minmax(0,1fr) 78px 64px 72px;
   }
 }
+
+/* === All-Time Leaderboard polish overrides (place at end) === */
+
+/* Bigger gutters + consistent column widths (desktop) */
+#allTimeBoard li.at-five,
+#allTimeBoard .board-header.at-five{
+  /* Rank | Player | Rate | Crowns | Events */
+  grid-template-columns: 60px minmax(0,1fr) 96px 88px 88px;
+  column-gap: 16px; /* breathing room */
+}
+
+/* Header readability */
+#allTimeBoard .board-header{
+  letter-spacing: .06em;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+/* Player column breathing room */
+#allTimeBoard li .user{
+  padding-right: 8px;
+}
+
+/* Tight, even numeric alignment */
+#allTimeBoard li .num{
+  justify-self: end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rank column spacing */
+#allTimeBoard li .rank{
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* Row height & vertical rhythm */
+#allTimeBoard li{
+  padding: 16px 18px;
+}
+
+/* Subtle zebra */
+#allTimeBoard li:nth-child(odd):not(.board-header){
+  background: rgba(255,255,255,0.05);
+}
+
+/* Mobile tuning */
+@media (max-width: 600px){
+  #allTimeBoard li.at-five,
+  #allTimeBoard .board-header.at-five{
+    grid-template-columns: 50px minmax(0,1fr) 80px 72px 72px;
+    column-gap: 12px;
+  }
+  #allTimeBoard li{ padding: 14px 14px; }
+}
