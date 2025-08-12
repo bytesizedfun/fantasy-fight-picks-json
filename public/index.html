@@ -27,7 +27,6 @@
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" autocomplete="off" />
-      <!-- IMPORTANT: no inline onclick; JS binds this by id -->
       <button id="lockBtn" type="button">Lock In</button>
     </div>
 
@@ -46,7 +45,6 @@
 
     <!-- Fight List + Submit -->
     <div id="fightList" style="display:none;"></div>
-    <!-- IMPORTANT: no inline onclick; JS binds this by id -->
     <button id="submitBtn" type="button" style="display:none;">Submit Picks</button>
 
     <!-- My Picks -->
@@ -54,12 +52,11 @@
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
-    <!-- The JS injects the Weekly / All-Time tabs near here -->
+    <!-- Tabs injected here by script.js -->
     <ul id="leaderboard"></ul>
-    <!-- The JS will also create an <ul id="allTimeBoard"> after this -->
+    <!-- All-Time list is created after this by script.js -->
   </div>
 
-  <!-- App script -->
   <script src="script.js"></script>
 </body>
 </html>
