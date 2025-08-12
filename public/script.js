@@ -4,15 +4,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
+  const lockBtn = document.getElementById("lockBtn"); // <-- new
   const champBanner = document.getElementById("champBanner");
   const punchSound = new Audio("punch.mp3");
 
-  // Escape helper for safe HTML injection
+  // Escape helper
   const esc = (s) => String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+
+  // Kill any <a href="#"> default nav anywhere
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href="#"]');
+    if (a) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
 
   // --- All-Time cache (refetched on tab click for freshness) ---
   let allTimeByUser = null;
@@ -37,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tabsBar.innerHTML = tabsHtml;
   }
 
-  // Holder for All-Time list
+  // All-Time list container
   let allTimeList = document.getElementById("allTimeBoard") || document.getElementById("hallBoard");
   if (!allTimeList) {
     allTimeList = document.createElement("ul");
@@ -52,16 +59,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setTabs(showAllTime) {
-    if (!leaderboardEl) return;
+    const y = window.scrollY; // preserve scroll
     const weeklyBtn  = document.getElementById("tabWeekly");
     const allTimeBtn = document.getElementById("tabAllTime");
+
     if (showAllTime) {
       leaderboardEl.style.display = "none";
       allTimeList.style.display = "block";
       weeklyBtn?.setAttribute("aria-pressed", "false");
       allTimeBtn?.setAttribute("aria-pressed", "true");
-      // Force a fresh fetch each time you open All-Time so it stays up to date
-      allTimeByUser = null;
+      allTimeByUser = null; // force refresh
       loadAllTime();
     } else {
       leaderboardEl.style.display = "block";
@@ -69,20 +76,32 @@ document.addEventListener("DOMContentLoaded", () => {
       weeklyBtn?.setAttribute("aria-pressed", "true");
       allTimeBtn?.setAttribute("aria-pressed", "false");
     }
+
+    requestAnimationFrame(() => {
+      const html = document.documentElement;
+      const prev = html.style.scrollBehavior;
+      html.style.scrollBehavior = "auto";
+      window.scrollTo(0, y);
+      html.style.scrollBehavior = prev || "";
+    });
   }
 
-  // Direct listeners + preventDefault to avoid autoscroll/form submit issues
-  const weeklyBtn  = document.getElementById("tabWeekly");
-  const allTimeBtn = document.getElementById("tabAllTime");
-  weeklyBtn?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setTabs(false); });
-  allTimeBtn?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setTabs(true);  });
+  // Tab listeners (no delegation; stop everything)
+  document.getElementById("tabWeekly")?.addEventListener("click", (e) => {
+    e.preventDefault(); e.stopImmediatePropagation(); e.currentTarget.blur();
+    setTabs(false);
+  });
+  document.getElementById("tabAllTime")?.addEventListener("click", (e) => {
+    e.preventDefault(); e.stopImmediatePropagation(); e.currentTarget.blur();
+    setTabs(true);
+  });
 
   // --- Login / username (localStorage) ---
   let username = localStorage.getItem("username");
 
-  const loginBtn = usernamePrompt?.querySelector("button");
-  if (loginBtn) {
-    loginBtn.addEventListener("click", () => {
+  if (lockBtn) {
+    lockBtn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopImmediatePropagation();
       const input = usernameInput.value.trim();
       if (!input) return alert("Please enter your name.");
       username = input;
@@ -136,7 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
           const div = document.createElement("div");
           div.className = "fight";
 
-          // Build safely with escaped attributes/text
           const nameKey = `${esc(fight)}-winner`;
           div.innerHTML = `
             <h3>${esc(fight)}</h3>
@@ -168,10 +186,6 @@ document.addEventListener("DOMContentLoaded", () => {
             else roundSelect.value = "1";
           });
 
-          if (methodSelect.value === "Decision") {
-            roundSelect.disabled = true;
-            roundSelect.value = "";
-          }
         });
 
         fightList.style.display = "block";
@@ -188,7 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     for (const fight of fights) {
       const fightName = fight.querySelector("h3").innerText;
-      const nameKey = `${fightName}-winner`.replace(/&/g,"&amp;").replace(/"/g,"&quot;"); // align with esc()
+      const nameKey = `${fightName}-winner`.replace(/&/g,"&amp;").replace(/"/g,"&quot;");
       const winner = fight.querySelector(`input[name="${nameKey}"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${esc(fightName)}-method"]`)?.value;
       const roundRaw = fight.querySelector(`select[name="${esc(fightName)}-round"]`);
@@ -227,7 +241,10 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  submitBtn.addEventListener("click", submitPicks);
+  submitBtn.addEventListener("click", (e) => {
+    e.preventDefault(); e.stopImmediatePropagation();
+    submitPicks();
+  });
 
   function loadMyPicks() {
     fetch("/api/picks", {
@@ -320,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (index === scores.length - 1) {
           classes.push("loser");
-          displayName = `💩 ${displayName}`; // visual only; not tracked
+          displayName = `💩 ${displayName}`;
         }
 
         if (user === username) {
@@ -328,7 +345,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         li.className = classes.join(" ");
-        // Weekly shows only weekly stats
         li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
         board.appendChild(li);
 
@@ -339,92 +355,4 @@ document.addEventListener("DOMContentLoaded", () => {
       // Glow all tied #1 entries
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
-        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
-        lis.forEach(li => {
-          const val = parseInt(li.lastElementChild.textContent, 10);
-          if (val === topScore) li.classList.add("tied-first");
-        });
-      }
-
-      // Show banner only if all results complete
-      const totalFights = fightsData.length;
-      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
-        res => res.winner && res.method
-      ).length;
-
-      if (
-        leaderboardData.champMessage &&
-        totalFights > 0 &&
-        completedResults === totalFights
-      ) {
-        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
-        champBanner.style.display = "block";
-      } else {
-        champBanner.style.display = "none";
-      }
-    });
-  }
-
-  function fetchAllTime() {
-    // Always fetch fresh when opening All-Time
-    return fetch("/api/hall")
-      .then(r => r.json())
-      .then(rows => {
-        const map = {};
-        (rows || []).forEach(r => {
-          map[r.username] = {
-            crowns: Number(r.crowns) || 0,
-            crown_rate: Number(r.crown_rate) || 0,
-            events_played: Number(r.events_played) || 0
-          };
-        });
-        allTimeByUser = map;
-        return allTimeByUser;
-      })
-      .catch(() => {
-        allTimeByUser = {};
-        return allTimeByUser;
-      });
-  }
-
-  function loadAllTime() {
-    fetchAllTime().then(() => {
-      const rows = Object.entries(allTimeByUser)
-        .map(([user, h]) => ({ user, ...h }))
-        .sort((a, b) => {
-          // same order as backend: crown_rate desc, crowns desc, events desc, name asc
-          if (b.crown_rate !== a.crown_rate) return b.crown_rate - a.crown_rate;
-          if (b.crowns !== a.crowns) return b.crowns - a.crowns;
-          if (b.events_played !== a.events_played) return b.events_played - a.events_played;
-          return (a.user || "").localeCompare(b.user || "");
-        });
-
-      allTimeList.innerHTML = "";
-
-      if (!rows.length) {
-        const li = document.createElement("li");
-        li.className = "empty";
-        li.textContent = "No All-Time data yet.";
-        allTimeList.appendChild(li);
-        return;
-      }
-
-      rows.forEach((row, idx) => {
-        const rank = idx + 1;
-        const pct = Math.round((row.crown_rate || 0) * 100);
-
-        const li = document.createElement("li");
-        let classes = [];
-        if (row.user === username) classes.push("current-user");
-        li.className = classes.join(" ");
-
-        li.innerHTML = `
-          <span>#${rank}</span>
-          <span>${esc(row.user)}</span>
-          <span>👑 x${row.crowns} • ${pct}% • ${row.events_played} events</span>
-        `;
-        allTimeList.appendChild(li);
-      });
-    });
-  }
-});
+        const topScore = parseInt(lis[0].lastElementCh
