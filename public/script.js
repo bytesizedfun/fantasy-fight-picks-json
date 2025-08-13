@@ -288,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // ALL-TIME (preload + render, NO HEADERS; mobile gets “👑 C/E events” line)
+  // ALL-TIME (preload + render, NO HEADERS; mobile gets “👑 C/E events • %”)
   // =========================
   let allTimeLoaded = false;
   let allTimeData = [];
@@ -352,7 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <span class="num rate">${pct}</span>
         <span class="num crowns">${row.crowns}</span>
         <span class="num events">${row.events}</span>
-        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events</span>
+        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events • ${pct}</span>
       `;
       allTimeList.appendChild(li);
       prev = row;
