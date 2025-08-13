@@ -5,25 +5,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernamePrompt = document.getElementById("usernamePrompt");
   const usernameInput = document.getElementById("usernameInput");
   const champBanner = document.getElementById("champBanner");
-  const punchSound = new Audio("punch.mp3");
-
-  // NEW: all-time container
+  const leaderboardEl = document.getElementById("leaderboard");
   const allTimeList = document.getElementById("allTimeBoard");
+  const weeklyTabBtn = document.getElementById("tabWeekly");
+  const allTimeTabBtn = document.getElementById("tabAllTime");
+  const punchSound = new Audio("punch.mp3");
 
   let username = localStorage.getItem("username");
 
-  if (username) {
-    usernameInput.value = username;
-    finalizeLogin(username);
-  }
-
-  document.querySelector("button").addEventListener("click", () => {
+  // ---- login handlers (used by HTML onclick) ----
+  function doLogin() {
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
     username = input;
     localStorage.setItem("username", username);
     finalizeLogin(username);
-  });
+  }
+  window.lockUsername = doLogin; // ✅ avoid ReferenceError from inline onclick
+  document.querySelector("#usernamePrompt button").addEventListener("click", doLogin); // bind the correct button
+
+  if (username) {
+    usernameInput.value = username;
+    finalizeLogin(username);
+  }
 
   function finalizeLogin(name) {
     usernamePrompt.style.display = "none";
@@ -50,10 +54,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         loadMyPicks();
         loadLeaderboard();
-        loadAllTime(); // ✅ only new call added
       });
+
+    preloadAllTime(); // prepare all-time in background
   }
 
+  // ---- fights ----
   function loadFights() {
     fetch("/api/fights")
       .then(res => res.json())
@@ -106,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
+  // ---- submit picks ----
   function submitPicks() {
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
@@ -145,7 +152,6 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.style.display = "none";
           loadMyPicks();
           loadLeaderboard();
-          loadAllTime(); // refresh all-time after results change later
         } else {
           alert(data.error || "Something went wrong.");
           submitBtn.disabled = false;
@@ -154,8 +160,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
   submitBtn.addEventListener("click", submitPicks);
-  window.submitPicks = submitPicks; // keep onclick working
+  window.submitPicks = submitPicks; // keep inline onclick working
 
+  // ---- my picks ----
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -220,12 +227,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
+  // ---- weekly board ----
   function loadLeaderboard() {
     Promise.all([
       fetch("/api/fights").then(r => r.json()),
       fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
     ]).then(([fightsData, leaderboardData]) => {
-      const board = document.getElementById("leaderboard");
+      const board = leaderboardEl;
       board.innerHTML = "";
 
       const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
@@ -282,61 +290,162 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* =========================
-     NEW: ALL-TIME (Hall) — minimal, no tabs required
-     ========================= */
-  function loadAllTime() {
-    fetch("/api/hall")
-      .then(r => r.json())
-      .then(rows => {
-        allTimeList.innerHTML = "";
-        if (!Array.isArray(rows) || rows.length === 0) {
-          allTimeList.innerHTML = `<li class="board-header">No All-Time data yet.</li>`;
-          return;
-        }
+  // =========================
+  // ALL-TIME (preload + render, tie-safe)
+  // =========================
+  let allTimeLoaded = false;
+  let allTimeData = [];
 
-        // Header
-        const header = document.createElement("li");
-        header.className = "board-header at-five";
-        header.innerHTML = `
-          <span>Rank</span>
-          <span>Player</span>
-          <span class="num">Rate</span>
-          <span class="num">Crowns</span>
-          <span class="num">Events</span>
-        `;
-        allTimeList.appendChild(header);
+  function fetchWithTimeout(url, ms = 6000) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
+  }
 
-        // Rows: rank with ties (1,1,1,4...)
-        let last = null;
-        let rank = 0;
-        rows.forEach((r, idx) => {
-          const current = { rate: r.crown_rate, crowns: r.crowns, events: r.events_played };
-          const equal = last && current.rate === last.rate && current.crowns === last.crowns && current.events === last.events;
-          rank = equal ? rank : (idx + 1);
-          last = current;
-
-          const li = document.createElement("li");
-          const classes = ["at-five"];
-          if (rank === 1) classes.push("tied-first");
-          if (r.username === username) classes.push("current-user");
-          li.className = classes.join(" ");
-
-          const label = rank === 1 ? "🥇" : `#${rank}`;
-          const ratePct = (Number(r.crown_rate || 0) * 100).toFixed(1) + "%";
-
-          li.innerHTML = `
-            <span class="rank">${label}</span>
-            <span class="user" title="${r.username}">${r.username}</span>
-            <span class="num">${ratePct}</span>
-            <span class="num">${r.crowns}</span>
-            <span class="num">${r.events_played}</span>
-          `;
-          allTimeList.appendChild(li);
-        });
-      })
-      .catch(() => {
-        allTimeList.innerHTML = `<li class="board-header">All-Time unavailable.</li>`;
+  function sortAllTime(rows) {
+    const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
+    return cleaned
+      .map(r => ({
+        user: r.username,
+        crowns: Number(r.crowns) || 0,
+        events: Number(r.events_played) || 0,
+        rate: Number(r.crown_rate) || 0
+      }))
+      .sort((a,b) => {
+        if (b.rate !== a.rate) return b.rate - a.rate;
+        if (b.crowns !== a.crowns) return b.crowns - a.crowns;
+        if (b.events !== a.events) return b.events - a.events;
+        return (a.user || "").localeCompare(b.user || "");
       });
   }
+
+  function renderAllTimeSkeleton(rows = 6, minHeight = 0) {
+    allTimeList.style.minHeight = minHeight ? `${minHeight}px` : "";
+    allTimeList.innerHTML = "";
+    for (let i = 0; i < rows; i++) {
+      const li = document.createElement("li");
+      li.className = "skeleton at-five";
+      li.innerHTML = `
+        <span class="sk-block"></span>
+        <span class="sk-line"></span>
+        <span class="sk-block short"></span>
+        <span class="sk-block short"></span>
+        <span class="sk-block short"></span>
+      `;
+      allTimeList.appendChild(li);
+    }
+  }
+
+  function renderAllTimeHeader() {
+    const li = document.createElement("li");
+    li.className = "board-header at-five";
+    li.innerHTML = `
+      <span>Rank</span>
+      <span>Player</span>
+      <span class="hdr-right">Rate</span>
+      <span class="hdr-right">Crowns</span>
+      <span class="hdr-right">Events</span>
+    `;
+    allTimeList.appendChild(li);
+  }
+
+  function rowsEqual(a, b) {
+    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
+  }
+
+  function drawAllTime(data) {
+    allTimeList.innerHTML = "";
+    if (!data.length) {
+      allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
+      return;
+    }
+
+    renderAllTimeHeader();
+
+    // Rank with ties (competition ranking): 1,1,1,4...
+    let rank = 0;
+    let prev = null;
+
+    data.forEach((row, idx) => {
+      rank = (idx === 0 || !rowsEqual(row, prev)) ? (idx + 1) : rank;
+      const isTop = rank === 1;
+
+      const li = document.createElement("li");
+      const classes = [];
+      if (row.user === username) classes.push("current-user");
+      if (isTop) classes.push("tied-first");
+      li.className = classes.join(" ") + " at-five";
+
+      const rankLabel = isTop ? "🥇" : `#${rank}`;
+      const pct = (row.rate * 100).toFixed(1) + "%";
+
+      li.innerHTML = `
+        <span class="rank">${rankLabel}</span>
+        <span class="user" title="${row.user}">${row.user}</span>
+        <span class="num">${pct}</span>
+        <span class="num">${row.crowns}</span>
+        <span class="num">${row.events}</span>
+      `;
+      allTimeList.appendChild(li);
+      prev = row;
+    });
+  }
+
+  function preloadAllTime() {
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(rows => {
+        allTimeData = sortAllTime(rows);
+        allTimeLoaded = true;
+      })
+      .catch(() => {});
+  }
+
+  function loadAllTimeInteractive() {
+    if (allTimeLoaded) { drawAllTime(allTimeData); return; }
+    const panelHeight = leaderboardEl.offsetHeight || 260;
+    renderAllTimeSkeleton(6, panelHeight);
+
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(rows => {
+        allTimeData = sortAllTime(rows);
+        allTimeLoaded = true;
+        drawAllTime(allTimeData);
+      })
+      .catch(() => {
+        return fetchWithTimeout("/api/hall", 6000)
+          .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+          .then(rows => {
+            allTimeData = sortAllTime(rows);
+            allTimeLoaded = true;
+            drawAllTime(allTimeData);
+          })
+          .catch(err => {
+            allTimeList.style.minHeight = "";
+            allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`;
+          });
+      })
+      .finally(() => setTimeout(() => { allTimeList.style.minHeight = ""; }, 0));
+  }
+
+  // ---- tabs ----
+  weeklyTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    leaderboardEl.style.display = "block";
+    allTimeList.style.display = "none";
+    weeklyTabBtn.setAttribute("aria-pressed","true");
+    allTimeTabBtn.setAttribute("aria-pressed","false");
+  });
+
+  allTimeTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    loadAllTimeInteractive();
+    leaderboardEl.style.display = "none";
+    allTimeList.style.display = "block";
+    weeklyTabBtn.setAttribute("aria-pressed","false");
+    allTimeTabBtn.setAttribute("aria-pressed","true");
+  });
+
+  // initial (no auto-open; Weekly is default)
 });
