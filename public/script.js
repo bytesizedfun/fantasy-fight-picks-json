@@ -1,40 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // ---- runtime CSS injector (so you don't need to edit style.css) ----
-  (function injectAllTimeCSS() {
-    if (document.getElementById("alltime-mobile-css")) return;
-    const css = `
-#allTimeBoard .board-header,
-#allTimeBoard li.board-header { display: none !important; } /* kill headers */
-
-#allTimeBoard li.at-five .mobile-meta { display: none; } /* desktop hidden */
-
-@media (max-width: 600px){
-  /* two-line layout on phones */
-  #allTimeBoard li.at-five{
-    grid-template-columns: 44px 1fr !important;
-    grid-template-rows: auto auto !important;
-    column-gap: 8px !important;
-    row-gap: 4px !important;
-    padding: 12px !important;
-  }
-  #allTimeBoard li.at-five .rank { grid-column: 1; grid-row: 1; justify-self: center; }
-  #allTimeBoard li.at-five .user { grid-column: 2; grid-row: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* hide numeric cells; show single compact legend line */
-  #allTimeBoard li.at-five .num { display: none !important; }
-  #allTimeBoard li.at-five .mobile-meta{
-    display: block !important;
-    grid-column: 2; grid-row: 2;
-    font-size: .96rem; letter-spacing: .01em; color: var(--text-main);
-  }
-}
-    `.trim();
-    const tag = document.createElement("style");
-    tag.id = "alltime-mobile-css";
-    tag.textContent = css;
-    document.head.appendChild(tag);
-  })();
-
   const welcome = document.getElementById("welcome");
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
@@ -58,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
     finalizeLogin(username);
   }
   window.lockUsername = doLogin; // keep inline onclick safe
-  document.querySelector("#usernamePrompt button").addEventListener("click", doLogin); // bind the right button
+  document.querySelector("#usernamePrompt button").addEventListener("click", doLogin);
 
   if (username) {
     usernameInput.value = username;
@@ -92,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
         loadLeaderboard();
       });
 
-    preloadAllTime(); // prepare all-time in background
+    preloadAllTime(); // background fetch
   }
 
   // ---- fights ----
@@ -196,9 +160,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
   submitBtn.addEventListener("click", submitPicks);
-  window.submitPicks = submitPicks; // keep inline onclick working
+  window.submitPicks = submitPicks;
 
-  // ---- my picks (with green/red + points) ----
+  // ---- my picks (green/red + points) ----
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -243,10 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 : "";
 
               const dogIcon = hasResult && matchWinner && isUnderdog ? `<span class="correct">🐶</span>` : "";
-              const roundText = method === "Decision"
-                ? "(Decision)"
-                : `in Round <span class="${roundClass}">${round}</span>`;
-
+              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
               const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
               myPicksDiv.innerHTML += `
@@ -327,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // ALL-TIME (preload + render, tie-safe)
+  // ALL-TIME (preload + render, NO HEADERS; mobile gets “👑 C/E events” line)
   // =========================
   let allTimeLoaded = false;
   let allTimeData = [];
@@ -366,9 +327,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // 🚫 No header row
+    // 🚫 No header row rendered here
 
-    // Rank with ties (competition ranking): 1,1,1,4...
+    // competition ranking 1,1,1,4...
     let rank = 0;
     let prev = null;
 
@@ -385,7 +346,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const rankLabel = isTop ? "🥇" : `#${rank}`;
       const pct = (row.rate * 100).toFixed(1) + "%";
 
-      // Desktop: show numeric cells; Mobile: hide them and show compact legend line
       li.innerHTML = `
         <span class="rank">${rankLabel}</span>
         <span class="user" title="${row.user}">${row.user}</span>
@@ -411,8 +371,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function loadAllTimeInteractive() {
     if (allTimeLoaded) { drawAllTime(allTimeData); return; }
-    const panelHeight = leaderboardEl.offsetHeight || 260;
-    allTimeList.style.minHeight = `${panelHeight}px`;
+    const h = leaderboardEl.offsetHeight || 260;
+    allTimeList.style.minHeight = `${h}px`;
     allTimeList.innerHTML = "";
 
     fetchWithTimeout("/api/hall", 6000)
