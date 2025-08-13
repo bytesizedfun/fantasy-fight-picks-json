@@ -13,15 +13,15 @@
   --shadow-dark: rgba(0,0,0,0.6);
 
   /* All-Time grid sizing (desktop) */
-  --rank-w: 64px;   /* room for 🥇 / #10 */
-  --rate-w: 96px;   /* room for 100.0% */
-  --count-w: 88px;  /* crowns / events */
+  --rank-w: 70px;   /* room for 🥇 / #10 */
+  --rate-w: 110px;  /* room for 100.0% */
+  --count-w: 96px;  /* crowns / events */
   --gap:    18px;
 
   /* All-Time grid sizing (mobile) */
-  --m-rank-w: 44px;
-  --m-rate-w: 78px;
-  --m-count-w: 72px;
+  --m-rank-w: 48px;
+  --m-rate-w: 92px;
+  --m-count-w: 80px;
   --m-gap:    12px;
 }
 
@@ -39,9 +39,9 @@ body {
 .banner-container { display: flex; justify-content: center; margin-bottom: 10px; }
 .logo-banner { max-width: 200px; height: auto; }
 
-/* Panel */
+/* Panel (wider on desktop for breathing room) */
 #app {
-  max-width: 720px; /* wider on desktop so columns breathe */
+  max-width: 760px;
   margin: auto;
   padding: 20px;
   background: var(--bg-panel);
@@ -285,25 +285,22 @@ button:hover {
   letter-spacing: .02em;
 }
 
-/* Align header labels with numeric cells (right edge) */
-#allTimeBoard .board-header .hdr-right {
-  justify-self: end;
-  text-align: right;
+/* >>> PERFECT CENTER alignment for numeric header labels and data <<< */
+#allTimeBoard .board-header .hdr-right,
+#allTimeBoard li .num{
+  justify-self: center;   /* center the item within its grid track */
+  text-align: center;     /* center text inside the item */
+  display: flex;          /* robust centering even if content width varies */
+  justify-content: center;
+  align-items: center;
 }
-
-/* Cells */
+/* Player name behavior + rank */
 #allTimeBoard li.at-five > span,
 #allTimeBoard .board-header.at-five > span { min-width: 0; }
-#allTimeBoard li .rank { font-weight:900; white-space: nowrap; }
+#allTimeBoard li .rank { font-weight:900; white-space: nowrap; text-align:center; justify-self:center; display:flex; align-items:center; justify-content:center; }
 #allTimeBoard li .user{
   font-weight:900; letter-spacing:.02em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-#allTimeBoard li .num{
-  justify-self: end;
-  text-align: right;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Hover / state */
