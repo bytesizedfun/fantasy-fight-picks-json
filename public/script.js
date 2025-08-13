@@ -128,15 +128,24 @@ document.addEventListener("DOMContentLoaded", () => {
           fightNamesForFotn.push(fight);
           if (underdogOdds != null) fightOdds.set(fight, underdogOdds);
 
-          const dog1 = underdog === "Fighter 1" ? "🐶" : "";
-          const dog2 = underdog === "Fighter 2" ? "🐶" : "";
+          const isDog1 = underdog === "Fighter 1";
+          const isDog2 = underdog === "Fighter 2";
+
+          const right1 = isDog1 && underdogOdds ? `<span class="odds-chip">${underdogOdds}</span><span class="dog">🐶</span>` : "";
+          const right2 = isDog2 && underdogOdds ? `<span class="odds-chip">${underdogOdds}</span><span class="dog">🐶</span>` : "";
 
           const div = document.createElement("div");
           div.className = "fight";
           div.innerHTML = `
             <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1} ${dog1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2} ${dog2}</label>
+            <label>
+              <span><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</span>
+              ${right1}
+            </label>
+            <label>
+              <span><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</span>
+              ${right2}
+            </label>
             <select name="${fight}-method">
               <option value="Decision">Decision</option>
               <option value="KO/TKO">KO/TKO</option>
@@ -203,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
       picks.push({ fight: fightName, winner, method, round });
     }
 
-    // Require FOTN selection (cleaner UX)
+    // Require FOTN selection
     const fotnPick = document.getElementById("fotnSelect")?.value || "";
     if (!fotnPick) {
       alert("Pick your Fight of the Night.");
@@ -288,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 score += 2;
                 if (finished && matchRound) score += 1;
               }
-              // underdog bonus when you picked the winner AND the actual winner was the underdog
+              // underdog bonus when actual winner was the underdog
               if (actual.underdog === "Y") {
                 const odds = fightOdds.get(fight); // e.g. "+240"
                 score += computeUnderdogBonusClient(odds);
@@ -323,7 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const yourPick = myFotn ? myFotn : "—";
           const official = officialFOTN.length ? officialFOTN.join(", ") : "—";
-          const fotnPts = gotFotn ? `<span class="points">+3 FOTN</span>` : "";
+          const fotnPts = gotFotn ? `<span class="badge-fotn">+3 FOTN</span>` : "";
 
           fotnWrap.innerHTML = `
             <div class="scored-pick">
@@ -378,14 +387,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (user === username) classes.push("current-user");
 
-        // add FOTN +3 tag if user hit it
-        let scoreSuffix = `${score} pts`;
+        // score cell with neon FOTN badge if they hit it
+        let rightCellHTML = `<span>${score} pts</span>`;
         if (leaderboardData.fotnPoints && leaderboardData.fotnPoints[user] === 3) {
-          scoreSuffix += ` (+3 FOTN)`;
+          rightCellHTML += ` <span class="badge-fotn small">+3 FOTN</span>`;
         }
 
         li.className = classes.join(" ");
-        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${scoreSuffix}</span>`;
+        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span class="score-cell">${rightCellHTML}</span>`;
         board.appendChild(li);
 
         prevScore = score;
