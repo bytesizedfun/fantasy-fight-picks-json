@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = localStorage.getItem("username");
 
-  // ---- login handlers (used by HTML onclick) ----
+  /* ---------- Login (keep inline onclick working & center stays via CSS) ---------- */
   function doLogin() {
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
@@ -21,16 +21,13 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("username", username);
     finalizeLogin(username);
   }
-  window.lockUsername = doLogin; // keep inline onclick safe
+  window.lockUsername = doLogin;                          // for HTML onclick
   const loginBtn = document.querySelector("#usernamePrompt button");
   if (loginBtn) loginBtn.addEventListener("click", doLogin);
 
   if (username) {
     usernameInput.value = username;
     finalizeLogin(username);
-  } else {
-    // Preload all-time in the background so data is warm when the user logs in.
-    preloadAllTime();
   }
 
   function finalizeLogin(name) {
@@ -60,10 +57,10 @@ document.addEventListener("DOMContentLoaded", () => {
         loadLeaderboard();
       });
 
-    preloadAllTime(); // background fetch for All-Time
+    preloadAllTime(); // warm up data
   }
 
-  // ---- fights ----
+  /* ---------- Fights ---------- */
   function loadFights() {
     fetch("/api/fights")
       .then(res => res.json())
@@ -116,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // ---- submit picks ----
+  /* ---------- Submit picks ---------- */
   function submitPicks() {
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
@@ -166,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  // ---- my picks (green/red + points) ----
+  /* ---------- My Picks (green/red + points) ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -228,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // ---- weekly board ----
+  /* ---------- Weekly Leaderboard ---------- */
   function loadLeaderboard() {
     Promise.all([
       fetch("/api/fights").then(r => r.json()),
@@ -291,9 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =========================
-  // ALL-TIME (preload + render)
-  // =========================
+  /* ---------- All-Time Leaderboard ---------- */
   let allTimeLoaded = false;
   let allTimeData = [];
 
@@ -344,7 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Desktop header (hidden by CSS on mobile)
+    // Desktop header (mobile hides via CSS)
     renderAllTimeHeader();
 
     // competition ranking 1,1,1,4...
@@ -389,8 +384,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function loadAllTimeInteractive() {
     if (allTimeLoaded) { drawAllTime(allTimeData); return; }
-
-    // minimal skeleton state (keeps height stable without extra CSS requirements)
     const keepHeight = leaderboardEl.offsetHeight || 260;
     allTimeList.style.minHeight = `${keepHeight}px`;
     allTimeList.innerHTML = "";
@@ -408,7 +401,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .finally(() => { allTimeList.style.minHeight = ""; });
   }
 
-  // ---- tabs ----
+  /* Tabs */
   weeklyTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
     leaderboardEl.style.display = "block";
@@ -425,6 +418,4 @@ document.addEventListener("DOMContentLoaded", () => {
     weeklyTabBtn.setAttribute("aria-pressed","false");
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
-
-  // initial: Weekly visible by default
 });
