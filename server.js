@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.static("public"));
 
 // ✅ Updated Lockout Time: August 9, 2025 @ 4:00 PM ET
-const lockoutTime = new Date("2025-08-09T16:00:00-04:00");
+const lockoutTime = new Date("2025-08-13T16:00:00-06:00");
 
 // ✅ Endpoint to check lockout status (for frontend)
 app.get("/api/lockout", (req, res) => {
