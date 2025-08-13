@@ -13,15 +13,15 @@
   --shadow-dark: rgba(0,0,0,0.6);
 
   /* All-Time grid sizing (desktop) */
-  --rank-w: 70px;     /* room for 🥇 / #10 */
-  --rate-w: 110px;    /* room for 100.0% */
-  --count-w: 96px;    /* crowns / events */
-  --gap:    18px;
+  --rank-w: 56px;   /* room for 🥇 / #10 */
+  --rate-w: 90px;   /* room for 100.0% */
+  --count-w: 80px;  /* crowns / events */
+  --gap:    12px;
 
   /* All-Time grid sizing (mobile) */
   --m-rank-w: 40px;
-  --m-rate-w: 68px;
-  --m-count-w: 60px;
+  --m-rate-w: 66px;  /* fits 100.0% */
+  --m-count-w: 56px; /* fits 2–3 digits */
   --m-gap:    8px;
 }
 
@@ -39,9 +39,9 @@ body {
 .banner-container { display: flex; justify-content: center; margin-bottom: 10px; }
 .logo-banner { max-width: 200px; height: auto; }
 
-/* Panel (wider on desktop for breathing room) */
+/* Panel (compact like before) */
 #app {
-  max-width: 760px;
+  max-width: 580px;
   margin: auto;
   padding: 20px;
   background: var(--bg-panel);
@@ -256,7 +256,7 @@ button:hover {
 #submitBtn { display:block; margin:12px auto 0; }
 
 /* =========================
-   All-Time (5-column table)
+   All-Time (5-column)
    ========================= */
 #allTimeBoard { list-style:none; padding:0; margin-top:20px; overflow-x: hidden; }
 
@@ -290,15 +290,12 @@ button:hover {
 #allTimeBoard li .num{
   justify-self: center;
   text-align: center;
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
-#allTimeBoard li .rank { font-weight:900; white-space: nowrap; text-align:center; justify-self:center; display:flex; align-items:center; justify-content:center; }
 
-/* Cell overflow handling */
+/* Cells */
 #allTimeBoard li.at-five > span,
 #allTimeBoard .board-header.at-five > span { min-width: 0; }
+#allTimeBoard li .rank { font-weight:900; white-space: nowrap; text-align:center; justify-self:center; }
 #allTimeBoard li .user{
   font-weight:900; letter-spacing:.02em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -320,7 +317,7 @@ button:hover {
   box-shadow:0 0 10px rgba(0,245,255,0.35) inset;
 }
 
-/* Skeleton rows (optional) */
+/* Skeleton (optional) */
 #allTimeBoard li.skeleton { background: rgba(255,255,255,0.03); border-left-color: transparent; }
 #allTimeBoard li.skeleton.at-five {
   grid-template-columns: var(--rank-w) minmax(0,1fr) var(--rate-w) var(--count-w) var(--count-w);
@@ -337,11 +334,6 @@ button:hover {
 #allTimeBoard li.skeleton .sk-line{ width:100%; }
 #allTimeBoard li.skeleton .sk-line.short{ width:70%; }
 @keyframes skeletonShift { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce){
-  .champ-banner, .crown { animation: none; }
-}
 
 /* =========================
    Mobile tweaks (<=600px)
@@ -361,7 +353,7 @@ button:hover {
 
   #leaderboard li { grid-template-columns: 44px minmax(0,1fr) 64px; padding: 12px; }
 
-  /* Tighter All-Time grid on phones */
+  /* Phone layout: keep single row, compact fixed numeric columns */
   #allTimeBoard .board-header.at-five,
   #allTimeBoard li.at-five {
     grid-template-columns: var(--m-rank-w) minmax(0,1fr) var(--m-rate-w) var(--m-count-w) var(--m-count-w);
@@ -369,18 +361,19 @@ button:hover {
     padding: 12px 12px;
   }
 
-  /* Reduce header spacing + prevent wrap/collision */
+  /* Slightly smaller header; prevent wrapping/collision */
   #allTimeBoard .board-header {
+    font-size: .86rem;
     letter-spacing: .01em;
-    font-size: .88rem;
   }
   #allTimeBoard .board-header.at-five > span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
   }
 
-  /* Abbreviate numeric headers on mobile to save space */
+  /* Abbreviate numeric headers on mobile via ::after */
   /* 3 = Rate, 4 = Crowns, 5 = Events */
   #allTimeBoard .board-header.at-five > span:nth-child(3),
   #allTimeBoard .board-header.at-five > span:nth-child(4),
@@ -400,5 +393,12 @@ button:hover {
     content: "Ev";
     font-size: .96rem;
     line-height: 1;
+  }
+
+  /* Make sure usernames always show (ellipsis if too long) */
+  #allTimeBoard li .user {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
