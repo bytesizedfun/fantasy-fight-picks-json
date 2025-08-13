@@ -19,9 +19,7 @@
   --gap:    12px;
 
   /* All-Time grid sizing (mobile) */
-  --m-rank-w: 40px;
-  --m-rate-w: 66px;  /* fits 100.0% */
-  --m-count-w: 56px; /* fits 2–3 digits */
+  --m-rank-w: 44px;
   --m-gap:    8px;
 }
 
@@ -247,7 +245,6 @@ button:hover {
   color: var(--neon-cyan);
   font-weight: 900;
   line-height: 1;
-  flex: 0 0 auto;
 }
 .correct, .correct * { color: var(--success) !important; }
 .wrong,   .wrong   * { color: var(--error)   !important; }
@@ -256,7 +253,7 @@ button:hover {
 #submitBtn { display:block; margin:12px auto 0; }
 
 /* =========================
-   All-Time (5-column)
+   All-Time (desktop)
    ========================= */
 #allTimeBoard { list-style:none; padding:0; margin-top:20px; overflow-x: hidden; }
 
@@ -285,7 +282,7 @@ button:hover {
   letter-spacing: .02em;
 }
 
-/* Center numeric headers and data */
+/* Center numeric headers and data (desktop) */
 #allTimeBoard .board-header .hdr-right,
 #allTimeBoard li .num{
   justify-self: center;
@@ -298,7 +295,9 @@ button:hover {
 #allTimeBoard li .rank { font-weight:900; white-space: nowrap; text-align:center; justify-self:center; }
 #allTimeBoard li .user{
   font-weight:900; letter-spacing:.02em;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Hover / state */
@@ -333,10 +332,9 @@ button:hover {
 #allTimeBoard li.skeleton .sk-block.short{ width:36px; }
 #allTimeBoard li.skeleton .sk-line{ width:100%; }
 #allTimeBoard li.skeleton .sk-line.short{ width:70%; }
-@keyframes skeletonShift { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
 /* =========================
-   Mobile tweaks (<=600px)
+   Mobile All-Time (two-line rows + visible header legend)
    ========================= */
 @media (max-width: 600px) {
   #app { max-width: 100%; }
@@ -353,52 +351,55 @@ button:hover {
 
   #leaderboard li { grid-template-columns: 44px minmax(0,1fr) 64px; padding: 12px; }
 
-  /* Phone layout: keep single row, compact fixed numeric columns */
-  #allTimeBoard .board-header.at-five,
-  #allTimeBoard li.at-five {
-    grid-template-columns: var(--m-rank-w) minmax(0,1fr) var(--m-rate-w) var(--m-count-w) var(--m-count-w);
+  /* Header: two lines (legend stays visible) */
+  #allTimeBoard .board-header.at-five {
+    grid-template-columns: var(--m-rank-w) 1fr 1fr 1fr;
+    grid-template-areas:
+      "rank player player player"
+      "rate crowns events events";
+    row-gap: 6px;
     column-gap: var(--m-gap);
-    padding: 12px 12px;
+    padding: 12px;
+    font-size: .92rem;
   }
+  #allTimeBoard .board-header.at-five > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #allTimeBoard .board-header.at-five > span:nth-child(1){ grid-area: rank; text-align:center; }
+  #allTimeBoard .board-header.at-five > span:nth-child(2){ grid-area: player; }
+  #allTimeBoard .board-header.at-five > span:nth-child(3){ grid-area: rate;   text-align:center; }
+  #allTimeBoard .board-header.at-five > span:nth-child(4){ grid-area: crowns; text-align:center; }
+  #allTimeBoard .board-header.at-five > span:nth-child(5){ grid-area: events; text-align:center; }
 
-  /* Slightly smaller header; prevent wrapping/collision */
-  #allTimeBoard .board-header {
-    font-size: .86rem;
-    letter-spacing: .01em;
-  }
-  #allTimeBoard .board-header.at-five > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-  }
-
-  /* Abbreviate numeric headers on mobile via ::after */
-  /* 3 = Rate, 4 = Crowns, 5 = Events */
+  /* Abbreviate the legend labels to avoid wrap */
+  #allTimeBoard .board-header.at-five > span:nth-child(3)::after { content: "%"; }
+  #allTimeBoard .board-header.at-five > span:nth-child(4)::after { content: "👑"; }
+  #allTimeBoard .board-header.at-five > span:nth-child(5)::after { content: "Ev"; }
   #allTimeBoard .board-header.at-five > span:nth-child(3),
   #allTimeBoard .board-header.at-five > span:nth-child(4),
-  #allTimeBoard .board-header.at-five > span:nth-child(5) { font-size: 0; }
+  #allTimeBoard .board-header.at-five > span:nth-child(5){ font-size:0; }
+  #allTimeBoard .board-header.at-five > span:nth-child(3)::after,
+  #allTimeBoard .board-header.at-five > span:nth-child(4)::after,
+  #allTimeBoard .board-header.at-five > span:nth-child(5)::after{ font-size:.98rem; }
 
-  #allTimeBoard .board-header.at-five > span:nth-child(3)::after {
-    content: "%";
-    font-size: .96rem;
-    line-height: 1;
+  /* Rows: two lines, names always visible */
+  #allTimeBoard li.at-five {
+    grid-template-columns: var(--m-rank-w) 1fr 1fr 1fr;
+    grid-template-areas:
+      "rank user user user"
+      "rate crowns events events";
+    row-gap: 6px;
+    column-gap: var(--m-gap);
+    padding: 12px;
   }
-  #allTimeBoard .board-header.at-five > span:nth-child(4)::after {
-    content: "👑";
-    font-size: 1.05rem;
-    line-height: 1;
-  }
-  #allTimeBoard .board-header.at-five > span:nth-child(5)::after {
-    content: "Ev";
-    font-size: .96rem;
-    line-height: 1;
-  }
+  #allTimeBoard li.at-five > span:nth-child(1){ grid-area: rank;   justify-self:center; text-align:center; }
+  #allTimeBoard li.at-five > span:nth-child(2){ grid-area: user;   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #allTimeBoard li.at-five > span:nth-child(3){ grid-area: rate;   justify-self:center; text-align:center; }
+  #allTimeBoard li.at-five > span:nth-child(4){ grid-area: crowns; justify-self:center; text-align:center; }
+  #allTimeBoard li.at-five > span:nth-child(5){ grid-area: events; justify-self:center; text-align:center; }
 
-  /* Make sure usernames always show (ellipsis if too long) */
-  #allTimeBoard li .user {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  /* Slightly smaller numbers on phones for fit */
+  #allTimeBoard li.at-five > span:nth-child(3),
+  #allTimeBoard li.at-five > span:nth-child(4),
+  #allTimeBoard li.at-five > span:nth-child(5){
+    font-size:.95rem;
   }
 }
