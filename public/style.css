@@ -149,7 +149,7 @@ p{ margin:0 0 10px; }
 }
 .fight h3{ font-size: 20px; margin-bottom: 8px; }
 .fight label{
-  display:block;
+  display:flex; align-items:center; gap:10px;
   background: var(--tile);
   border: 1px solid var(--divider);
   padding: 10px 12px;
@@ -158,6 +158,7 @@ p{ margin:0 0 10px; }
   cursor:pointer;
   transition: border-color .15s ease, transform .06s ease;
 }
+.fight label input{ margin-right: 8px; }
 .fight label:hover{ border-color: rgba(var(--accent-rgb),0.45); transform: translateY(-1px); }
 
 /* highlight selected radio row */
@@ -176,6 +177,19 @@ p{ margin:0 0 10px; }
   margin: 6px 0;
   outline:none;
 }
+
+/* odds chip & underdog icon */
+.odds-chip{
+  margin-left:auto;
+  padding: 2px 8px;
+  font-size: 14px;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.14), rgba(var(--accent-rgb),0.06));
+  border: 1px solid rgba(var(--accent-rgb),0.55);
+  border-radius: 999px;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+.dog{ margin-left:6px; filter: drop-shadow(0 0 6px rgba(var(--accent-rgb),0.35)); }
 
 /* ===== FOTN injected block ===== */
 #fotnBlock{
@@ -258,6 +272,20 @@ p{ margin:0 0 10px; }
 
 /* FOTN strip (in My Picks) */
 .fotn-strip .scored-pick .fight-name{ color: var(--muted); }
+
+/* Neon FOTN badge */
+.badge-fotn{
+  display:inline-block;
+  padding: 2px 10px;
+  border-radius:999px;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.18), rgba(var(--accent-rgb),0.08));
+  border: 1px solid rgba(var(--accent-rgb),0.55);
+  color: #dffcff;
+  font-weight:700;
+  letter-spacing:0.4px;
+  text-transform: uppercase;
+}
+.badge-fotn.small{ font-size: 12px; padding: 1px 8px; border-width: 1px; }
 
 /* ===== Leaderboards ===== */
 .leader-title{
