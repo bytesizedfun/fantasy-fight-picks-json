@@ -11,8 +11,8 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW
 app.use(express.json());
 app.use(express.static("public"));
 
-// ✅ Updated Lockout Time: August 9, 2025 @ 4:00 PM ET
-const lockoutTime = new Date("2025-08-13T16:00:00-06:00");
+// ✅ Updated Lockout Time: August 16, 2025 @ 6:00 PM ET
+const lockoutTime = new Date("2025-08-16T18:00:00-04:00"); // ET in August = UTC-04:00
 
 // ✅ Endpoint to check lockout status (for frontend)
 app.get("/api/lockout", (req, res) => {
