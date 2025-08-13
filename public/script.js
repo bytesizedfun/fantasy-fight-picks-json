@@ -21,8 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("username", username);
     finalizeLogin(username);
   }
-  window.lockUsername = doLogin; // ✅ avoid ReferenceError from inline onclick
-  document.querySelector("#usernamePrompt button").addEventListener("click", doLogin); // bind the correct button
+  window.lockUsername = doLogin; // keep inline handler safe
+  document.querySelector("#usernamePrompt button").addEventListener("click", doLogin);
 
   if (username) {
     usernameInput.value = username;
@@ -160,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
   submitBtn.addEventListener("click", submitPicks);
-  window.submitPicks = submitPicks; // keep inline onclick working
+  window.submitPicks = submitPicks;
 
   // ---- my picks ----
   function loadMyPicks() {
@@ -319,36 +319,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function renderAllTimeSkeleton(rows = 6, minHeight = 0) {
-    allTimeList.style.minHeight = minHeight ? `${minHeight}px` : "";
-    allTimeList.innerHTML = "";
-    for (let i = 0; i < rows; i++) {
-      const li = document.createElement("li");
-      li.className = "skeleton at-five";
-      li.innerHTML = `
-        <span class="sk-block"></span>
-        <span class="sk-line"></span>
-        <span class="sk-block short"></span>
-        <span class="sk-block short"></span>
-        <span class="sk-block short"></span>
-      `;
-      allTimeList.appendChild(li);
-    }
-  }
-
-  function renderAllTimeHeader() {
-    const li = document.createElement("li");
-    li.className = "board-header at-five";
-    li.innerHTML = `
-      <span>Rank</span>
-      <span>Player</span>
-      <span class="hdr-right">Rate</span>
-      <span class="hdr-right">Crowns</span>
-      <span class="hdr-right">Events</span>
-    `;
-    allTimeList.appendChild(li);
-  }
-
   function rowsEqual(a, b) {
     return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
   }
@@ -360,7 +330,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    renderAllTimeHeader();
+    // No header row
 
     // Rank with ties (competition ranking): 1,1,1,4...
     let rank = 0;
@@ -379,12 +349,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const rankLabel = isTop ? "🥇" : `#${rank}`;
       const pct = (row.rate * 100).toFixed(1) + "%";
 
+      // Desktop: 5 cells; Mobile: the three .num cells are hidden and we show a single .mobile-meta line
       li.innerHTML = `
         <span class="rank">${rankLabel}</span>
         <span class="user" title="${row.user}">${row.user}</span>
-        <span class="num">${pct}</span>
-        <span class="num">${row.crowns}</span>
-        <span class="num">${row.events}</span>
+        <span class="num rate">${pct}</span>
+        <span class="num crowns">${row.crowns}</span>
+        <span class="num events">${row.events}</span>
+        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events</span>
       `;
       allTimeList.appendChild(li);
       prev = row;
@@ -403,8 +375,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function loadAllTimeInteractive() {
     if (allTimeLoaded) { drawAllTime(allTimeData); return; }
+
+    // simple skeleton
     const panelHeight = leaderboardEl.offsetHeight || 260;
-    renderAllTimeSkeleton(6, panelHeight);
+    allTimeList.style.minHeight = `${panelHeight}px`;
+    allTimeList.innerHTML = "";
 
     fetchWithTimeout("/api/hall", 6000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
@@ -413,20 +388,10 @@ document.addEventListener("DOMContentLoaded", () => {
         allTimeLoaded = true;
         drawAllTime(allTimeData);
       })
-      .catch(() => {
-        return fetchWithTimeout("/api/hall", 6000)
-          .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-          .then(rows => {
-            allTimeData = sortAllTime(rows);
-            allTimeLoaded = true;
-            drawAllTime(allTimeData);
-          })
-          .catch(err => {
-            allTimeList.style.minHeight = "";
-            allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`;
-          });
+      .catch(err => {
+        allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`;
       })
-      .finally(() => setTimeout(() => { allTimeList.style.minHeight = ""; }, 0));
+      .finally(() => { allTimeList.style.minHeight = ""; });
   }
 
   // ---- tabs ----
@@ -447,5 +412,5 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
 
-  // initial (no auto-open; Weekly is default)
+  // initial: Weekly visible by default
 });
