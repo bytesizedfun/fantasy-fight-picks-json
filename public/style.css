@@ -13,16 +13,16 @@
   --shadow-dark: rgba(0,0,0,0.6);
 
   /* All-Time grid sizing (desktop) */
-  --rank-w: 70px;   /* room for 🥇 / #10 */
-  --rate-w: 110px;  /* room for 100.0% */
-  --count-w: 96px;  /* crowns / events */
+  --rank-w: 70px;     /* room for 🥇 / #10 */
+  --rate-w: 110px;    /* room for 100.0% */
+  --count-w: 96px;    /* crowns / events */
   --gap:    18px;
 
   /* All-Time grid sizing (mobile) */
-  --m-rank-w: 48px;
-  --m-rate-w: 92px;
-  --m-count-w: 80px;
-  --m-gap:    12px;
+  --m-rank-w: 40px;
+  --m-rate-w: 68px;
+  --m-count-w: 60px;
+  --m-gap:    8px;
 }
 
 * { box-sizing: border-box; }
@@ -285,19 +285,20 @@ button:hover {
   letter-spacing: .02em;
 }
 
-/* >>> PERFECT CENTER alignment for numeric header labels and data <<< */
+/* Center numeric headers and data */
 #allTimeBoard .board-header .hdr-right,
 #allTimeBoard li .num{
-  justify-self: center;   /* center the item within its grid track */
-  text-align: center;     /* center text inside the item */
-  display: flex;          /* robust centering even if content width varies */
+  justify-self: center;
+  text-align: center;
+  display: flex;
   justify-content: center;
   align-items: center;
 }
-/* Player name behavior + rank */
+#allTimeBoard li .rank { font-weight:900; white-space: nowrap; text-align:center; justify-self:center; display:flex; align-items:center; justify-content:center; }
+
+/* Cell overflow handling */
 #allTimeBoard li.at-five > span,
 #allTimeBoard .board-header.at-five > span { min-width: 0; }
-#allTimeBoard li .rank { font-weight:900; white-space: nowrap; text-align:center; justify-self:center; display:flex; align-items:center; justify-content:center; }
 #allTimeBoard li .user{
   font-weight:900; letter-spacing:.02em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -319,7 +320,7 @@ button:hover {
   box-shadow:0 0 10px rgba(0,245,255,0.35) inset;
 }
 
-/* Skeleton rows (safe if you render them later) */
+/* Skeleton rows (optional) */
 #allTimeBoard li.skeleton { background: rgba(255,255,255,0.03); border-left-color: transparent; }
 #allTimeBoard li.skeleton.at-five {
   grid-template-columns: var(--rank-w) minmax(0,1fr) var(--rate-w) var(--count-w) var(--count-w);
@@ -342,7 +343,9 @@ button:hover {
   .champ-banner, .crown { animation: none; }
 }
 
-/* Mobile */
+/* =========================
+   Mobile tweaks (<=600px)
+   ========================= */
 @media (max-width: 600px) {
   #app { max-width: 100%; }
   .logo-banner { max-width: 170px; margin-bottom: 12px; }
@@ -358,10 +361,44 @@ button:hover {
 
   #leaderboard li { grid-template-columns: 44px minmax(0,1fr) 64px; padding: 12px; }
 
+  /* Tighter All-Time grid on phones */
   #allTimeBoard .board-header.at-five,
   #allTimeBoard li.at-five {
     grid-template-columns: var(--m-rank-w) minmax(0,1fr) var(--m-rate-w) var(--m-count-w) var(--m-count-w);
     column-gap: var(--m-gap);
-    padding: 12px 14px;
+    padding: 12px 12px;
+  }
+
+  /* Reduce header spacing + prevent wrap/collision */
+  #allTimeBoard .board-header {
+    letter-spacing: .01em;
+    font-size: .88rem;
+  }
+  #allTimeBoard .board-header.at-five > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Abbreviate numeric headers on mobile to save space */
+  /* 3 = Rate, 4 = Crowns, 5 = Events */
+  #allTimeBoard .board-header.at-five > span:nth-child(3),
+  #allTimeBoard .board-header.at-five > span:nth-child(4),
+  #allTimeBoard .board-header.at-five > span:nth-child(5) { font-size: 0; }
+
+  #allTimeBoard .board-header.at-five > span:nth-child(3)::after {
+    content: "%";
+    font-size: .96rem;
+    line-height: 1;
+  }
+  #allTimeBoard .board-header.at-five > span:nth-child(4)::after {
+    content: "👑";
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+  #allTimeBoard .board-header.at-five > span:nth-child(5)::after {
+    content: "Ev";
+    font-size: .96rem;
+    line-height: 1;
   }
 }
