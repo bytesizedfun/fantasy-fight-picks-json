@@ -1,410 +1,190 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const welcome = document.getElementById("welcome");
-  const fightList = document.getElementById("fightList");
-  const submitBtn = document.getElementById("submitBtn");
-  const usernamePrompt = document.getElementById("usernamePrompt");
-  const usernameInput = document.getElementById("usernameInput");
-  const champBanner = document.getElementById("champBanner");
-  const leaderboardEl = document.getElementById("leaderboard");
-  const allTimeList = document.getElementById("allTimeBoard");
-  const weeklyTabBtn = document.getElementById("tabWeekly");
-  const allTimeTabBtn = document.getElementById("tabAllTime");
-  const punchSound = new Audio("punch.mp3");
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap');
 
-  let username = localStorage.getItem("username");
+:root{
+  --bg-dark:#0b0b0d; --bg-panel:#141416; --neon-cyan:#00f5ff; --neon-red:#ff003c;
+  --silver:#b0b3b8; --success:#2fffa0; --error:#ff4e4e; --text-main:#e4e6eb; --shadow-dark:rgba(0,0,0,.6);
 
-  // ---- login handlers (used by HTML onclick) ----
-  function doLogin() {
-    const input = usernameInput.value.trim();
-    if (!input) return alert("Please enter your name.");
-    username = input;
-    localStorage.setItem("username", username);
-    finalizeLogin(username);
+  /* All-Time sizing */
+  --rank-w:56px;   /* rank */
+  --rate-w:72px;   /* % */
+  --count-w:64px;  /* crowns / events */
+  --gap:10px;
+
+  /* Mobile sizing */
+  --m-rank-w:44px;
+}
+
+*{box-sizing:border-box}
+
+body{
+  background:var(--bg-dark);
+  color:var(--text-main);
+  font-family:'Orbitron',sans-serif;
+  margin:0;
+  padding:20px;
+}
+
+/* Logo */
+.banner-container{display:flex;justify-content:center;margin-bottom:10px}
+.logo-banner{max-width:200px;height:auto}
+
+/* Panel */
+#app{
+  max-width:580px; /* keep tight for desktop aesthetics */
+  margin:auto;
+  padding:20px;
+  background:var(--bg-panel);
+  border-radius:16px;
+  border:2px solid rgba(255,255,255,.08);
+  box-shadow:0 0 40px rgba(0,245,255,.05);
+}
+
+/* Champion Banner */
+.champ-banner{
+  text-align:center;font-size:2rem;font-weight:900;color:var(--neon-cyan);
+  background:linear-gradient(120deg,rgba(0,245,255,.2),rgba(255,0,60,.2),rgba(0,245,255,.2));
+  background-size:300% 300%;animation:bannerGlow 6s ease infinite;border-radius:14px;padding:14px;margin-bottom:10px;
+  border:1px solid var(--neon-cyan);text-shadow:0 0 12px var(--neon-cyan),0 0 24px var(--neon-red)
+}
+@keyframes bannerGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+/* Welcome */
+#welcome{text-align:center;margin:10px 0 20px}
+
+/* Scoring rules */
+.scoring-box{display:grid;gap:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.scoring-box.tight{gap:4px}
+
+/* Tabs */
+#boardTabs{display:flex;gap:8px;justify-content:center;margin:12px 0}
+#boardTabs button{
+  background:transparent;color:var(--text-main);
+  border:1px solid rgba(255,255,255,.2);
+  padding:8px 12px;border-radius:999px;cursor:pointer;transition:.2s;font-weight:900
+}
+#boardTabs button[aria-pressed="true"]{border-color:var(--neon-cyan);box-shadow:0 0 12px rgba(0,245,255,.35);color:#fff}
+
+/* Section title */
+.leader-title{text-align:center;margin-top:18px;font-size:1.8rem;font-weight:900;color:var(--neon-cyan);text-shadow:0 0 6px var(--neon-cyan),0 0 12px var(--neon-red)}
+
+/* Weekly Leaderboard */
+#leaderboard{list-style:none;padding:0;margin-top:20px}
+#leaderboard li{
+  background:rgba(255,255,255,.04);
+  margin:10px 0;padding:14px;
+  display:grid;grid-template-columns:50px minmax(0,1fr) 60px;align-items:center;
+  border-radius:10px;border-left:4px solid var(--silver);transition:.3s
+}
+#leaderboard li:hover{border-left-color:var(--neon-cyan);box-shadow:0 0 12px rgba(0,245,255,.4);transform:translateX(4px)}
+#leaderboard li:first-child,#leaderboard li.tied-first{
+  border-left-color:var(--neon-cyan);background:rgba(0,245,255,.1);box-shadow:0 0 14px rgba(0,245,255,.5);animation:pulseChampion 1.8s infinite
+}
+@keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,.5)}50%{box-shadow:0 0 28px rgba(255,0,60,.6)}}
+li.current-user{outline:2px solid rgba(0,245,255,.35);box-shadow:0 0 10px rgba(0,245,255,.35) inset}
+li.loser{filter:saturate(.85) brightness(.95)}
+.crown{display:inline-block;margin-right:6px;text-shadow:0 0 6px #ffd700,0 0 10px rgba(255,0,60,.25);animation:crownPulse 2.2s ease-in-out infinite}
+@keyframes crownPulse{0%,100%{text-shadow:0 0 6px #ffd700,0 0 10px rgba(255,0,60,.25)}50%{text-shadow:0 0 14px #ffd700,0 0 24px rgba(255,0,60,.45)}}
+#leaderboard li>:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Fight Blocks */
+.fight{background:rgba(255,255,255,.03);padding:14px;margin-bottom:18px;border-radius:10px;border:1px solid rgba(255,255,255,.06);box-shadow:inset 0 0 10px rgba(0,245,255,.05)}
+.fight h3{color:var(--neon-cyan);margin:0 0 8px}
+.fight label{display:block;margin:8px 0;line-height:1.35;cursor:pointer;padding:6px;border-radius:8px;transition:.25s}
+.fight label:hover{background:rgba(0,245,255,.08);box-shadow:0 0 10px rgba(0,245,255,.35),0 0 18px rgba(255,0,60,.2)}
+
+/* Inputs / Buttons */
+.fight select,#usernameInput{width:100%;background:#1a1a1a;color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:12px;font-size:16px;min-height:44px;line-height:1.2}
+button{background:var(--neon-cyan);color:var(--bg-dark);font-weight:900;border:none;border-radius:8px;padding:12px;font-size:1.1rem;cursor:pointer;transition:.25s;box-shadow:0 0 14px rgba(0,245,255,.4)}
+button:hover{background:var(--neon-red);color:#fff;box-shadow:0 0 14px rgba(255,0,60,.5)}
+#submitBtn{display:block;margin:12px auto 0}
+
+/* Your Picks */
+#myPicks{margin-top:20px;display:grid;gap:10px}
+#myPicks h3{margin:0;text-align:center;color:var(--neon-cyan)}
+.scored-pick{
+  display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;
+  background:rgba(255,255,255,.04);padding:10px 12px;border-radius:10px;border-left:4px solid var(--neon-cyan)
+}
+.scored-pick .fight-name{font-weight:900;letter-spacing:.03em;color:var(--text-main);flex:1 1 100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scored-pick .points{padding:4px 10px;border-radius:999px;margin-left:6px;background:rgba(0,245,255,.12);border:1px solid var(--neon-cyan);color:var(--neon-cyan);font-weight:900;line-height:1;flex:0 0 auto}
+.correct,.correct *{color:var(--success)!important}
+.wrong,.wrong *{color:var(--error)!important}
+
+/* =========================
+   ALL-TIME (desktop rows + header)
+   ========================= */
+#allTimeBoard{list-style:none;padding:0;margin-top:20px;overflow-x:hidden}
+
+/* Header (DESKTOP visible, MOBILE hidden in media query) */
+#allTimeBoard .board-header{
+  display:grid;align-items:center;
+  grid-template-columns:var(--rank-w) minmax(0,1fr) var(--rate-w) var(--count-w) var(--count-w);
+  column-gap:var(--gap);
+  padding:8px 16px;margin:4px 0 8px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;
+  text-transform:uppercase;font-weight:900;color:var(--silver);letter-spacing:.04em;
+}
+#allTimeBoard .board-header > span:nth-child(1){text-align:center}
+#allTimeBoard .board-header > span:nth-child(3),
+#allTimeBoard .board-header > span:nth-child(4),
+#allTimeBoard .board-header > span:nth-child(5){
+  justify-self:center;text-align:center
+}
+
+#allTimeBoard li.at-five{
+  display:grid;align-items:center;
+  grid-template-columns:var(--rank-w) minmax(0,1fr) var(--rate-w) var(--count-w) var(--count-w);
+  column-gap:var(--gap);
+  background:rgba(255,255,255,.04);
+  border-radius:10px;padding:14px 16px;margin:10px 0;border-left:4px solid var(--silver);
+  transition:.25s
+}
+#allTimeBoard li.at-five:hover{border-left-color:var(--neon-cyan);box-shadow:0 0 12px rgba(0,245,255,.4);transform:translateX(4px)}
+#allTimeBoard li.tied-first{border-left-color:var(--neon-cyan);background:rgba(0,245,255,.08);box-shadow:0 0 14px rgba(0,245,255,.25)}
+#allTimeBoard li.current-user{outline:2px solid rgba(0,245,255,.35);box-shadow:0 0 10px rgba(0,245,255,.35) inset}
+
+#allTimeBoard li.at-five>span{min-width:0}
+#allTimeBoard li .rank{font-weight:900;white-space:nowrap;text-align:center;justify-self:center}
+#allTimeBoard li .user{
+  font-weight:900;letter-spacing:.02em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#allTimeBoard li .num{justify-self:center;text-align:center;font-variant-numeric:tabular-nums}
+#allTimeBoard li .mobile-meta{display:none} /* desktop hidden */
+
+/* =========================
+   MOBILE (≤600px): two-line, header hidden
+   ========================= */
+@media (max-width:600px){
+  #app{max-width:100%}
+  .logo-banner{max-width:170px;margin-bottom:12px}
+
+  #leaderboard li{grid-template-columns:44px minmax(0,1fr) 64px;padding:12px}
+
+  /* Hide All-Time header on phones */
+  #allTimeBoard .board-header{display:none!important}
+
+  /* Two-line All-Time layout */
+  #allTimeBoard li.at-five{
+    grid-template-columns:var(--m-rank-w) 1fr;
+    grid-template-rows:auto auto;
+    column-gap:8px; row-gap:4px; padding:12px;
   }
-  window.lockUsername = doLogin; // keep inline onclick safe
-  document.querySelector("#usernamePrompt button").addEventListener("click", doLogin);
+  #allTimeBoard li.at-five .rank{grid-column:1;grid-row:1;justify-self:center}
+  #allTimeBoard li.at-five .user{grid-column:2;grid-row:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-  if (username) {
-    usernameInput.value = username;
-    finalizeLogin(username);
+  /* Hide numeric cells on phones; show one compact legend line */
+  #allTimeBoard li.at-five .num{display:none!important}
+  #allTimeBoard li.at-five .mobile-meta{
+    display:block;
+    grid-column:2; grid-row:2;
+    font-size:.96rem; letter-spacing:.01em; color:var(--text-main);
   }
+}
 
-  function finalizeLogin(name) {
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
-    welcome.style.display = "block";
-    document.getElementById("scoringRules").style.display = "block";
-
-    fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: name })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.picks.length > 0) {
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-        } else {
-          localStorage.removeItem("submitted");
-          loadFights();
-          submitBtn.style.display = "block";
-        }
-
-        loadMyPicks();
-        loadLeaderboard();
-      });
-
-    preloadAllTime(); // background fetch
-  }
-
-  // ---- fights ----
-  function loadFights() {
-    fetch("/api/fights")
-      .then(res => res.json())
-      .then(data => {
-        fightList.innerHTML = "";
-        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
-          const dog1 = underdog === "Fighter 1" ? "🐶" : "";
-          const dog2 = underdog === "Fighter 2" ? "🐶" : "";
-
-          const div = document.createElement("div");
-          div.className = "fight";
-          div.innerHTML = `
-            <h3>${fight}</h3>
-            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1} ${dog1}</label>
-            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2} ${dog2}</label>
-            <select name="${fight}-method">
-              <option value="Decision">Decision</option>
-              <option value="KO/TKO">KO/TKO</option>
-              <option value="Submission">Submission</option>
-            </select>
-            <select name="${fight}-round">
-              <option value="1">Round 1</option>
-              <option value="2">Round 2</option>
-              <option value="3">Round 3</option>
-              <option value="4">Round 4</option>
-              <option value="5">Round 5</option>
-            </select>
-          `;
-          fightList.appendChild(div);
-        });
-
-        document.querySelectorAll(".fight").forEach(fight => {
-          const methodSelect = fight.querySelector(`select[name$="-method"]`);
-          const roundSelect = fight.querySelector(`select[name$="-round"]`);
-
-          methodSelect.addEventListener("change", () => {
-            roundSelect.disabled = methodSelect.value === "Decision";
-            if (roundSelect.disabled) roundSelect.value = "";
-            else roundSelect.value = "1";
-          });
-
-          if (methodSelect.value === "Decision") {
-            roundSelect.disabled = true;
-            roundSelect.value = "";
-          }
-        });
-
-        fightList.style.display = "block";
-        submitBtn.style.display = "block";
-      });
-  }
-
-  // ---- submit picks ----
-  function submitPicks() {
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting...";
-
-    const picks = [];
-    const fights = document.querySelectorAll(".fight");
-
-    for (const fight of fights) {
-      const fightName = fight.querySelector("h3").innerText;
-      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
-      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
-
-      if (!winner || !method) {
-        alert(`Please complete all picks. Missing data for "${fightName}".`);
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit Picks";
-        return;
-      }
-
-      picks.push({ fight: fightName, winner, method, round });
-    }
-
-    fetch("/api/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, picks })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          try { punchSound.play(); } catch(_) {}
-          alert("Picks submitted!");
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-          loadMyPicks();
-          loadLeaderboard();
-        } else {
-          alert(data.error || "Something went wrong.");
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Submit Picks";
-        }
-      });
-  }
-  submitBtn.addEventListener("click", submitPicks);
-  window.submitPicks = submitPicks;
-
-  // ---- my picks (green/red + points) ----
-  function loadMyPicks() {
-    fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
-    })
-      .then(res => res.json())
-      .then(data => {
-        const myPicksDiv = document.getElementById("myPicks");
-        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-        if (!data.success || !data.picks.length) {
-          myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
-          return;
-        }
-
-        fetch("/api/leaderboard", { method: "POST" })
-          .then(res => res.json())
-          .then(resultData => {
-            const fightResults = resultData.fightResults || {};
-            data.picks.forEach(({ fight, winner, method, round }) => {
-              let score = 0;
-              const actual = fightResults[fight] || {};
-              const hasResult = actual.winner && actual.method;
-              const matchWinner = hasResult && winner === actual.winner;
-              const matchMethod = hasResult && method === actual.method;
-              const matchRound = hasResult && round == actual.round;
-              const isUnderdog = actual.underdog === "Y";
-
-              if (matchWinner) {
-                score += 1;
-                if (matchMethod) {
-                  score += 1;
-                  if (method !== "Decision" && matchRound) score += 1;
-                }
-                if (isUnderdog) score += 2;
-              }
-
-              const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
-              const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-              const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
-                ? (matchRound ? "correct" : "wrong")
-                : "";
-
-              const dogIcon = hasResult && matchWinner && isUnderdog ? `<span class="correct">🐶</span>` : "";
-              const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
-              const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
-
-              myPicksDiv.innerHTML += `
-                <div class="scored-pick">
-                  <div class="fight-name">${fight}</div>
-                  <div class="user-pick">
-                    <span class="${winnerClass}">${winner}</span> ${dogIcon} by
-                    <span class="${methodClass}">${method}</span> ${roundText}
-                  </div>
-                  ${pointsChip}
-                </div>`;
-            });
-          });
-      });
-  }
-
-  // ---- weekly board ----
-  function loadLeaderboard() {
-    Promise.all([
-      fetch("/api/fights").then(r => r.json()),
-      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
-    ]).then(([fightsData, leaderboardData]) => {
-      const board = leaderboardEl;
-      board.innerHTML = "";
-
-      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
-
-      let rank = 1;
-      let prevScore = null;
-      let actualRank = 1;
-
-      scores.forEach(([user, score], index) => {
-        if (score !== prevScore) actualRank = rank;
-
-        const li = document.createElement("li");
-        let displayName = user;
-        let classes = [];
-
-        if (leaderboardData.champs?.includes(user)) {
-          classes.push("champ-glow");
-          displayName = `<span class="crown">👑</span> ${displayName}`;
-        }
-        if (index === scores.length - 1) {
-          classes.push("loser");
-          displayName = `💩 ${displayName}`;
-        }
-        if (user === username) classes.push("current-user");
-
-        li.className = classes.join(" ");
-        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
-        board.appendChild(li);
-
-        prevScore = score;
-        rank++;
-      });
-
-      const lis = board.querySelectorAll("li");
-      if (lis.length > 0) {
-        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
-        lis.forEach(li => {
-          const val = parseInt(li.lastElementChild.textContent, 10);
-          if (val === topScore) li.classList.add("tied-first");
-        });
-      }
-
-      const totalFights = fightsData.length;
-      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
-        res => res.winner && res.method
-      ).length;
-
-      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
-        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
-        champBanner.style.display = "block";
-      } else {
-        champBanner.style.display = "none";
-      }
-    });
-  }
-
-  // =========================
-  // ALL-TIME (preload + render, NO HEADERS; mobile gets “👑 C/E events • %”)
-  // =========================
-  let allTimeLoaded = false;
-  let allTimeData = [];
-
-  function fetchWithTimeout(url, ms = 6000) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
-  }
-
-  function sortAllTime(rows) {
-    const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
-    return cleaned
-      .map(r => ({
-        user: r.username,
-        crowns: Number(r.crowns) || 0,
-        events: Number(r.events_played) || 0,
-        rate: Number(r.crown_rate) || 0
-      }))
-      .sort((a,b) => {
-        if (b.rate !== a.rate) return b.rate - a.rate;
-        if (b.crowns !== a.crowns) return b.crowns - a.crowns;
-        if (b.events !== a.events) return b.events - a.events;
-        return (a.user || "").localeCompare(b.user || "");
-      });
-  }
-
-  function rowsEqual(a, b) {
-    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
-  }
-
-  function drawAllTime(data) {
-    allTimeList.innerHTML = "";
-    if (!data.length) {
-      allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
-      return;
-    }
-
-    // 🚫 No header row rendered here
-
-    // competition ranking 1,1,1,4...
-    let rank = 0;
-    let prev = null;
-
-    data.forEach((row, idx) => {
-      rank = (idx === 0 || !rowsEqual(row, prev)) ? (idx + 1) : rank;
-      const isTop = rank === 1;
-
-      const li = document.createElement("li");
-      const classes = [];
-      if (row.user === username) classes.push("current-user");
-      if (isTop) classes.push("tied-first");
-      li.className = classes.join(" ") + " at-five";
-
-      const rankLabel = isTop ? "🥇" : `#${rank}`;
-      const pct = (row.rate * 100).toFixed(1) + "%";
-
-      li.innerHTML = `
-        <span class="rank">${rankLabel}</span>
-        <span class="user" title="${row.user}">${row.user}</span>
-        <span class="num rate">${pct}</span>
-        <span class="num crowns">${row.crowns}</span>
-        <span class="num events">${row.events}</span>
-        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events • ${pct}</span>
-      `;
-      allTimeList.appendChild(li);
-      prev = row;
-    });
-  }
-
-  function preloadAllTime() {
-    fetchWithTimeout("/api/hall", 6000)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(rows => {
-        allTimeData = sortAllTime(rows);
-        allTimeLoaded = true;
-      })
-      .catch(() => {});
-  }
-
-  function loadAllTimeInteractive() {
-    if (allTimeLoaded) { drawAllTime(allTimeData); return; }
-    const h = leaderboardEl.offsetHeight || 260;
-    allTimeList.style.minHeight = `${h}px`;
-    allTimeList.innerHTML = "";
-
-    fetchWithTimeout("/api/hall", 6000)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(rows => {
-        allTimeData = sortAllTime(rows);
-        allTimeLoaded = true;
-        drawAllTime(allTimeData);
-      })
-      .catch(err => {
-        allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`;
-      })
-      .finally(() => { allTimeList.style.minHeight = ""; });
-  }
-
-  // ---- tabs ----
-  weeklyTabBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    leaderboardEl.style.display = "block";
-    allTimeList.style.display = "none";
-    weeklyTabBtn.setAttribute("aria-pressed","true");
-    allTimeTabBtn.setAttribute("aria-pressed","false");
-  });
-
-  allTimeTabBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    loadAllTimeInteractive();
-    leaderboardEl.style.display = "none";
-    allTimeList.style.display = "block";
-    weeklyTabBtn.setAttribute("aria-pressed","false");
-    allTimeTabBtn.setAttribute("aria-pressed","true");
-  });
-
-  // initial: Weekly visible by default
-});
+/* Reduced motion */
+@media (prefers-reduced-motion:reduce){
+  .champ-banner,.crown{animation:none}
+}
