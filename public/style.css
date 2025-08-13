@@ -53,14 +53,27 @@ body{
 #usernamePrompt button{
   margin-top:4px;
 }
+
 #welcome{text-align:center;margin:10px 0 20px}
 
-/* Scoring rules */
-.scoring-box{display:grid;gap:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+/* ----- Scoring Rules (relocated under tabs via JS) ----- */
+#scoringRules{display:none}
+.scoring-box{
+  display:inline-grid; /* shrink-to-content & center */
+  place-items:center;
+  gap:6px;
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:14px;
+  padding:12px 16px;
+  margin:12px 0 4px;
+  text-align:center;
+  box-shadow:inset 0 0 12px rgba(0,245,255,.08), 0 0 16px rgba(0,245,255,.06);
+}
 .scoring-box.tight{gap:4px}
 
 /* Tabs */
-#boardTabs{display:flex;gap:8px;justify-content:center;margin:12px 0}
+#boardTabs{display:flex;gap:8px;justify-content:center;margin:12px 0 8px}
 #boardTabs button{
   background:transparent;color:var(--text-main);
   border:1px solid rgba(255,255,255,.2);
@@ -72,16 +85,19 @@ body{
 .leader-title{text-align:center;margin-top:18px;font-size:1.8rem;font-weight:900;color:var(--neon-cyan);text-shadow:0 0 6px var(--neon-cyan),0 0 12px var(--neon-red)}
 
 /* Weekly Leaderboard */
-#leaderboard{list-style:none;padding:0;margin-top:20px}
+#leaderboard{list-style:none;padding:0;margin-top:16px}
 #leaderboard li{
   background:rgba(255,255,255,.04);
   margin:10px 0;padding:14px;
   display:grid;grid-template-columns:50px minmax(0,1fr) 60px;align-items:center;
-  border-radius:10px;border-left:4px solid var(--silver);transition:.3s
+  border-radius:12px; /* removed left stripe */
+  transition:.3s;
 }
-#leaderboard li:hover{border-left-color:var(--neon-cyan);box-shadow:0 0 12px rgba(0,245,255,.4);transform:translateX(4px)}
+#leaderboard li:hover{box-shadow:0 0 12px rgba(0,245,255,.35);transform:translateX(4px)}
 #leaderboard li:first-child,#leaderboard li.tied-first{
-  border-left-color:var(--neon-cyan);background:rgba(0,245,255,.1);box-shadow:0 0 14px rgba(0,245,255,.5);animation:pulseChampion 1.8s infinite
+  background:rgba(0,245,255,.10);
+  box-shadow:0 0 14px rgba(0,245,255,.5);
+  animation:pulseChampion 1.8s infinite
 }
 @keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,.5)}50%{box-shadow:0 0 28px rgba(255,0,60,.6)}}
 li.current-user{outline:2px solid rgba(0,245,255,.35);box-shadow:0 0 10px rgba(0,245,255,.35) inset}
@@ -113,19 +129,22 @@ button:hover{background:var(--neon-red);color:#fff;box-shadow:0 0 14px rgba(255,
 /* Your Picks */
 #myPicks{margin-top:20px;display:grid;gap:10px}
 #myPicks h3{margin:0;text-align:center;color:var(--neon-cyan)}
+#myPicks>p{ /* "No picks submitted." — always centered */
+  text-align:center;margin:12px 0;opacity:.9
+}
 .scored-pick{
   display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;
-  background:rgba(255,255,255,.04);padding:10px 12px;border-radius:10px;border-left:4px solid var(--neon-cyan)
+  background:rgba(255,255,255,.04);padding:12px 14px;border-radius:12px; /* removed left stripe */
 }
-.scored-pick .fight-name{font-weight:900;letter-spacing:.03em;color:var(--text-main);flex:1 1 100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.scored-pick .points{padding:4px 10px;border-radius:999px;margin-left:6px;background:rgba(0,245,255,.12);border:1px solid var(--neon-cyan);color:var(--neon-cyan);font-weight:900;line-height:1;flex:0 0 auto}
+.scored-pick .fight-name{font-weight:900;letter-spacing:.03em;color:var(--text-main);flex:1 1 100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.scored-pick .points{padding:4px 10px;border-radius:999px;margin-left:0;background:rgba(0,245,255,.12);border:1px solid var(--neon-cyan);color:var(--neon-cyan);font-weight:900;line-height:1;flex:0 0 auto}
 .correct,.correct *{color:var(--success)!important}
 .wrong,.wrong *{color:var(--error)!important}
 
 /* =========================
    ALL-TIME (desktop rows + header)
    ========================= */
-#allTimeBoard{list-style:none;padding:0;margin-top:20px;overflow-x:hidden}
+#allTimeBoard{list-style:none;padding:0;margin-top:16px;overflow-x:hidden}
 
 /* Header (DESKTOP visible, MOBILE hidden) */
 #allTimeBoard .board-header{
@@ -135,31 +154,27 @@ button:hover{background:var(--neon-red);color:#fff;box-shadow:0 0 14px rgba(255,
   padding:8px 16px;margin:4px 0 8px;
   background:rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.08);
-  border-radius:10px;
+  border-radius:12px;
   text-transform:uppercase;font-weight:900;color:var(--silver);letter-spacing:.04em;
 }
-#allTimeBoard .board-header > span:nth-child(1){text-align:center}
-#allTimeBoard .board-header > span:nth-child(3),
-#allTimeBoard .board-header > span:nth-child(4),
-#allTimeBoard .board-header > span:nth-child(5){
-  justify-self:center;text-align:center
-}
+#allTimeBoard .board-header > span{justify-self:center;text-align:center} /* center Rank & Player too */
 
+/* Rows */
 #allTimeBoard li.at-five{
   display:grid;align-items:center;
   grid-template-columns:var(--rank-w) minmax(0,1fr) var(--rate-w) var(--count-w) var(--count-w);
   column-gap:var(--gap);
   background:rgba(255,255,255,.04);
-  border-radius:10px;padding:14px 16px;margin:10px 0;border-left:4px solid var(--silver);
+  border-radius:12px;padding:14px 16px;margin:10px 0; /* removed left stripe */
   transition:.25s
 }
-#allTimeBoard li.at-five:hover{border-left-color:var(--neon-cyan);box-shadow:0 0 12px rgba(0,245,255,.4);transform:translateX(4px)}
-#allTimeBoard li.tied-first{border-left-color:var(--neon-cyan);background:rgba(0,245,255,.08);box-shadow:0 0 14px rgba(0,245,255,.25)}
+#allTimeBoard li.at-five:hover{box-shadow:0 0 12px rgba(0,245,255,.35);transform:translateX(4px)}
+#allTimeBoard li.tied-first{background:rgba(0,245,255,.08);box-shadow:0 0 14px rgba(0,245,255,.25)}
 #allTimeBoard li.current-user{outline:2px solid rgba(0,245,255,.35);box-shadow:0 0 10px rgba(0,245,255,.35) inset}
 
 #allTimeBoard li.at-five>span{min-width:0}
 #allTimeBoard li .rank{font-weight:900;white-space:nowrap;text-align:center;justify-self:center}
-#allTimeBoard li .user{font-weight:900;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#allTimeBoard li .user{font-weight:900;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;justify-self:center}
 #allTimeBoard li .num{justify-self:center;text-align:center;font-variant-numeric:tabular-nums}
 #allTimeBoard li .mobile-meta{display:none} /* desktop hidden */
 
@@ -182,7 +197,7 @@ button:hover{background:var(--neon-red);color:#fff;box-shadow:0 0 14px rgba(255,
     column-gap:8px; row-gap:4px; padding:12px;
   }
   #allTimeBoard li.at-five .rank{grid-column:1;grid-row:1;justify-self:center}
-  #allTimeBoard li.at-five .user{grid-column:2;grid-row:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #allTimeBoard li.at-five .user{grid-column:2;grid-row:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;justify-self:start}
 
   /* Hide numeric cells on phones; show compact legend line with % */
   #allTimeBoard li.at-five .num{display:none!important}
