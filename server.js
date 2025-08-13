@@ -1,110 +1,101 @@
-const path = require("path");
 const express = require("express");
+const fetch = require("node-fetch");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* ---------- Static / JSON ---------- */
-app.use(express.json());
-const publicDir = path.join(__dirname, "public");
-app.use(express.static(publicDir, { maxAge: "1h" }));
-
-/* ---------- Health check (Render) ---------- */
-app.get("/health", (_req, res) => res.sendStatus(200));
-
-/* ---------- Config ---------- */
-const lockoutTime = new Date("2025-08-09T16:00:00-04:00");
+// ✅ Google Apps Script Web App URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-/* Use built-in fetch (Node 18+/20+). Fallback loads node-fetch only if needed. */
-const _fetch = globalThis.fetch || ((...args) =>
-  import("node-fetch").then(({ default: f }) => f(...args))
-);
+app.use(express.json());
+app.use(express.static("public"));
 
-/* ---------- Lockout ---------- */
-app.get("/api/lockout", (_req, res) => {
-  res.json({ locked: new Date() >= lockoutTime });
+// ✅ Updated Lockout Time: August 9, 2025 @ 4:00 PM ET
+const lockoutTime = new Date("2025-08-09T16:00:00-04:00");
+
+// ✅ Endpoint to check lockout status (for frontend)
+app.get("/api/lockout", (req, res) => {
+  const now = new Date();
+  const locked = now >= lockoutTime;
+  res.json({ locked });
 });
 
-/* ---------- Fights ---------- */
-app.get("/api/fights", async (_req, res) => {
+// ✅ Fetch Fights
+app.get("/api/fights", async (req, res) => {
   try {
-    const r = await _fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
-    res.json(await r.json());
-  } catch (e) {
-    console.error("getFights error:", e);
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    const fights = await response.json();
+    res.json(fights);
+  } catch (error) {
     res.status(500).json({ error: "Failed to fetch fights" });
   }
 });
 
-/* ---------- Submit picks ---------- */
+// ✅ Submit Picks (with lockout logic)
 app.post("/api/submit", async (req, res) => {
-  if (new Date() >= lockoutTime) {
+  const now = new Date();
+  if (now >= lockoutTime) {
     return res.json({ success: false, error: "⛔ Picks are locked. The event has started." });
   }
+
   try {
-    const r = await _fetch(GOOGLE_SCRIPT_URL, {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "submitPicks", ...req.body })
+      body: JSON.stringify({ action: "submitPicks", ...req.body }),
+      headers: { "Content-Type": "application/json" }
     });
-    res.json(await r.json());
-  } catch (e) {
-    console.error("submitPicks error:", e);
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
     res.status(500).json({ error: "Failed to submit picks" });
   }
 });
 
-/* ---------- User picks ---------- */
+// ✅ Get User Picks
 app.post("/api/picks", async (req, res) => {
   try {
-    const r = await _fetch(GOOGLE_SCRIPT_URL, {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getUserPicks", ...req.body })
+      body: JSON.stringify({ action: "getUserPicks", ...req.body }),
+      headers: { "Content-Type": "application/json" }
     });
-    res.json(await r.json());
-  } catch (e) {
-    console.error("getUserPicks error:", e);
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
     res.status(500).json({ error: "Failed to fetch picks" });
   }
 });
 
-/* ---------- Weekly leaderboard ---------- */
-app.post("/api/leaderboard", async (_req, res) => {
+// ✅ Get Weekly Leaderboard
+app.post("/api/leaderboard", async (req, res) => {
   try {
-    const r = await _fetch(GOOGLE_SCRIPT_URL, {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getLeaderboard" })
+      body: JSON.stringify({ action: "getLeaderboard" }),
+      headers: { "Content-Type": "application/json" }
     });
-    res.json(await r.json());
-  } catch (e) {
-    console.error("getLeaderboard error:", e);
+    const result = await response.json();
+    res.json(result);
+  } catch (error) {
     res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
 });
 
-/* ---------- All-Time (Hall) ---------- */
-app.get("/api/hall", async (_req, res) => {
+// ✅ NEW: All-Time (Hall) – reads users_totals via GAS getHall
+app.get("/api/hall", async (req, res) => {
   try {
-    const r = await _fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
       headers: { "Cache-Control": "no-cache" }
     });
     res.set("Cache-Control", "no-store");
-    res.json(await r.json());
+    const data = await r.json();
+    res.json(data);
   } catch (e) {
-    console.error("getHall error:", e);
     res.status(500).json([]);
   }
 });
 
-/* ---------- SPA fallback (serves /public/index.html) ---------- */
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
-});
-
-/* ---------- Start ---------- */
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
