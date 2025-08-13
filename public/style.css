@@ -1,385 +1,559 @@
-/* === Futuristic Dark Theme === */
-:root{
-  --ink:#0b0b0d;         /* page bg */
-  --panel:#131417;       /* cards/panels */
-  --tile:#191a1e;        /* inner tiles */
-  --muted:#aeb2bb;       /* subtle text */
-  --text:#e7e9ee;        /* main text */
+document.addEventListener("DOMContentLoaded", () => {
+  const welcome = document.getElementById("welcome");
+  const fightList = document.getElementById("fightList");
+  const submitBtn = document.getElementById("submitBtn");
+  const usernamePrompt = document.getElementById("usernamePrompt");
+  const usernameInput = document.getElementById("usernameInput");
+  const champBanner = document.getElementById("champBanner");
+  const leaderboardEl = document.getElementById("leaderboard");
+  const allTimeList = document.getElementById("allTimeBoard");
+  const weeklyTabBtn = document.getElementById("tabWeekly");
+  const allTimeTabBtn = document.getElementById("tabAllTime");
+  const punchSound = new Audio("punch.mp3");
 
-  --accent:#00f5ff;      /* neon cyan */
-  --accent-rgb:0,245,255;
-  --warn:#ff4e4e;        /* wrong/red */
-  --ok:#2fffa0;          /* correct/green */
-  --gold:#e3d963;        /* points chips */
-  --shadow:0 8px 24px rgba(0,0,0,0.45);
-  --divider:rgba(255,255,255,0.07);
-}
+  const fotnBlock = document.getElementById("fotnBlock");
+  const fotnSelect = document.getElementById("fotnSelect");
 
-*{ box-sizing:border-box; }
-html,body{ height:100%; }
-body{
-  margin:0;
-  background: radial-gradient(1200px 500px at 50% -20%, rgba(var(--accent-rgb),0.08), transparent 60%), var(--ink);
-  color:var(--text);
-  font-family: 'Teko', sans-serif;
-  letter-spacing: 0.2px;
-}
+  let username = localStorage.getItem("username");
 
-h1,h2,h3{ margin:0 0 10px; font-family:'Anton',sans-serif; letter-spacing:0.6px; }
-p{ margin:0 0 10px; }
+  // Odds / underdog info cache by fight name
+  const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
+  const FOTN_POINTS = 3;
 
-.banner-container{
-  display:flex; justify-content:center; align-items:center;
-  padding:16px 12px 6px;
-}
-.logo-banner{
-  max-width: 420px; width: 82%; height:auto;
-  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.45));
-}
-
-#app{
-  max-width: 680px;
-  margin: 0 auto 100px;
-  padding: 16px;
-}
-
-/* ===== Reusable cards ===== */
-.card{
-  background: linear-gradient(180deg, var(--panel), #0f1013);
-  border: 1px solid var(--divider);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-/* Username prompt */
-#usernamePrompt.center{
-  display:flex; flex-direction:column; gap:10px; align-items:center; text-align:center;
-}
-#usernamePrompt input{
-  width: 100%; max-width: 320px;
-  background: var(--tile);
-  border: 1px solid var(--divider);
-  border-radius: 12px;
-  padding: 10px 12px;
-  color: var(--text);
-  outline: none;
-}
-#usernamePrompt button{
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.20), rgba(var(--accent-rgb),0.08));
-  border: 1px solid rgba(var(--accent-rgb),0.45);
-  color: var(--text);
-  border-radius: 12px;
-  padding: 10px 16px;
-  cursor:pointer;
-  transition: transform .08s ease, box-shadow .2s ease;
-}
-#usernamePrompt button:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,0.35); }
-#usernamePrompt button:focus-visible{
-  outline: 2px solid rgba(var(--accent-rgb),0.6);
-  outline-offset: 2px;
-}
-
-/* Welcome */
-#welcome{
-  text-align:center;
-  font-size: 28px;
-  margin: 18px 0 8px;
-  text-shadow: 0 2px 16px rgba(var(--accent-rgb),0.25);
-}
-
-/* ===== Champ banner ===== */
-.champ-banner{
-  display:none;
-  text-align:center;
-  padding: 10px 14px;
-  margin: 6px auto 10px;
-  max-width: 680px;
-  font-weight: 700;
-  background:
-    linear-gradient(90deg, rgba(var(--accent-rgb),0.08), rgba(var(--accent-rgb),0.02)),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 6px);
-  border: 1px solid rgba(var(--accent-rgb),0.35);
-  border-radius: 14px;
-}
-
-/* ===== Scoring rules ===== */
-#scoringRules{ display:block; }
-.scoring-box{
-  margin: 10px auto 16px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid var(--divider);
-  background: linear-gradient(180deg, #101116, #0e0f12);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
-  text-align:center;
-}
-.scoring-box .rule{
-  font-size: 18px;
-  margin: 6px 0;
-}
-.scoring-box .pill{
-  display:inline-block; min-width: 44px; padding: 4px 10px; margin-right:8px;
-  background: var(--tile);
-  border: 1px solid rgba(var(--accent-rgb),0.35);
-  border-radius: 999px;
-  font-weight: 700; letter-spacing:0.4px;
-}
-.scoring-box .pill.gold{
-  background: linear-gradient(180deg, rgba(227,217,99,0.18), rgba(227,217,99,0.08));
-  border-color: rgba(227,217,99,0.45);
-}
-.scoring-box .pill.accent{
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.18), rgba(var(--accent-rgb),0.08));
-}
-.scoring-box .hint{
-  color: var(--muted);
-  font-size: 16px;
-  margin-left: 6px;
-}
-
-/* ===== Fight list ===== */
-#fightList{ display:grid; gap:12px; }
-.fight{
-  background: var(--panel);
-  border: 1px solid var(--divider);
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: var(--shadow);
-}
-.fight h3{ font-size: 20px; margin-bottom: 8px; }
-.fight label{
-  display:flex; align-items:center; gap:10px;
-  background: var(--tile);
-  border: 1px solid var(--divider);
-  padding: 10px 12px;
-  border-radius: 12px;
-  margin: 6px 0;
-  cursor:pointer;
-  transition: border-color .15s ease, transform .06s ease;
-}
-.fight label input{ margin-right: 8px; }
-.fight label:hover{ border-color: rgba(var(--accent-rgb),0.45); transform: translateY(-1px); }
-
-/* highlight selected radio row */
-.fight label:has(input:checked){
-  border-color: rgba(var(--accent-rgb),0.75);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.18) inset, 0 8px 18px rgba(0,0,0,0.35);
-}
-
-.fight select{
-  width: 100%;
-  background: var(--tile);
-  border: 1px solid var(--divider);
-  color: var(--text);
-  padding: 10px 12px;
-  border-radius: 12px;
-  margin: 6px 0;
-  outline:none;
-}
-
-/* odds chip & underdog icon */
-.odds-chip{
-  margin-left:auto;
-  padding: 2px 8px;
-  font-size: 14px;
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.14), rgba(var(--accent-rgb),0.06));
-  border: 1px solid rgba(var(--accent-rgb),0.55);
-  border-radius: 999px;
-  color: var(--text);
-  letter-spacing: 0.3px;
-}
-.dog{ margin-left:6px; filter: drop-shadow(0 0 6px rgba(var(--accent-rgb),0.35)); }
-
-/* ===== FOTN injected block ===== */
-#fotnBlock{
-  background: linear-gradient(180deg, var(--panel), #0f1013);
-  border: 1px solid rgba(var(--accent-rgb),0.25);
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: var(--shadow);
-  margin-top: 8px;
-}
-#fotnBlock label{
-  color: var(--muted);
-  font-size: 16px;
-}
-#fotnBlock select{
-  width:100%;
-  background: var(--tile);
-  border: 1px solid var(--divider);
-  color: var(--text);
-  padding: 10px 12px;
-  border-radius: 12px;
-}
-
-/* Submit */
-#submitBtn{
-  width:100%;
-  margin-top: 12px;
-  padding: 12px 14px;
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.25), rgba(var(--accent-rgb),0.12));
-  border: 1px solid rgba(var(--accent-rgb),0.55);
-  color: var(--text);
-  border-radius: 14px;
-  font-weight:700;
-  cursor:pointer;
-  transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
-}
-#submitBtn:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(0,0,0,0.35); }
-#submitBtn:disabled{ opacity: .6; cursor:not-allowed; }
-#submitBtn:focus-visible{
-  outline: 2px solid rgba(var(--accent-rgb),0.6);
-  outline-offset: 2px;
-}
-
-/* ===== My Picks ===== */
-#myPicks h3{ font-family:'Anton',sans-serif; text-align:center; margin-bottom:8px; }
-#myPicks p{ text-align:center; color: var(--muted); } /* center “No picks submitted.” */
-
-.scored-pick{
-  display:grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 8px;
-  align-items:center;
-  background: var(--tile);
-  border: 1px solid var(--divider);
-  border-radius: 12px;
-  padding: 10px 12px;
-  margin: 8px 0;
-}
-.scored-pick .fight-name{ font-weight:700; }
-.scored-pick .user-pick{ color: var(--text); }
-.points{
-  display:inline-block;
-  padding: 2px 10px;
-  background: linear-gradient(180deg, rgba(227,217,99,0.22), rgba(227,217,99,0.10));
-  border: 1px solid rgba(227,217,99,0.45);
-  color: #f6f2b4;
-  border-radius: 999px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  animation: chipPop .25s ease;
-}
-@keyframes chipPop{
-  from{ transform: scale(.96); opacity:.8; }
-  to{ transform: scale(1); opacity:1; }
-}
-
-/* Correct / Wrong tinting */
-.correct{ color: var(--ok); font-weight:700; }
-.wrong{ color: var(--warn); }
-
-/* FOTN strip (in My Picks) */
-.fotn-strip .scored-pick .fight-name{ color: var(--muted); }
-
-/* Neon FOTN badge */
-.badge-fotn{
-  display:inline-block;
-  padding: 2px 10px;
-  border-radius:999px;
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.18), rgba(var(--accent-rgb),0.08));
-  border: 1px solid rgba(var(--accent-rgb),0.55);
-  color: #dffcff;
-  font-weight:700;
-  letter-spacing:0.4px;
-  text-transform: uppercase;
-}
-.badge-fotn.small{ font-size: 12px; padding: 1px 8px; border-width: 1px; }
-
-/* ===== Leaderboards ===== */
-.leader-title{
-  text-align:center;
-  margin: 18px 0 8px;
-  letter-spacing:1px;
-}
-
-/* segmented control */
-.segmented{
-  display:flex; gap:8px; justify-content:center; margin: 8px 0 10px;
-}
-.segmented button{
-  padding: 8px 12px;
-  background: var(--tile);
-  border: 1px solid var(--divider);
-  color: var(--text);
-  border-radius: 999px;
-  cursor:pointer;
-}
-.segmented button[aria-pressed="true"]{
-  border-color: rgba(var(--accent-rgb),0.55);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.18) inset;
-}
-
-/* Boards */
-.board{ list-style:none; margin:0; padding:0; }
-.board.weekly li{
-  display:grid; grid-template-columns: auto 1fr auto;
-  align-items:center; gap:8px;
-  background: var(--panel);
-  border: 1px solid var(--divider);
-  border-radius: 12px;
-  padding: 10px 12px;
-  margin: 8px 0;
-}
-.board.weekly li .crown{ filter: drop-shadow(0 0 6px rgba(255,215,0,0.35)); }
-.board.weekly li.tied-first{
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.18) inset;
-}
-.board.weekly li.current-user{
-  outline: 2px dashed rgba(var(--accent-rgb),0.35);
-  outline-offset: 2px;
-}
-.board.weekly li.loser{ opacity: .9; }
-.board.weekly li.champ-glow{
-  border-color: rgba(227,217,99,0.45);
-  box-shadow:
-    0 0 0 2px rgba(227,217,99,0.15) inset,
-    0 0 24px rgba(227,217,99,0.12);
-}
-
-/* All-time board (5 columns) */
-.board.alltime .board-header,
-.board.alltime li.at-five{
-  display:grid;
-  grid-template-columns: 64px 1fr 70px 64px 80px;
-  gap: 8px;
-  align-items:center;
-  background: var(--panel);
-  border: 1px solid var(--divider);
-  border-radius: 12px;
-  padding: 10px 12px;
-  margin: 8px 0;
-}
-.board.alltime .board-header{
-  background: linear-gradient(180deg, var(--panel), #101216);
-  color: var(--muted);
-  font-weight: 600;
-}
-.board.alltime li.at-five.tied-first{
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.18) inset;
-}
-.board.alltime li.at-five.current-user{
-  outline: 2px dashed rgba(var(--accent-rgb),0.35);
-  outline-offset: 2px;
-}
-.board.alltime .num{ text-align:right; }
-
-/* Small screens */
-@media (max-width: 520px){
-  .logo-banner{ width: 92%; }
-  .board.alltime .board-header{ display:none; }
-  .board.alltime li.at-five{
-    grid-template-columns: 54px 1fr 1px 1px 1px; /* real numbers shown in mobile-meta */
-    position:relative;
-    padding-bottom: 32px;
+  /* ---------- Helpers (scoring same as backend) ---------- */
+  function normalizeAmericanOdds(raw) {
+    if (raw == null) return null;
+    let s = String(raw).trim();
+    if (s === "") return null;
+    const m = s.match(/[+-]?\d+/);
+    if (!m) return null;
+    const n = parseInt(m[0], 10);
+    return isFinite(n) ? n : null;
   }
-  .board.alltime li.at-five .num,
-  .board.alltime li.at-five .rate,
-  .board.alltime li.at-five .crowns,
-  .board.alltime li.at-five .events{ display:none; }
-  .board.alltime li.at-five .mobile-meta{
-    position:absolute; left:12px; right:12px; bottom:8px;
-    color: var(--muted);
+  function underdogBonusFromOdds(oddsRaw) {
+    const n = normalizeAmericanOdds(oddsRaw);
+    if (n == null || n < 100) return 0;
+    return 1 + Math.floor((n - 100) / 100); // +100-199=+1, +200-299=+2, etc
   }
-}
+
+  /* ---------- Login ---------- */
+  function doLogin() {
+    const input = usernameInput.value.trim();
+    if (!input) return alert("Please enter your name.");
+    username = input;
+    localStorage.setItem("username", username);
+    finalizeLogin(username);
+  }
+  window.lockUsername = doLogin; // for HTML onclick
+  const loginBtn = document.querySelector("#usernamePrompt button");
+  if (loginBtn) loginBtn.addEventListener("click", doLogin);
+
+  if (username) {
+    usernameInput.value = username;
+    finalizeLogin(username);
+  }
+
+  function finalizeLogin(name) {
+    usernamePrompt.style.display = "none";
+    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+    welcome.style.display = "block";
+    document.getElementById("scoringRules").style.display = "block";
+
+    // Always fetch fights (even if already submitted) to build odds map for My Picks display
+    Promise.all([
+      fetch("/api/fights").then(r => r.json()).then(data => {
+        buildFightMeta(data);
+        return data;
+      }),
+      fetch("/api/picks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: name })
+      }).then(r => r.json())
+    ]).then(([fightsData, pickData]) => {
+      const submitted = pickData.success && pickData.picks.length > 0;
+      if (submitted) {
+        localStorage.setItem("submitted", "true");
+        fightList.style.display = "none";
+        submitBtn.style.display = "none";
+        fotnBlock.style.display = "none";
+      } else {
+        localStorage.removeItem("submitted");
+        renderFightList(fightsData);
+        renderFOTN(fightsData, pickData.fotnPick);
+        submitBtn.style.display = "block";
+      }
+
+      loadMyPicks();
+      loadLeaderboard();
+      preloadAllTime(); // warm up data
+    }).catch(err => {
+      console.error(err);
+      // Fallback: try to load fights for pick screen if needed
+      loadFights();
+      loadMyPicks();
+      loadLeaderboard();
+      preloadAllTime();
+    });
+  }
+
+  function buildFightMeta(data) {
+    fightMeta.clear();
+    (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
+      fightMeta.set(fight, {
+        f1: fighter1,
+        f2: fighter2,
+        f1Odds: f1Odds || "",
+        f2Odds: f2Odds || "",
+        underdogSide: underdog || "",
+        underdogOdds: underdogOdds || ""
+      });
+    });
+  }
+
+  /* ---------- Fights ---------- */
+  function loadFights() {
+    fetch("/api/fights")
+      .then(res => res.json())
+      .then(data => {
+        buildFightMeta(data);
+        renderFightList(data);
+        renderFOTN(data);
+      });
+  }
+
+  function renderFOTN(fightsData, existingPick = "") {
+    const names = (fightsData || []).map(f => f.fight);
+    if (!names.length) {
+      fotnBlock.style.display = "none";
+      return;
+    }
+    fotnSelect.innerHTML = `<option value="">— Select your FOTN —</option>` +
+      names.map(n => `<option value="${n}">${n}</option>`).join("");
+    if (existingPick) {
+      fotnSelect.value = existingPick;
+    }
+    fotnBlock.style.display = "block";
+  }
+
+  function renderFightList(data) {
+    fightList.innerHTML = "";
+    (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
+      const dog1 = underdog === "Fighter 1" ? "🐶" : "";
+      const dog2 = underdog === "Fighter 2" ? "🐶" : "";
+
+      const f1Chip = f1Odds ? `<span class="odds">${f1Odds}</span>` : "";
+      const f2Chip = f2Odds ? `<span class="odds">${f2Odds}</span>` : "";
+      const dogChip = (underdogOdds && (dog1 || dog2))
+        ? `<span class="dog-chip">${underdogOdds}</span>` : "";
+
+      const div = document.createElement("div");
+      div.className = "fight";
+      div.innerHTML = `
+        <h3>${fight}</h3>
+        <label>
+          <input type="radio" name="${fight}-winner" value="${fighter1}">
+          <span class="fighter-line">
+            <span class="fighter-name">${fighter1} ${dog1}</span>
+            <span class="fighter-right">${f1Chip}</span>
+          </span>
+        </label>
+        <label>
+          <input type="radio" name="${fight}-winner" value="${fighter2}">
+          <span class="fighter-line">
+            <span class="fighter-name">${fighter2} ${dog2}</span>
+            <span class="fighter-right">${f2Chip}</span>
+          </span>
+        </label>
+        <div class="meta-line">
+          ${dogChip ? `<span class="dog-flag">Underdog: ${dogChip}</span>` : ""}
+        </div>
+        <select name="${fight}-method">
+          <option value="Decision">Decision</option>
+          <option value="KO/TKO">KO/TKO</option>
+          <option value="Submission">Submission</option>
+        </select>
+        <select name="${fight}-round">
+          <option value="1">Round 1</option>
+          <option value="2">Round 2</option>
+          <option value="3">Round 3</option>
+          <option value="4">Round 4</option>
+          <option value="5">Round 5</option>
+        </select>
+      `;
+      fightList.appendChild(div);
+    });
+
+    document.querySelectorAll(".fight").forEach(fight => {
+      const methodSelect = fight.querySelector(`select[name$="-method"]`);
+      const roundSelect = fight.querySelector(`select[name$="-round"]`);
+      methodSelect.addEventListener("change", () => {
+        roundSelect.disabled = methodSelect.value === "Decision";
+        if (roundSelect.disabled) roundSelect.value = "";
+        else roundSelect.value = "1";
+      });
+      if (methodSelect.value === "Decision") {
+        roundSelect.disabled = true;
+        roundSelect.value = "";
+      }
+    });
+
+    fightList.style.display = "block";
+    submitBtn.style.display = "block";
+  }
+
+  /* ---------- Submit picks ---------- */
+  function submitPicks() {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+
+    const picks = [];
+    const fights = document.querySelectorAll(".fight");
+
+    for (const fight of fights) {
+      const fightName = fight.querySelector("h3").innerText;
+      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
+
+      if (!winner || !method) {
+        alert(`Please complete all picks. Missing data for "${fightName}".`);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
+        return;
+      }
+
+      picks.push({ fight: fightName, winner, method, round });
+    }
+
+    const fotnPick = fotnSelect?.value || "";
+
+    fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, picks, fotnPick })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          try { punchSound.play(); } catch (_) {}
+          alert("Picks submitted!");
+          localStorage.setItem("submitted", "true");
+          fightList.style.display = "none";
+          submitBtn.style.display = "none";
+          fotnBlock.style.display = "none";
+          loadMyPicks();
+          loadLeaderboard();
+        } else {
+          alert(data.error || "Something went wrong.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Picks";
+        }
+      })
+      .catch(err => {
+        alert("Network error submitting picks.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
+      });
+  }
+  submitBtn.addEventListener("click", submitPicks);
+  window.submitPicks = submitPicks;
+
+  /* ---------- My Picks (green/red + points) ---------- */
+  function loadMyPicks() {
+    fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const myPicksDiv = document.getElementById("myPicks");
+        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+        if (!data.success || !data.picks.length) {
+          myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
+          return;
+        }
+
+        Promise.all([
+          // Need both leaderboard (actual results + officialFOTN) and fights (odds map)
+          fetch("/api/leaderboard", { method: "POST" }).then(res => res.json()),
+          fetch("/api/fights").then(r => r.json())
+        ]).then(([resultData, fightsData]) => {
+          buildFightMeta(fightsData);
+          const fightResults = resultData.fightResults || {};
+          const officialFOTN = resultData.officialFOTN || [];
+          const myFOTN = data.fotnPick || "";
+
+          // FOTN strip
+          if (myFOTN) {
+            const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
+            const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
+            myPicksDiv.innerHTML += `
+              <div class="scored-pick fotn-strip">
+                <div class="fight-name">FOTN Pick</div>
+                <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
+                  ${myFOTN} ${badge}
+                  ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
+                </div>
+              </div>
+            `;
+          }
+
+          // Normal picks with 3–2–1 + tiered underdog bonus
+          data.picks.forEach(({ fight, winner, method, round }) => {
+            let score = 0;
+
+            const actual = fightResults[fight] || {};
+            const hasResult = actual.winner && actual.method;
+            const matchWinner = hasResult && winner === actual.winner;
+            const matchMethod = hasResult && method === actual.method;
+            const matchRound = hasResult && round == actual.round;
+
+            // Did underdog win? (backend gave "Y" when actual underdog won)
+            const underdogWon = hasResult && actual.underdog === "Y";
+            const meta = fightMeta.get(fight) || {};
+            const uOdds = meta.underdogOdds || "";
+
+            if (matchWinner) {
+              score += 3; // winner
+              if (matchMethod) {
+                score += 2; // method
+                if (method !== "Decision" && matchRound) score += 1; // round on finishes
+              }
+              if (underdogWon) {
+                score += underdogBonusFromOdds(uOdds);
+              }
+            }
+
+            const dogIcon = (() => {
+              // show 🐶 next to whichever fighter is marked underdog in fightMeta
+              if (!meta.underdogSide) return "";
+              const isF1 = meta.underdogSide === "Fighter 1";
+              const name = isF1 ? meta.f1 : meta.f2;
+              return name === winner ? "🐶" : "";
+            })();
+
+            const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+            const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
+            const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
+              ? (matchRound ? "correct" : "wrong")
+              : "";
+
+            const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
+            const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
+
+            // odds chips inline for context
+            const sideOdds = (winner === meta.f1) ? (meta.f1Odds || "") : (winner === meta.f2 ? (meta.f2Odds || "") : "");
+            const oddsChip = sideOdds ? `<span class="odds">${sideOdds}</span>` : "";
+
+            myPicksDiv.innerHTML += `
+              <div class="scored-pick">
+                <div class="fight-name">${fight}</div>
+                <div class="user-pick">
+                  <span class="${winnerClass}">${winner}</span> ${dogIcon} ${oddsChip} by
+                  <span class="${methodClass}">${method}</span> ${roundText}
+                </div>
+                ${pointsChip}
+              </div>`;
+          });
+        });
+      });
+  }
+
+  /* ---------- Weekly Leaderboard ---------- */
+  function loadLeaderboard() {
+    Promise.all([
+      fetch("/api/fights").then(r => r.json()),
+      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
+    ]).then(([fightsData, leaderboardData]) => {
+      const board = leaderboardEl;
+      board.innerHTML = "";
+
+      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
+
+      let rank = 1;
+      let prevScore = null;
+      let actualRank = 1;
+
+      scores.forEach(([user, score], index) => {
+        if (score !== prevScore) actualRank = rank;
+
+        const li = document.createElement("li");
+        let displayName = user;
+        let classes = [];
+
+        if (leaderboardData.champs?.includes(user)) {
+          classes.push("champ-glow");
+          displayName = `<span class="crown">👑</span> ${displayName}`;
+        }
+        if (index === scores.length - 1) {
+          classes.push("loser");
+          displayName = `💩 ${displayName}`;
+        }
+        if (user === username) classes.push("current-user");
+
+        li.className = classes.join(" ");
+        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
+        board.appendChild(li);
+
+        prevScore = score;
+        rank++;
+      });
+
+      const lis = board.querySelectorAll("li");
+      if (lis.length > 0) {
+        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
+        lis.forEach(li => {
+          const val = parseInt(li.lastElementChild.textContent, 10);
+          if (val === topScore) li.classList.add("tied-first");
+        });
+      }
+
+      // champ banner after event concludes
+      const totalFights = (fightsData || []).length;
+      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
+        res => res.winner && res.method
+      ).length;
+
+      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
+        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
+        champBanner.style.display = "block";
+      } else {
+        champBanner.style.display = "none";
+      }
+    });
+  }
+
+  /* ---------- All-Time Leaderboard ---------- */
+  let allTimeLoaded = false;
+  let allTimeData = [];
+
+  function fetchWithTimeout(url, ms = 6000) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
+  }
+
+  function sortAllTime(rows) {
+    const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
+    return cleaned
+      .map(r => ({
+        user: r.username,
+        crowns: Number(r.crowns) || 0,
+        events: Number(r.events_played) || 0,
+        rate: Number(r.crown_rate) || 0
+      }))
+      .sort((a,b) => {
+        if (b.rate !== a.rate) return b.rate - a.rate;
+        if (b.crowns !== a.crowns) return b.crowns - a.crowns;
+        if (b.events !== a.events) return b.events - a.events;
+        return (a.user || "").localeCompare(b.user || "");
+      });
+  }
+
+  function rowsEqual(a, b) {
+    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
+  }
+
+  function renderAllTimeHeader() {
+    const li = document.createElement("li");
+    li.className = "board-header at-five";
+    li.innerHTML = `
+      <span>Rank</span>
+      <span>Player</span>
+      <span>%</span>
+      <span>👑</span>
+      <span>Events</span>
+    `;
+    allTimeList.appendChild(li);
+  }
+
+  function drawAllTime(data) {
+    allTimeList.innerHTML = "";
+    if (!data.length) {
+      allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
+      return;
+    }
+
+    // Desktop header (mobile hides via CSS)
+    renderAllTimeHeader();
+
+    // competition ranking 1,1,1,4...
+    let rank = 0;
+    let prev = null;
+
+    data.forEach((row, idx) => {
+      rank = (idx === 0 || !rowsEqual(row, prev)) ? (idx + 1) : rank;
+      const isTop = rank === 1;
+
+      const li = document.createElement("li");
+      const classes = [];
+      if (row.user === username) classes.push("current-user");
+      if (isTop) classes.push("tied-first");
+      li.className = classes.join(" ") + " at-five";
+
+      const rankLabel = isTop ? "🥇" : `#${rank}`;
+      const pct = (row.rate * 100).toFixed(1) + "%";
+
+      li.innerHTML = `
+        <span class="rank">${rankLabel}</span>
+        <span class="user" title="${row.user}">${row.user}</span>
+        <span class="num rate">${pct}</span>
+        <span class="num crowns">${row.crowns}</span>
+        <span class="num events">${row.events}</span>
+        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events • ${pct}</span>
+      `;
+      allTimeList.appendChild(li);
+      prev = row;
+    });
+  }
+
+  function preloadAllTime() {
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(rows => {
+        allTimeData = sortAllTime(rows);
+        allTimeLoaded = true;
+      })
+      .catch(() => {});
+  }
+
+  function loadAllTimeInteractive() {
+    if (allTimeLoaded) { drawAllTime(allTimeData); return; }
+    const keepHeight = leaderboardEl.offsetHeight || 260;
+    allTimeList.style.minHeight = `${keepHeight}px`;
+    allTimeList.innerHTML = "";
+
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(rows => {
+        allTimeData = sortAllTime(rows);
+        allTimeLoaded = true;
+        drawAllTime(allTimeData);
+      })
+      .catch(err => {
+        allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`;
+      })
+      .finally(() => { allTimeList.style.minHeight = ""; });
+  }
+
+  /* Tabs */
+  weeklyTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    leaderboardEl.style.display = "block";
+    allTimeList.style.display = "none";
+    weeklyTabBtn.setAttribute("aria-pressed","true");
+    allTimeTabBtn.setAttribute("aria-pressed","false");
+  });
+
+  allTimeTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    loadAllTimeInteractive();
+    leaderboardEl.style.display = "none";
+    allTimeList.style.display = "block";
+    weeklyTabBtn.setAttribute("aria-pressed","false");
+    allTimeTabBtn.setAttribute("aria-pressed","true");
+  });
+});
