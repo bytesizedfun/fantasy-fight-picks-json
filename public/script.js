@@ -16,11 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = localStorage.getItem("username");
 
-  // Odds / underdog info cache by fight name
+  // odds / underdog cache
   const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
   const FOTN_POINTS = 3;
 
-  /* ---------- Helpers (scoring same as backend) ---------- */
+  /* ---------- Helpers ---------- */
   function normalizeAmericanOdds(raw) {
     if (raw == null) return null;
     let s = String(raw).trim();
@@ -32,18 +32,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function underdogBonusFromOdds(oddsRaw) {
     const n = normalizeAmericanOdds(oddsRaw);
-    if (n == null || n < 100) return 0;
-    return 1 + Math.floor((n - 100) / 100); // +100-199=+1, +200-299=+2, etc
+    if (n == null || n < 100) return 0; // only +100 and above
+    return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
   }
-
-  // *** CHANGE: display helper to show “=X points” instead of odds
+  // display label for picks: show “=X points” instead of raw odds
   function pointsFromOddsLabel(oddsRaw) {
     const n = normalizeAmericanOdds(oddsRaw);
     if (n == null) return "";
-    const pts = Math.ceil(Math.abs(n) / 100); // e.g. -400 -> 4, +180 -> 2
-    if (pts <= 0) return "";
-    return `=${pts} points`;
+    const pts = Math.ceil(Math.abs(n) / 100); // -400 -> 4, +180 -> 2
+    return pts > 0 ? `=${pts} points` : "";
   }
+  const $ = (sel) => document.querySelector(sel);
 
   /* ---------- Login ---------- */
   function doLogin() {
@@ -53,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("username", username);
     finalizeLogin(username);
   }
-  window.lockUsername = doLogin; // for HTML onclick
+  window.lockUsername = doLogin;
   const loginBtn = document.querySelector("#usernamePrompt button");
   if (loginBtn) loginBtn.addEventListener("click", doLogin);
 
@@ -63,47 +62,47 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function finalizeLogin(name) {
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
-    welcome.style.display = "block";
-    document.getElementById("scoringRules").style.display = "block";
+    if (usernamePrompt) usernamePrompt.style.display = "none";
+    if (welcome) {
+      welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+      welcome.style.display = "block";
+    }
+    const scoring = document.getElementById("scoringRules");
+    if (scoring) scoring.style.display = "block";
 
-    // Always fetch fights (even if already submitted) to build odds map for My Picks display
     Promise.all([
-      fetch("/api/fights").then(r => r.json()).then(data => {
-        buildFightMeta(data);
-        return data;
-      }),
+      fetch("/api/fights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
       fetch("/api/picks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: name })
       }).then(r => r.json())
-    ]).then(([fightsData, pickData]) => {
+    ])
+    .then(([fightsData, pickData]) => {
       const submitted = pickData.success && pickData.picks.length > 0;
       if (submitted) {
         localStorage.setItem("submitted", "true");
-        fightList.style.display = "none";
-        submitBtn.style.display = "none";
-        fotnBlock.style.display = "none";
+        if (fightList) fightList.style.display = "none";
+        if (submitBtn) submitBtn.style.display = "none";
+        if (fotnBlock) fotnBlock.style.display = "none";
       } else {
         localStorage.removeItem("submitted");
         renderFightList(fightsData);
         renderFOTN(fightsData, pickData.fotnPick);
-        submitBtn.style.display = "block";
+        if (submitBtn) submitBtn.style.display = "block";
       }
 
-      // *** CHANGE: ensure OG styling hooks exist on weekly UL
-      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
+      // force OG weekly styles
+      if (leaderboardEl) leaderboardEl.classList.add("board", "weekly");
 
       loadMyPicks();
       loadLeaderboard();
-      preloadAllTime(); // warm up data
-    }).catch(err => {
+      preloadAllTime();
+    })
+    .catch(err => {
       console.error(err);
-      // Fallback: try to load fights for pick screen if needed
       loadFights();
-      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
+      if (leaderboardEl) leaderboardEl.classList.add("board", "weekly");
       loadMyPicks();
       loadLeaderboard();
       preloadAllTime();
@@ -136,35 +135,37 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderFOTN(fightsData, existingPick = "") {
+    if (!fotnBlock || !fotnSelect) return;
     const names = (fightsData || []).map(f => f.fight);
-    if (!names.length) {
-      fotnBlock.style.display = "none";
-      return;
-    }
+    if (!names.length) { fotnBlock.style.display = "none"; return; }
     fotnSelect.innerHTML = `<option value="">— Select your FOTN —</option>` +
       names.map(n => `<option value="${n}">${n}</option>`).join("");
-    if (existingPick) {
-      fotnSelect.value = existingPick;
-    }
+    if (existingPick) fotnSelect.value = existingPick;
     fotnBlock.style.display = "block";
   }
 
   function renderFightList(data) {
+    if (!fightList) return;
     fightList.innerHTML = "";
-    (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
+    (data || []).forEach(({ fight, fighter1, fighter2, underdog, f1Odds, f2Odds }) => {
       const dog1 = underdog === "Fighter 1" ? "🐶" : "";
       const dog2 = underdog === "Fighter 2" ? "🐶" : "";
 
-      // *** CHANGE: replace odds chips with “=X points” labels
-      const f1Pts = pointsFromOddsLabel(f1Odds);
-      const f2Pts = pointsFromOddsLabel(f2Odds);
-      const f1Chip = f1Pts ? `<span class="odds">${f1Pts}</span>` : "";
-      const f2Chip = f2Pts ? `<span class="odds">${f2Pts}</span>` : "";
+      // show “=X points” chips (no raw odds, no duplicate meta line)
+      const f1Chip = (() => {
+        const lbl = pointsFromOddsLabel(f1Odds);
+        return lbl ? `<span class="odds">${lbl}</span>` : "";
+      })();
+      const f2Chip = (() => {
+        const lbl = pointsFromOddsLabel(f2Odds);
+        return lbl ? `<span class="odds">${lbl}</span>` : "";
+      })();
 
       const div = document.createElement("div");
       div.className = "fight";
       div.innerHTML = `
         <h3>${fight}</h3>
+
         <label>
           <input type="radio" name="${fight}-winner" value="${fighter1}">
           <span class="fighter-line">
@@ -172,6 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="fighter-right">${f1Chip}</span>
           </span>
         </label>
+
         <label>
           <input type="radio" name="${fight}-winner" value="${fighter2}">
           <span class="fighter-line">
@@ -179,32 +181,44 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="fighter-right">${f2Chip}</span>
           </span>
         </label>
-        <!-- *** CHANGE: removed duplicate underdog meta-line -->
+
+        <select name="${fight}-method">
+          <option value="Decision">Decision</option>
+          <option value="KO/TKO">KO/TKO</option>
+          <option value="Submission">Submission</option>
+        </select>
+        <select name="${fight}-round">
+          <option value="1">Round 1</option>
+          <option value="2">Round 2</option>
+          <option value="3">Round 3</option>
+          <option value="4">Round 4</option>
+          <option value="5">Round 5</option>
+        </select>
       `;
       fightList.appendChild(div);
     });
 
+    // Decision disables round
     document.querySelectorAll(".fight").forEach(fight => {
       const methodSelect = fight.querySelector(`select[name$="-method"]`);
       const roundSelect = fight.querySelector(`select[name$="-round"]`);
       if (!methodSelect || !roundSelect) return;
-      methodSelect.addEventListener("change", () => {
-        roundSelect.disabled = methodSelect.value === "Decision";
-        if (roundSelect.disabled) roundSelect.value = "";
-        else roundSelect.value = "1";
-      });
-      if (methodSelect.value === "Decision") {
-        roundSelect.disabled = true;
-        roundSelect.value = "";
+      function syncRound() {
+        const isDecision = methodSelect.value === "Decision";
+        roundSelect.disabled = isDecision;
+        roundSelect.value = isDecision ? "" : (roundSelect.value || "1");
       }
+      methodSelect.addEventListener("change", syncRound);
+      syncRound();
     });
 
     fightList.style.display = "block";
-    submitBtn.style.display = "block";
+    if (submitBtn) submitBtn.style.display = "block";
   }
 
   /* ---------- Submit picks ---------- */
   function submitPicks() {
+    if (!submitBtn) return;
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
 
@@ -224,7 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.textContent = "Submit Picks";
         return;
       }
-
       picks.push({ fight: fightName, winner, method, round });
     }
 
@@ -235,132 +248,133 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, picks, fotnPick })
     })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          try { punchSound.play(); } catch (_) {}
-          alert("Picks submitted!");
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-          fotnBlock.style.display = "none";
-          loadMyPicks();
-          loadLeaderboard();
-        } else {
-          alert(data.error || "Something went wrong.");
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Submit Picks";
-        }
-      })
-      .catch(err => {
-        alert("Network error submitting picks.");
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        try { punchSound.play(); } catch (_) {}
+        alert("Picks submitted!");
+        localStorage.setItem("submitted", "true");
+        if (fightList) fightList.style.display = "none";
+        if (submitBtn) submitBtn.style.display = "none";
+        if (fotnBlock) fotnBlock.style.display = "none";
+        loadMyPicks();
+        loadLeaderboard();
+      } else {
+        alert(data.error || "Something went wrong.");
         submitBtn.disabled = false;
         submitBtn.textContent = "Submit Picks";
-      });
+      }
+    })
+    .catch(() => {
+      alert("Network error submitting picks.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Picks";
+    });
   }
-  submitBtn.addEventListener("click", submitPicks);
-  window.submitPicks = submitPicks;
+  if (submitBtn) {
+    submitBtn.addEventListener("click", submitPicks);
+    window.submitPicks = submitPicks;
+  }
 
-  /* ---------- My Picks (green/red + points) ---------- */
+  /* ---------- My Picks ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username })
     })
-      .then(res => res.json())
-      .then(data => {
-        const myPicksDiv = document.getElementById("myPicks");
-        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-        if (!data.success || !data.picks.length) {
-          myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
-          return;
+    .then(res => res.json())
+    .then(data => {
+      const myPicksDiv = document.getElementById("myPicks");
+      if (!myPicksDiv) return;
+      myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+      if (!data.success || !data.picks.length) {
+        myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
+        return;
+      }
+
+      Promise.all([
+        fetch("/api/leaderboard", { method: "POST" }).then(res => res.json()),
+        fetch("/api/fights").then(r => r.json())
+      ]).then(([resultData, fightsData]) => {
+        buildFightMeta(fightsData);
+
+        const fightResults = resultData.fightResults || {};
+        const officialFOTN = resultData.officialFOTN || [];
+        const myFOTN = data.fotnPick || "";
+
+        // FOTN strip
+        if (myFOTN) {
+          const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
+          const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
+          myPicksDiv.innerHTML += `
+            <div class="scored-pick fotn-strip">
+              <div class="fight-name">FOTN Pick</div>
+              <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
+                ${myFOTN} ${badge}
+                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
+              </div>
+            </div>
+          `;
         }
 
-        Promise.all([
-          // Need both leaderboard (actual results + officialFOTN) and fights (odds map)
-          fetch("/api/leaderboard", { method: "POST" }).then(res => res.json()),
-          fetch("/api/fights").then(r => r.json())
-        ]).then(([resultData, fightsData]) => {
-          buildFightMeta(fightsData);
-          const fightResults = resultData.fightResults || {};
-          const officialFOTN = resultData.officialFOTN || [];
-          const myFOTN = data.fotnPick || "";
+        // each fight pick
+        data.picks.forEach(({ fight, winner, method, round }) => {
+          const actual = fightResults[fight] || {};
+          const hasResult = actual.winner && actual.method;
 
-          // FOTN strip
-          if (myFOTN) {
-            const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
-            const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
-            myPicksDiv.innerHTML += `
-              <div class="scored-pick fotn-strip">
-                <div class="fight-name">FOTN Pick</div>
-                <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
-                  ${myFOTN} ${badge}
-                  ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
-                </div>
-              </div>
-            `;
+          const matchWinner = hasResult && winner === actual.winner;
+          const matchMethod = hasResult && method === actual.method;
+          const matchRound = hasResult && round == actual.round;
+
+          // underdog bonus if actual underdog won (server truth)
+          const meta = fightMeta.get(fight) || {};
+          const underdogWon = hasResult && actual.underdog === "Y";
+          const uOdds = meta.underdogOdds || "";
+
+          let score = 0;
+          if (matchWinner) {
+            score += 3;
+            if (matchMethod) {
+              score += 2;
+              if (method !== "Decision" && matchRound) score += 1;
+            }
+            if (underdogWon) score += underdogBonusFromOdds(uOdds);
           }
 
-          // Normal picks with 3–2–1 + tiered underdog bonus
-          data.picks.forEach(({ fight, winner, method, round }) => {
-            let score = 0;
+          const dogIcon = (() => {
+            if (!meta.underdogSide) return "";
+            const isF1 = meta.underdogSide === "Fighter 1";
+            const name = isF1 ? meta.f1 : meta.f2;
+            return name === winner ? "🐶" : "";
+          })();
 
-            const actual = fightResults[fight] || {};
-            const hasResult = actual.winner && actual.method;
-            const matchWinner = hasResult && winner === actual.winner;
-            const matchMethod = hasResult && method === actual.method;
-            const matchRound = hasResult && round == actual.round;
+          const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+          const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
+          const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
+            ? (matchRound ? "correct" : "wrong")
+            : "";
 
-            // Did underdog win? (backend gave "Y" when actual underdog won)
-            const underdogWon = hasResult && actual.underdog === "Y";
-            const meta = fightMeta.get(fight) || {};
-            const uOdds = meta.underdogOdds || "";
+          const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
+          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
-            if (matchWinner) {
-              score += 3; // winner
-              if (matchMethod) {
-                score += 2; // method
-                if (method !== "Decision" && matchRound) score += 1; // round on finishes
-              }
-              if (underdogWon) {
-                score += underdogBonusFromOdds(uOdds);
-              }
-            }
+          // display the points-from-odds label next to the chosen fighter
+          const sideOdds = (winner === meta.f1) ? (meta.f1Odds || "") : (winner === meta.f2 ? (meta.f2Odds || "") : "");
+          const sidePtsLbl = pointsFromOddsLabel(sideOdds);
+          const pointsLbl = sidePtsLbl ? `<span class="odds">${sidePtsLbl}</span>` : "";
 
-            const dogIcon = (() => {
-              if (!meta.underdogSide) return "";
-              const isF1 = meta.underdogSide === "Fighter 1";
-              const name = isF1 ? meta.f1 : meta.f2;
-              return name === winner ? "🐶" : "";
-            })();
-
-            const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
-            const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-            const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
-              ? (matchRound ? "correct" : "wrong")
-              : "";
-
-            const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
-            const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
-
-            // *** CHANGE: show “=X points” (from the chosen fighter’s odds) instead of raw odds
-            const sideOdds = (winner === meta.f1) ? (meta.f1Odds || "") : (winner === meta.f2 ? (meta.f2Odds || "") : "");
-            const sidePts = pointsFromOddsLabel(sideOdds);
-            const pointsLabel = sidePts ? `<span class="odds">${sidePts}</span>` : "";
-
-            myPicksDiv.innerHTML += `
-              <div class="scored-pick">
-                <div class="fight-name">${fight}</div>
-                <div class="user-pick">
-                  <span class="${winnerClass}">${winner}</span> ${dogIcon} ${pointsLabel} by
-                  <span class="${methodClass}">${method}</span> ${roundText}
-                </div>
-                ${pointsChip}
-              </div>`;
-          });
+          myPicksDiv.innerHTML += `
+            <div class="scored-pick">
+              <div class="fight-name">${fight}</div>
+              <div class="user-pick">
+                <span class="${winnerClass}">${winner}</span> ${dogIcon} ${pointsLbl} by
+                <span class="${methodClass}">${method}</span> ${roundText}
+              </div>
+              ${pointsChip}
+            </div>`;
         });
       });
+    });
   }
 
   /* ---------- Weekly Leaderboard ---------- */
@@ -370,8 +384,8 @@ document.addEventListener("DOMContentLoaded", () => {
       fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
     ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
-      // ensure OG classes
-      if (board) board.classList.add("board","weekly");
+      if (!board) return;
+      board.classList.add("board", "weekly"); // ensure OG look
       board.innerHTML = "";
 
       const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
@@ -385,10 +399,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const li = document.createElement("li");
         let displayName = user;
-        let classes = [];
+        const classes = [];
 
         if (leaderboardData.champs?.includes(user)) {
-          classes.push("champ-glow"); // neon pulse via CSS
+          classes.push("champ-glow"); // neon pulse
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
         if (index === scores.length - 1) {
@@ -405,7 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // Glow all tied #1 entries (keep crowns as-is)
+      // glow all tied #1s
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -415,7 +429,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // champ banner after event concludes
+      // show champ banner only when event concluded
       const totalFights = (fightsData || []).length;
       const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
         res => res.winner && res.method
@@ -424,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
         champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
-      } else {
+      } else if (champBanner) {
         champBanner.style.display = "none";
       }
     });
@@ -481,10 +495,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Desktop header (mobile hides via CSS)
     renderAllTimeHeader();
 
-    // competition ranking 1,1,1,4...
     let rank = 0;
     let prev = null;
 
@@ -517,37 +529,28 @@ document.addEventListener("DOMContentLoaded", () => {
   function preloadAllTime() {
     fetchWithTimeout("/api/hall", 6000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(rows => {
-        allTimeData = sortAllTime(rows);
-        allTimeLoaded = true;
-      })
+      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; })
       .catch(() => {});
   }
 
   function loadAllTimeInteractive() {
     if (allTimeLoaded) { drawAllTime(allTimeData); return; }
-    const keepHeight = leaderboardEl.offsetHeight || 260;
+    const keepHeight = leaderboardEl?.offsetHeight || 260;
     allTimeList.style.minHeight = `${keepHeight}px`;
     allTimeList.innerHTML = "";
 
     fetchWithTimeout("/api/hall", 6000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(rows => {
-        allTimeData = sortAllTime(rows);
-        allTimeLoaded = true;
-        drawAllTime(allTimeData);
-      })
-      .catch(err => {
-        allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`;
-      })
+      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
+      .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`; })
       .finally(() => { allTimeList.style.minHeight = ""; });
   }
 
-  /* Tabs */
+  /* ---------- Tabs ---------- */
   weeklyTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
-    leaderboardEl.style.display = "block";
-    allTimeList.style.display = "none";
+    if (leaderboardEl) leaderboardEl.style.display = "block";
+    if (allTimeList) allTimeList.style.display = "none";
     weeklyTabBtn.setAttribute("aria-pressed","true");
     allTimeTabBtn.setAttribute("aria-pressed","false");
   });
@@ -555,8 +558,8 @@ document.addEventListener("DOMContentLoaded", () => {
   allTimeTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
     loadAllTimeInteractive();
-    leaderboardEl.style.display = "none";
-    allTimeList.style.display = "block";
+    if (leaderboardEl) leaderboardEl.style.display = "none";
+    if (allTimeList) allTimeList.style.display = "block";
     weeklyTabBtn.setAttribute("aria-pressed","false");
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
