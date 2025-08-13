@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Fantasy Fight Picks</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <!-- Logo -->
@@ -19,9 +19,9 @@
 
   <div id="app">
     <!-- Username prompt -->
-    <div id="usernamePrompt" class="card center">
+    <div id="usernamePrompt" class="center card">
       <label for="usernameInput">Enter your name:</label>
-      <input type="text" id="usernameInput" />
+      <input type="text" id="usernameInput"/>
       <button type="button" onclick="lockUsername()">Lock In</button>
     </div>
 
@@ -31,26 +31,31 @@
     <!-- Scoring Rules -->
     <div id="scoringRules" style="display:none;">
       <div class="scoring-box">
-        <div class="rule"><span class="pill">+3</span> Winner</div>
-        <div class="rule"><span class="pill">+2</span> Method <span class="hint">(only if Winner correct)</span></div>
-        <div class="rule"><span class="pill">+1</span> Round <span class="hint">(finishes only)</span></div>
-        <div class="rule"><span class="pill gold">+1 / +100</span> Underdog bonus
-          <span class="hint">(no cap; when your picked winner is the underdog & wins)</span>
+        <div class="rule"><span class="pill accent">+3</span> Correct Winner</div>
+        <div class="rule"><span class="pill accent">+2</span> Correct Method <span class="hint">(only if winner matched)</span></div>
+        <div class="rule"><span class="pill accent">+1</span> Correct Round <span class="hint">(finishes only)</span></div>
+        <div class="rule">
+          <span class="pill gold">+Underdog</span>
+          Tiered bonus when the actual underdog wins:
+          <span class="hint">+1 per +100 starting at +100 (e.g., +100–199 = +1, +200–299 = +2, … uncapped)</span>
         </div>
-        <div class="rule"><span class="pill accent">+3</span> Fight of the Night
-          <span class="hint">(if your FOTN pick matches the official FOTN)</span>
-        </div>
+        <div class="rule"><span class="pill">+3</span> Fight of the Night (FOTN) bonus</div>
       </div>
     </div>
 
     <!-- Fight List -->
     <div id="fightList" style="display:none;"></div>
 
-    <!-- FOTN select is injected by script.js just above this button -->
+    <!-- FOTN -->
+    <div id="fotnBlock" style="display:none;" class="card">
+      <label for="fotnSelect">Pick Fight of the Night (+3):</label>
+      <select id="fotnSelect"></select>
+    </div>
+
     <button id="submitBtn" type="button" onclick="submitPicks()" style="display:none;">Submit Picks</button>
 
     <!-- My Picks -->
-    <div id="myPicks" class="card" style="margin-top:20px;"></div>
+    <div id="myPicks" style="margin-top:20px;"></div>
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
@@ -65,7 +70,7 @@
     <ul id="leaderboard" class="board weekly"></ul>
 
     <!-- All-Time -->
-    <ul id="allTimeBoard" class="board alltime" style="display:none;"></ul>
+    <ul id="allTimeBoard" class="board" style="display:none;"></ul>
   </div>
 
   <script src="script.js"></script>
