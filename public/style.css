@@ -4,7 +4,7 @@
   --bg-dark:#0b0b0d; --bg-panel:#141416; --neon-cyan:#00f5ff; --neon-red:#ff003c;
   --silver:#b0b3b8; --success:#2fffa0; --error:#ff4e4e; --text-main:#e4e6eb; --shadow-dark:rgba(0,0,0,.6);
 
-  /* All-Time sizing (desktop tightened so names don’t clip on Chromebook) */
+  /* All-Time sizing */
   --rank-w:56px;   /* rank */
   --rate-w:72px;   /* % */
   --count-w:64px;  /* crowns / events */
@@ -28,9 +28,9 @@ body{
 .banner-container{display:flex;justify-content:center;margin-bottom:10px}
 .logo-banner{max-width:200px;height:auto}
 
-/* Panel (keep compact so Weekly & Picks don’t look stretched) */
+/* Panel */
 #app{
-  max-width:580px;
+  max-width:580px; /* keep tight for desktop aesthetics */
   margin:auto;
   padding:20px;
   background:var(--bg-panel);
@@ -111,21 +111,35 @@ button:hover{background:var(--neon-red);color:#fff;box-shadow:0 0 14px rgba(255,
 .wrong,.wrong *{color:var(--error)!important}
 
 /* =========================
-   ALL-TIME (desktop rows, NO HEADERS)
+   ALL-TIME (desktop rows + header)
    ========================= */
 #allTimeBoard{list-style:none;padding:0;margin-top:20px;overflow-x:hidden}
 
-/* Hide any accidental header row */
-#allTimeBoard .board-header,
-#allTimeBoard li.board-header{display:none!important}
+/* Header (DESKTOP visible, MOBILE hidden in media query) */
+#allTimeBoard .board-header{
+  display:grid;align-items:center;
+  grid-template-columns:var(--rank-w) minmax(0,1fr) var(--rate-w) var(--count-w) var(--count-w);
+  column-gap:var(--gap);
+  padding:8px 16px;margin:4px 0 8px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;
+  text-transform:uppercase;font-weight:900;color:var(--silver);letter-spacing:.04em;
+}
+#allTimeBoard .board-header > span:nth-child(1){text-align:center}
+#allTimeBoard .board-header > span:nth-child(3),
+#allTimeBoard .board-header > span:nth-child(4),
+#allTimeBoard .board-header > span:nth-child(5){
+  justify-self:center;text-align:center
+}
 
-/* Desktop row: 5 tidy columns */
 #allTimeBoard li.at-five{
   display:grid;align-items:center;
   grid-template-columns:var(--rank-w) minmax(0,1fr) var(--rate-w) var(--count-w) var(--count-w);
   column-gap:var(--gap);
   background:rgba(255,255,255,.04);
-  border-radius:10px;padding:14px 16px;margin:10px 0;border-left:4px solid var(--silver)
+  border-radius:10px;padding:14px 16px;margin:10px 0;border-left:4px solid var(--silver);
+  transition:.25s
 }
 #allTimeBoard li.at-five:hover{border-left-color:var(--neon-cyan);box-shadow:0 0 12px rgba(0,245,255,.4);transform:translateX(4px)}
 #allTimeBoard li.tied-first{border-left-color:var(--neon-cyan);background:rgba(0,245,255,.08);box-shadow:0 0 14px rgba(0,245,255,.25)}
@@ -141,13 +155,16 @@ button:hover{background:var(--neon-red);color:#fff;box-shadow:0 0 14px rgba(255,
 #allTimeBoard li .mobile-meta{display:none} /* desktop hidden */
 
 /* =========================
-   MOBILE (≤600px): two-line, show “👑 2/4 events”
+   MOBILE (≤600px): two-line, header hidden
    ========================= */
 @media (max-width:600px){
   #app{max-width:100%}
   .logo-banner{max-width:170px;margin-bottom:12px}
 
   #leaderboard li{grid-template-columns:44px minmax(0,1fr) 64px;padding:12px}
+
+  /* Hide All-Time header on phones */
+  #allTimeBoard .board-header{display:none!important}
 
   /* Two-line All-Time layout */
   #allTimeBoard li.at-five{
