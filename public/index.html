@@ -14,43 +14,51 @@
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
-  <!-- Flashy Champion of the Week banner -->
-  <div id="champBanner" class="champ-banner" style="display: none;"></div>
+  <!-- Champion banner -->
+  <div id="champBanner" class="champ-banner" style="display:none;"></div>
 
   <div id="app">
     <!-- Username prompt -->
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
-      <button onclick="lockUsername()">Lock In</button>
+      <button type="button" onclick="lockUsername()">Lock In</button>
     </div>
 
-    <!-- Welcome message -->
-    <h2 id="welcome" style="display: none;"></h2>
+    <!-- Welcome -->
+    <h2 id="welcome" style="display:none;"></h2>
 
     <!-- Scoring Rules -->
-    <div id="scoringRules" style="display: none;">
+    <div id="scoringRules" style="display:none;">
       <div class="scoring-box tight">
         <div>+1 pt for winner</div>
         <div>+1 pt for method (if winner is correct)</div>
-        <div>+1 pt for round (if winner & method are correct & method is not decision)</div>
+        <div>+1 pt for round (if winner &amp; method are correct &amp; method ≠ Decision)</div>
         <div>+2 bonus pts for correct underdog winner</div>
       </div>
     </div>
 
     <!-- Fight List -->
-    <div id="fightList" style="display: none;"></div>
-    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <div id="fightList" style="display:none;"></div>
+    <button id="submitBtn" type="button" onclick="submitPicks()" style="display:none;">Submit Picks</button>
 
     <!-- My Picks -->
-    <div id="myPicks" style="margin-top: 20px;"></div>
+    <div id="myPicks" style="margin-top:20px;"></div>
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
+
+    <!-- Tabs (Weekly / All-Time) -->
+    <div id="boardTabs">
+      <button id="tabWeekly" aria-pressed="true" type="button">Weekly</button>
+      <button id="tabAllTime" aria-pressed="false" type="button">All-Time</button>
+    </div>
+
+    <!-- Weekly -->
     <ul id="leaderboard"></ul>
 
-    <!-- NEW: All-Time (no tabs; just below weekly) -->
-    <ul id="allTimeBoard"></ul>
+    <!-- All-Time -->
+    <ul id="allTimeBoard" style="display:none;"></ul>
   </div>
 
   <script src="script.js"></script>
