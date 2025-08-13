@@ -36,6 +36,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return 1 + Math.floor((n - 100) / 100); // +100-199=+1, +200-299=+2, etc
   }
 
+  // *** CHANGE: display helper to show “=X points” instead of odds
+  function pointsFromOddsLabel(oddsRaw) {
+    const n = normalizeAmericanOdds(oddsRaw);
+    if (n == null) return "";
+    const pts = Math.ceil(Math.abs(n) / 100); // e.g. -400 -> 4, +180 -> 2
+    if (pts <= 0) return "";
+    return `=${pts} points`;
+  }
+
   /* ---------- Login ---------- */
   function doLogin() {
     const input = usernameInput.value.trim();
@@ -84,6 +93,9 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.style.display = "block";
       }
 
+      // *** CHANGE: ensure OG styling hooks exist on weekly UL
+      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
+
       loadMyPicks();
       loadLeaderboard();
       preloadAllTime(); // warm up data
@@ -91,6 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error(err);
       // Fallback: try to load fights for pick screen if needed
       loadFights();
+      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
       loadMyPicks();
       loadLeaderboard();
       preloadAllTime();
@@ -142,10 +155,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const dog1 = underdog === "Fighter 1" ? "🐶" : "";
       const dog2 = underdog === "Fighter 2" ? "🐶" : "";
 
-      const f1Chip = f1Odds ? `<span class="odds">${f1Odds}</span>` : "";
-      const f2Chip = f2Odds ? `<span class="odds">${f2Odds}</span>` : "";
-      const dogChip = (underdogOdds && (dog1 || dog2))
-        ? `<span class="dog-chip">${underdogOdds}</span>` : "";
+      // *** CHANGE: replace odds chips with “=X points” labels
+      const f1Pts = pointsFromOddsLabel(f1Odds);
+      const f2Pts = pointsFromOddsLabel(f2Odds);
+      const f1Chip = f1Pts ? `<span class="odds">${f1Pts}</span>` : "";
+      const f2Chip = f2Pts ? `<span class="odds">${f2Pts}</span>` : "";
 
       const div = document.createElement("div");
       div.className = "fight";
@@ -165,21 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="fighter-right">${f2Chip}</span>
           </span>
         </label>
-        <div class="meta-line">
-          ${dogChip ? `<span class="dog-flag">Underdog: ${dogChip}</span>` : ""}
-        </div>
-        <select name="${fight}-method">
-          <option value="Decision">Decision</option>
-          <option value="KO/TKO">KO/TKO</option>
-          <option value="Submission">Submission</option>
-        </select>
-        <select name="${fight}-round">
-          <option value="1">Round 1</option>
-          <option value="2">Round 2</option>
-          <option value="3">Round 3</option>
-          <option value="4">Round 4</option>
-          <option value="5">Round 5</option>
-        </select>
+        <!-- *** CHANGE: removed duplicate underdog meta-line -->
       `;
       fightList.appendChild(div);
     });
@@ -187,6 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".fight").forEach(fight => {
       const methodSelect = fight.querySelector(`select[name$="-method"]`);
       const roundSelect = fight.querySelector(`select[name$="-round"]`);
+      if (!methodSelect || !roundSelect) return;
       methodSelect.addEventListener("change", () => {
         roundSelect.disabled = methodSelect.value === "Decision";
         if (roundSelect.disabled) roundSelect.value = "";
@@ -328,7 +329,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const dogIcon = (() => {
-              // show 🐶 next to whichever fighter is marked underdog in fightMeta
               if (!meta.underdogSide) return "";
               const isF1 = meta.underdogSide === "Fighter 1";
               const name = isF1 ? meta.f1 : meta.f2;
@@ -344,15 +344,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
             const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
-            // odds chips inline for context
+            // *** CHANGE: show “=X points” (from the chosen fighter’s odds) instead of raw odds
             const sideOdds = (winner === meta.f1) ? (meta.f1Odds || "") : (winner === meta.f2 ? (meta.f2Odds || "") : "");
-            const oddsChip = sideOdds ? `<span class="odds">${sideOdds}</span>` : "";
+            const sidePts = pointsFromOddsLabel(sideOdds);
+            const pointsLabel = sidePts ? `<span class="odds">${sidePts}</span>` : "";
 
             myPicksDiv.innerHTML += `
               <div class="scored-pick">
                 <div class="fight-name">${fight}</div>
                 <div class="user-pick">
-                  <span class="${winnerClass}">${winner}</span> ${dogIcon} ${oddsChip} by
+                  <span class="${winnerClass}">${winner}</span> ${dogIcon} ${pointsLabel} by
                   <span class="${methodClass}">${method}</span> ${roundText}
                 </div>
                 ${pointsChip}
@@ -369,6 +370,8 @@ document.addEventListener("DOMContentLoaded", () => {
       fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
     ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
+      // ensure OG classes
+      if (board) board.classList.add("board","weekly");
       board.innerHTML = "";
 
       const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
@@ -385,7 +388,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let classes = [];
 
         if (leaderboardData.champs?.includes(user)) {
-          classes.push("champ-glow");
+          classes.push("champ-glow"); // neon pulse via CSS
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
         if (index === scores.length - 1) {
@@ -402,6 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
+      // Glow all tied #1 entries (keep crowns as-is)
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
