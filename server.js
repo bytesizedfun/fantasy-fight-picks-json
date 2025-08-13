@@ -5,7 +5,7 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Google Apps Script Web App URL
+// ✅ Google Apps Script Web App URL (defined BEFORE use)
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
 app.use(express.json());
@@ -28,6 +28,7 @@ app.get("/api/fights", async (req, res) => {
     const fights = await response.json();
     res.json(fights);
   } catch (error) {
+    console.error("getFights error:", error);
     res.status(500).json({ error: "Failed to fetch fights" });
   }
 });
@@ -48,6 +49,7 @@ app.post("/api/submit", async (req, res) => {
     const result = await response.json();
     res.json(result);
   } catch (error) {
+    console.error("submitPicks error:", error);
     res.status(500).json({ error: "Failed to submit picks" });
   }
 });
@@ -63,6 +65,7 @@ app.post("/api/picks", async (req, res) => {
     const result = await response.json();
     res.json(result);
   } catch (error) {
+    console.error("getUserPicks error:", error);
     res.status(500).json({ error: "Failed to fetch picks" });
   }
 });
@@ -78,11 +81,12 @@ app.post("/api/leaderboard", async (req, res) => {
     const result = await response.json();
     res.json(result);
   } catch (error) {
+    console.error("getLeaderboard error:", error);
     res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
 });
 
-// ✅ NEW: All-Time (Hall) – reads users_totals via GAS getHall
+// ✅ NEW: All-Time (Hall) via GAS getHall
 app.get("/api/hall", async (req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
@@ -92,6 +96,7 @@ app.get("/api/hall", async (req, res) => {
     const data = await r.json();
     res.json(data);
   } catch (e) {
+    console.error("getHall error:", e);
     res.status(500).json([]);
   }
 });
