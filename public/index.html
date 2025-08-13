@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fantasy Fight Picks</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
-  <!-- You included these in your last HTML; keeping them -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -15,7 +14,7 @@
     <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
   </div>
 
-  <!-- Champion banner -->
+  <!-- Flashy Champion of the Week banner -->
   <div id="champBanner" class="champ-banner" style="display: none;"></div>
 
   <div id="app">
@@ -23,10 +22,10 @@
     <div id="usernamePrompt">
       <label for="usernameInput">Enter your name:</label>
       <input type="text" id="usernameInput" />
-      <button type="button" onclick="lockUsername()">Lock In</button>
+      <button onclick="lockUsername()">Lock In</button>
     </div>
 
-    <!-- Welcome -->
+    <!-- Welcome message -->
     <h2 id="welcome" style="display: none;"></h2>
 
     <!-- Scoring Rules -->
@@ -34,32 +33,24 @@
       <div class="scoring-box tight">
         <div>+1 pt for winner</div>
         <div>+1 pt for method (if winner is correct)</div>
-        <div>+1 pt for round (if winner &amp; method are correct &amp; method ≠ Decision)</div>
+        <div>+1 pt for round (if winner & method are correct & method is not decision)</div>
         <div>+2 bonus pts for correct underdog winner</div>
       </div>
     </div>
 
     <!-- Fight List -->
     <div id="fightList" style="display: none;"></div>
-    <button id="submitBtn" type="button" onclick="submitPicks()" style="display: none;">Submit Picks</button>
+    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
     <!-- My Picks -->
     <div id="myPicks" style="margin-top: 20px;"></div>
 
     <!-- Leaderboard -->
     <h2 class="leader-title">LEADERBOARD</h2>
-
-    <!-- Tabs needed by your JS -->
-    <div id="boardTabs">
-      <button id="tabWeekly" aria-pressed="true" type="button">Weekly</button>
-      <button id="tabAllTime" aria-pressed="false" type="button">All-Time</button>
-    </div>
-
-    <!-- Weekly -->
     <ul id="leaderboard"></ul>
 
-    <!-- All-Time (your JS fills this) -->
-    <ul id="allTimeBoard" style="display:none;"></ul>
+    <!-- NEW: All-Time (no tabs; just below weekly) -->
+    <ul id="allTimeBoard"></ul>
   </div>
 
   <script src="script.js"></script>
