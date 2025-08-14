@@ -37,13 +37,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
   }
 
-  // Injects a single, clean scoring panel with your wording
   function injectScoringRules() {
     if (!scoringRulesEl) return;
     scoringRulesEl.style.display = "block";
-    scoringRulesEl.classList.add("rules"); // style this one panel in CSS
+    scoringRulesEl.classList.add("rules");
     scoringRulesEl.innerHTML = `
-      <div class="rules-title">Scoring</div>
+      <div class="rules-title">SCORING</div>
       <ul class="rules-list">
         <li><strong>+3</strong> Correct Winner</li>
         <li><strong>+2</strong> Correct Method <span class="muted">(must have correct winner)</span></li>
@@ -137,7 +136,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderFOTN(fightsData, existingPick = "") {
-    // Slightly more “stand-out” wrapper + badge hook for CSS
     fotnBlock.innerHTML = `
       <div class="fotn-card">
         <div class="fotn-header">
@@ -169,7 +167,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const isDog1 = dogSide === "Fighter 1";
       const isDog2 = dogSide === "Fighter 2";
 
-      // Clean tag: “🐶 +N pts”
       const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
       const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
 
@@ -349,7 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
 
-          // Scoring (match backend)
+          // Scoring (UI only)
           let score = 0;
           if (matchWinner) {
             score += 3;
@@ -390,6 +387,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ---------- Weekly Leaderboard ---------- */
+
+  function showLastChampBannerFallback() {
+    // Use last logged champion(s) from champions sheet
+    fetch("/getChampionBanner")
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(b => {
+        const names = Array.isArray(b?.usernames) ? b.usernames.join(", ") :
+                      (b?.username || b?.champ || b?.message || "");
+        const msg = names ? `🏆 Champion of the Week: ${names}` : "";
+        if (msg) {
+          champBanner.textContent = msg;
+          champBanner.style.display = "block";
+        }
+      })
+      .catch(() => { /* no-op */ });
+  }
+
   function loadLeaderboard() {
     Promise.all([
       fetch("/api/fights").then(r => r.json()),
@@ -399,7 +413,32 @@ document.addEventListener("DOMContentLoaded", () => {
       board.classList.add("board","weekly");
       board.innerHTML = "";
 
-      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
+      const totalFights = (fightsData || []).length;
+      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
+        res => res.winner && res.method
+      ).length;
+
+      const entries = Object.entries(leaderboardData.scores || {}).map(([u,s]) => [u, Number(s)||0]);
+      const hasAny = entries.length > 0;
+      const maxScore = hasAny ? Math.max(...entries.map(e => e[1])) : 0;
+
+      // If no results yet (or all scores are zero), hide the board to avoid single-user crown/poop.
+      const resultsStarted = completedResults > 0 && maxScore > 0;
+
+      if (!resultsStarted) {
+        // show a subtle hint row instead of bogus standings
+        const hint = document.createElement("li");
+        hint.className = "board-hint";
+        hint.textContent = "Weekly standings will appear once results start.";
+        board.appendChild(hint);
+
+        // show last week's champion banner from the champions sheet
+        showLastChampBannerFallback();
+        return;
+      }
+
+      // Build live weekly board (results have started)
+      const scores = entries.sort((a, b) => b[1] - a[1]);
 
       let rank = 1;
       let prevScore = null;
@@ -412,14 +451,17 @@ document.addEventListener("DOMContentLoaded", () => {
         let displayName = user;
         const classes = [];
 
-        if (leaderboardData.champs?.includes(user)) {
+        // Only show crown when there is a true top score (> 0)
+        if (leaderboardData.champs?.includes(user) && maxScore > 0 && score === maxScore) {
           classes.push("champ-glow");
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
-        if (index === scores.length - 1) {
+
+        // "loser" style only when at least 3 rows and real standings are underway
+        if (scores.length >= 3 && index === scores.length - 1 && maxScore > 0) {
           classes.push("loser");
-          displayName = `💩 ${displayName}`;
         }
+
         if (user === username) classes.push("current-user");
 
         li.className = classes.join(" ");
@@ -430,27 +472,24 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // glow ties for #1
+      // Glow ties for #1 when scores exist
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
         lis.forEach(li => {
           const val = parseInt(li.lastElementChild.textContent, 10);
-          if (val === topScore) li.classList.add("tied-first");
+          if (val === topScore && topScore > 0) li.classList.add("tied-first");
         });
       }
 
-      // champ banner only when event concluded
-      const totalFights = (fightsData || []).length;
-      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
-        res => res.winner && res.method
-      ).length;
-
+      // Champ banner logic:
       if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
+        // Event finished → show current champ(s)
         champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
       } else {
-        champBanner.style.display = "none";
+        // Event not finished → show last week's champ(s)
+        showLastChampBannerFallback();
       }
     });
   }
@@ -489,7 +528,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderAllTimeHeader() {
     const li = document.createElement("li");
     li.className = "board-header at-five";
-    // Add matching per-column classes so CSS can center headers with data
     li.innerHTML = `
       <span class="rank">Rank</span>
       <span class="user">Player</span>
