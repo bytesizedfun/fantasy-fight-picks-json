@@ -91,28 +91,20 @@ body{
 }
 #usernamePrompt button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
 
-/* ===== Scoring box ===== */
+/* ===== Scoring (single clean panel; no nested boxes / neon pills) ===== */
 #scoringRules{ display:block; }
-.scoring-box{
+.rules{
   margin:8px auto 12px;
-  padding:10px 12px;
+  padding:12px 14px;
   border-radius:14px;
   border:1px solid var(--divider);
   background:linear-gradient(180deg, #101116, #0e0f12);
   text-align:center;
 }
-.scoring-box .rule{ font-size:15px; margin:3px 0; font-weight:900; letter-spacing:.3px; }
-.scoring-box .pill{
-  display:inline-block; min-width:36px; padding:2px 10px; margin-right:6px;
-  border-radius:999px; font-weight:900; letter-spacing:.3px;
-  background:var(--tile); border:1px solid rgba(var(--accent-rgb),0.45);
-  box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.08) inset;
-}
-.scoring-box .pill.accent{
-  background:linear-gradient(180deg, rgba(0,245,255,0.14), rgba(0,245,255,0.06));
-  border-color:rgba(0,245,255,0.55);
-}
-.scoring-box .hint{ color:var(--muted); font-size:13px; margin-left:6px; }
+.rules-title{ font-weight:900; margin-bottom:4px; letter-spacing:.4px; color:var(--text); }
+.rules-list{ list-style:none; padding:0; margin:0; }
+.rules-list li{ font-size:15px; margin:4px 0; font-weight:900; letter-spacing:.3px; }
+.rules .muted{ color:var(--muted); font-weight:600; }
 
 /* ===== Fight list — centered, tight, two-column options ===== */
 #fightList{
@@ -229,7 +221,7 @@ body{
 #submitBtn:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; box-shadow:0 10px 22px rgba(0,0,0,0.35); }
 #submitBtn:disabled{ opacity:.6; cursor:not-allowed; }
 
-/* ===== FOTN — perfectly centered ===== */
+/* ===== FOTN — subtle emphasis (no neon tabs) ===== */
 #fotnBlock{
   width:100%;
   background:linear-gradient(180deg, var(--panel), #0f1013);
@@ -239,22 +231,36 @@ body{
   text-align:center;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
 }
-.fotn-title{
-  color:var(--accent); font-weight:900; letter-spacing:.6px; text-shadow:0 0 10px rgba(var(--accent-rgb),0.25);
+
+/* New, stronger emphasis wrapper used by JS */
+.fotn-card{
+  width:100%; max-width:600px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--divider);
+  border-radius:14px; padding:10px 12px;
 }
-#fotnSelect{
-  width:100%; max-width:560px;
+.fotn-header{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-bottom:6px;
+}
+.fotn-emoji{ text-shadow:0 0 8px rgba(var(--accent-rgb),0.35); }
+.fotn-title{ font-weight:900; letter-spacing:.4px; }
+.fotn-badge{
+  font-weight:900; padding:2px 10px; border-radius:999px;
+  border:1px solid rgba(255,255,255,0.25);
+  background:rgba(255,255,255,0.06);
+}
+.fotn-select{
+  width:100%;
   background:var(--tile);
   border:1px solid var(--divider);
   color:var(--text);
-  padding:10px 12px;
-  border-radius:12px;
-  margin:0 auto;
-  display:block;
+  padding:10px 12px; border-radius:12px;
 }
+
 #fotnBlock .hint{ color:var(--muted); font-size:13px; }
 
-/* ===== Tabs ===== */
+/* ===== Tabs (neon removed; muted) ===== */
 .segmented{
   display:flex; justify-content:center; align-items:center; gap:8px;
   margin:12px 0 12px;
@@ -265,15 +271,16 @@ body{
   background:var(--tile);
   border:1px solid var(--divider);
   color:var(--text);
-  border-radius:999px;
+  border-radius:10px;
   font-weight:900;
   cursor:pointer;
-  transition:box-shadow .15s ease, transform .06s ease, border-color .15s ease;
+  transition:transform .06s ease, background .15s ease, border-color .15s ease;
 }
-.segmented button:hover{ border-color:rgba(var(--accent-rgb),0.55); transform:translateY(-1px); }
+.segmented button:hover{ transform:translateY(-1px); }
 .segmented button[aria-pressed="true"]{
-  border-color:rgba(0,245,255,0.65);
-  box-shadow:0 0 0 2px rgba(0,245,255,0.18) inset;
+  background:rgba(255,255,255,0.06);
+  border-color:rgba(255,255,255,0.20);
+  box-shadow:none; /* kill neon glow */
 }
 
 /* ===== Leaderboards ===== */
@@ -302,7 +309,7 @@ body{
 .board.weekly li.current-user{ outline:2px dashed rgba(var(--accent-rgb),0.65); outline-offset:2px; }
 .board.weekly li.loser{ opacity:.88; }
 
-/* All-time header exactly matches row columns and alignment */
+/* ===== All-Time Board — headers & data perfectly centered ===== */
 .board-header.at-five,
 .board.at-five li{
   display:grid;
@@ -312,23 +319,29 @@ body{
   border:1px solid var(--divider);
   border-radius:12px; padding:10px 12px; margin:8px 0;
 }
+
+/* Header look */
 .board-header.at-five{
   background:linear-gradient(180deg, var(--panel), #101116);
   color:var(--muted); font-weight:900; text-transform:uppercase; letter-spacing:.6px;
-  text-align:left;
 }
-/* Header cell alignment to match data columns */
-.board-header.at-five span:nth-child(1){ text-align:left; }   /* Rank */
-.board-header.at-five span:nth-child(2){ text-align:left; }   /* Player */
-.board-header.at-five span:nth-child(3){ text-align:right; }  /* % */
-.board-header.at-five span:nth-child(4){ text-align:right; }  /* 👑 */
-.board-header.at-five span:nth-child(5){ text-align:right; }  /* Events */
 
+/* Center header cells to match centered data */
+.board-header.at-five .rank,
+.board-header.at-five .user,
+.board-header.at-five .rate,
+.board-header.at-five .crowns,
+.board-header.at-five .events{
+  text-align:center;
+}
+
+/* Data rows */
 .board.at-five li{ border-left:4px solid rgba(255,255,255,0.18); transition:transform .2s ease, box-shadow .2s ease, border-left-color .2s ease; }
 .board.at-five li:hover{ transform:translateX(4px); border-left-color:var(--accent); box-shadow:0 0 12px rgba(0,245,255,0.28); }
-.board.at-five .rank{ width:64px; font-weight:900; text-align:left; }
-.board.at-five .user{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; }
-.board.at-five .num{ text-align:right; font-weight:900; color:var(--text); opacity:.95; }
+
+.board.at-five .rank{ width:64px; font-weight:900; text-align:center; }
+.board.at-five .user{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; text-align:center; }
+.board.at-five .num{ text-align:center; font-weight:900; color:var(--text); opacity:.95; }
 .board.at-five .mobile-meta{ display:none; color:var(--muted); }
 
 /* ===== Your Picks ===== */
@@ -361,5 +374,5 @@ body{
   .board.at-five li{ grid-template-columns:60px 1fr 90px; }
   .board.at-five .rank{ width:auto; }
   .board.at-five .num.crowns, .board.at-five .num.events{ display:none; }
-  .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; }
+  .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; text-align:center; }
 }
