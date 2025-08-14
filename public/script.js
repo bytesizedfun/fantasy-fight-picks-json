@@ -148,17 +148,20 @@ document.addEventListener("DOMContentLoaded", () => {
     fightList.innerHTML = "";
     (data || []).forEach(({ fight, fighter1, fighter2 }) => {
       const meta = fightMeta.get(fight) || {};
-      const dogSide = meta.underdogSide;
-      const dogTier = underdogBonusFromOdds(meta.underdogOdds); // N dogs
+      const dogSide = meta.underdogSide;                           // "Fighter 1" | "Fighter 2" | ""
+      const dogTier = underdogBonusFromOdds(meta.underdogOdds);    // 0,1,2,...
 
-      const dog1 = dogSide === "Fighter 1" ? "🐶" : "";
-      const dog2 = dogSide === "Fighter 2" ? "🐶" : "";
+      const isDog1 = dogSide === "Fighter 1";
+      const isDog2 = dogSide === "Fighter 2";
 
-      const dogChip1 = dogSide === "Fighter 1" && dogTier > 0
-        ? `<span class="dog-tier" title="+${dogTier} bonus if wins">🐶<span class="mult">×${dogTier}</span></span>`
+      const name1Cls = `fighter-name${isDog1 ? " is-underdog" : ""}`;
+      const name2Cls = `fighter-name${isDog2 ? " is-underdog" : ""}`;
+
+      const chip1 = (isDog1 && dogTier > 0)
+        ? `<span class="bonus-chip" title="+${dogTier} bonus if ${fighter1} wins"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
         : "";
-      const dogChip2 = dogSide === "Fighter 2" && dogTier > 0
-        ? `<span class="dog-tier" title="+${dogTier} bonus if wins">🐶<span class="mult">×${dogTier}</span></span>`
+      const chip2 = (isDog2 && dogTier > 0)
+        ? `<span class="bonus-chip" title="+${dogTier} bonus if ${fighter2} wins"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
         : "";
 
       const div = document.createElement("div");
@@ -169,16 +172,16 @@ document.addEventListener("DOMContentLoaded", () => {
         <label>
           <input type="radio" name="${fight}-winner" value="${fighter1}">
           <span class="fighter-line">
-            <span class="fighter-name">${fighter1} ${dog1}</span>
-            <span class="fighter-right">${dogChip1}</span>
+            <span class="${name1Cls}">${fighter1}</span>
+            <span class="fighter-right">${chip1}</span>
           </span>
         </label>
 
         <label>
           <input type="radio" name="${fight}-winner" value="${fighter2}">
           <span class="fighter-line">
-            <span class="fighter-name">${fighter2} ${dog2}</span>
-            <span class="fighter-right">${dogChip2}</span>
+            <span class="${name2Cls}">${fighter2}</span>
+            <span class="fighter-right">${chip2}</span>
           </span>
         </label>
 
@@ -329,17 +332,16 @@ document.addEventListener("DOMContentLoaded", () => {
           const matchMethod = hasResult && method === actual.method;
           const matchRound = hasResult && round == actual.round;
 
-          // underdog bonus shown as 🐶×N only on the underdog side
+          // Underdog bonus chip (only if chosen fighter is the true underdog)
           const meta = fightMeta.get(fight) || {};
           const dogSide = meta.underdogSide;
           const dogTier = underdogBonusFromOdds(meta.underdogOdds);
-
           const chosenIsUnderdog =
             (dogSide === "Fighter 1" && winner === meta.f1) ||
             (dogSide === "Fighter 2" && winner === meta.f2);
 
-          const dogBadge = (chosenIsUnderdog && dogTier > 0)
-            ? `<span class="dog-tier" title="+${dogTier} bonus if wins">🐶<span class="mult">×${dogTier}</span></span>`
+          const bonusChip = (chosenIsUnderdog && dogTier > 0)
+            ? `<span class="bonus-chip" title="+${dogTier} bonus if underdog won"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
             : "";
 
           let score = 0;
@@ -349,9 +351,7 @@ document.addEventListener("DOMContentLoaded", () => {
               score += 2;
               if (method !== "Decision" && matchRound) score += 1;
             }
-            if (hasResult && actual.underdog === "Y") {
-              score += dogTier; // server truth aligns with tiers
-            }
+            if (hasResult && actual.underdog === "Y") score += dogTier; // same tiering as backend
           }
 
           const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
@@ -368,7 +368,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="scored-pick">
               <div class="fight-name">${fight}</div>
               <div class="user-pick">
-                <span class="${winnerClass}">${winner}</span> ${dogBadge} by
+                <span class="${winnerClass}">${winner}</span> ${bonusChip} by
                 <span class="${methodClass}">${method}</span> ${roundText}
               </div>
               ${pointsChip}
