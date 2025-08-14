@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const punchSound = new Audio("punch.mp3");
 
   const fotnBlock = document.getElementById("fotnBlock");
-  let fotnSelect = document.getElementById("fotnSelect"); // rebuilt each time
+  let fotnSelect = null; // will be created
 
   let username = localStorage.getItem("username");
 
@@ -44,8 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     finalizeLogin(username);
   }
   window.lockUsername = doLogin;
-  const loginBtn = document.querySelector("#usernamePrompt button");
-  if (loginBtn) loginBtn.addEventListener("click", doLogin);
+  document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
 
   if (username) {
     usernameInput.value = username;
@@ -53,13 +52,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function finalizeLogin(name) {
-    if (usernamePrompt) usernamePrompt.style.display = "none";
-    if (welcome) {
-      welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
-      welcome.style.display = "block";
-    }
-    const scoring = document.getElementById("scoringRules");
-    if (scoring) scoring.style.display = "block";
+    usernamePrompt.style.display = "none";
+    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+    welcome.style.display = "block";
+    document.getElementById("scoringRules").style.display = "block";
 
     Promise.all([
       fetch("/api/fights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
@@ -73,17 +69,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const submitted = pickData.success && pickData.picks.length > 0;
       if (submitted) {
         localStorage.setItem("submitted", "true");
-        if (fightList) fightList.style.display = "none";
-        if (submitBtn) submitBtn.style.display = "none";
-        if (fotnBlock) fotnBlock.style.display = "none";
+        fightList.style.display = "none";
+        submitBtn.style.display = "none";
+        fotnBlock.style.display = "none";
       } else {
         localStorage.removeItem("submitted");
         renderFightList(fightsData);
         renderFOTN(fightsData, pickData.fotnPick);
-        if (submitBtn) submitBtn.style.display = "block";
+        submitBtn.style.display = "block";
       }
 
-      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
+      leaderboardEl.classList.add("board","weekly");
       loadMyPicks();
       loadLeaderboard();
       preloadAllTime();
@@ -91,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .catch(err => {
       console.error(err);
       loadFights();
-      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
+      leaderboardEl.classList.add("board","weekly");
       loadMyPicks();
       loadLeaderboard();
       preloadAllTime();
@@ -124,9 +120,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderFOTN(fightsData, existingPick = "") {
-    if (!fotnBlock) return;
-
-    // No legacy label; fully rebuilt
     fotnBlock.innerHTML = `
       <div class="fotn-title">⭐ Fight of the Night</div>
       <select id="fotnSelect"></select>
@@ -139,29 +132,21 @@ document.addEventListener("DOMContentLoaded", () => {
     fotnSelect.innerHTML = `<option value="">— Select your FOTN —</option>` +
       names.map(n => `<option value="${n}">${n}</option>`).join("");
     if (existingPick) fotnSelect.value = existingPick;
-    fotnBlock.style.display = "block";
+    fotnBlock.style.display = "flex";
   }
 
   function renderFightList(data) {
-    if (!fightList) return;
     fightList.innerHTML = "";
     (data || []).forEach(({ fight, fighter1, fighter2 }) => {
       const meta = fightMeta.get(fight) || {};
-      const dogSide = meta.underdogSide;                           // "Fighter 1" | "Fighter 2" | ""
-      const dogTier = underdogBonusFromOdds(meta.underdogOdds);    // 0,1,2,...
+      const dogSide = meta.underdogSide;                        // "Fighter 1" | "Fighter 2" | ""
+      const dogTier = underdogBonusFromOdds(meta.underdogOdds); // 0,1,2,...
 
       const isDog1 = dogSide === "Fighter 1";
       const isDog2 = dogSide === "Fighter 2";
 
-      const name1Cls = `fighter-name${isDog1 ? " is-underdog" : ""}`;
-      const name2Cls = `fighter-name${isDog2 ? " is-underdog" : ""}`;
-
-      const chip1 = (isDog1 && dogTier > 0)
-        ? `<span class="bonus-chip" title="+${dogTier} bonus if ${fighter1} wins"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
-        : "";
-      const chip2 = (isDog2 && dogTier > 0)
-        ? `<span class="bonus-chip" title="+${dogTier} bonus if ${fighter2} wins"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
-        : "";
+      const dog1 = (isDog1 && dogTier > 0) ? `🐶×${dogTier}` : "";
+      const dog2 = (isDog2 && dogTier > 0) ? `🐶×${dogTier}` : "";
 
       const div = document.createElement("div");
       div.className = "fight";
@@ -172,8 +157,8 @@ document.addEventListener("DOMContentLoaded", () => {
           <input type="radio" name="${fight}-winner" value="${fighter1}">
           <span class="pick-row">
             <span class="choice-dot" aria-hidden="true"></span>
-            <span class="${name1Cls}">${fighter1}</span>
-            <span class="fighter-right">${chip1}</span>
+            <span class="fighter-name ${isDog1 ? 'is-underdog' : ''}">${fighter1}</span>
+            <span class="fighter-right">${dog1 ? `<span class="dog-tag">${dog1}</span>` : ""}</span>
           </span>
         </label>
 
@@ -181,8 +166,8 @@ document.addEventListener("DOMContentLoaded", () => {
           <input type="radio" name="${fight}-winner" value="${fighter2}">
           <span class="pick-row">
             <span class="choice-dot" aria-hidden="true"></span>
-            <span class="${name2Cls}">${fighter2}</span>
-            <span class="fighter-right">${chip2}</span>
+            <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">${fighter2}</span>
+            <span class="fighter-right">${dog2 ? `<span class="dog-tag">${dog2}</span>` : ""}</span>
           </span>
         </label>
 
@@ -218,13 +203,12 @@ document.addEventListener("DOMContentLoaded", () => {
       syncRound();
     });
 
-    fightList.style.display = "block";
-    if (submitBtn) submitBtn.style.display = "block";
+    fightList.style.display = "flex";
+    submitBtn.style.display = "block";
   }
 
   /* ---------- Submit picks ---------- */
   function submitPicks() {
-    if (!submitBtn) return;
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
 
@@ -260,9 +244,9 @@ document.addEventListener("DOMContentLoaded", () => {
         try { punchSound.play(); } catch (_) {}
         alert("Picks submitted!");
         localStorage.setItem("submitted", "true");
-        if (fightList) fightList.style.display = "none";
-        if (submitBtn) submitBtn.style.display = "none";
-        if (fotnBlock) fotnBlock.style.display = "none";
+        fightList.style.display = "none";
+        submitBtn.style.display = "none";
+        fotnBlock.style.display = "none";
         loadMyPicks();
         loadLeaderboard();
       } else {
@@ -277,12 +261,10 @@ document.addEventListener("DOMContentLoaded", () => {
       submitBtn.textContent = "Submit Picks";
     });
   }
-  if (submitBtn) {
-    submitBtn.addEventListener("click", submitPicks);
-    window.submitPicks = submitPicks;
-  }
+  submitBtn.addEventListener("click", submitPicks);
+  window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (shows Bonus Earned when dog hits) ---------- */
+  /* ---------- My Picks (shows earned underdog bonus in text) ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -292,7 +274,6 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(res => res.json())
     .then(data => {
       const myPicksDiv = document.getElementById("myPicks");
-      if (!myPicksDiv) return;
       myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
       if (!data.success || !data.picks.length) {
         myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
@@ -341,16 +322,9 @@ document.addEventListener("DOMContentLoaded", () => {
             (dogSide === "Fighter 1" && winner === meta.f1) ||
             (dogSide === "Fighter 2" && winner === meta.f2);
 
-          const potentialChip = (chosenIsUnderdog && dogTier > 0 && !hasResult)
-            ? `<span class="bonus-chip" title="+${dogTier} bonus if underdog wins"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
-            : "";
-
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
-          const earnedChip = (earnedBonus > 0)
-            ? `<span class="bonus-earned" title="Underdog bonus applied"><span class="icon">⚡</span>+${earnedBonus} Bonus Earned</span>`
-            : "";
 
-          // Scoring
+          // Scoring (same as backend)
           let score = 0;
           if (matchWinner) {
             score += 3;
@@ -371,13 +345,17 @@ document.addEventListener("DOMContentLoaded", () => {
             : `in Round <span class="${roundClass}">${round}</span>`;
           const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
+          const earnNote = (earnedBonus > 0 && hasResult)
+            ? `<span class="earn-note">🐶 underdog bonus +${earnedBonus}</span>`
+            : "";
+
           myPicksDiv.innerHTML += `
             <div class="scored-pick">
               <div class="fight-name">${fight}</div>
               <div class="user-pick">
                 <span class="${winnerClass}">${winner}</span>
-                ${earnedChip || potentialChip}
                 by <span class="${methodClass}">${method}</span> ${roundText}
+                ${earnNote}
               </div>
               ${pointsChip}
             </div>`;
@@ -393,7 +371,6 @@ document.addEventListener("DOMContentLoaded", () => {
       fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
     ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
-      if (!board) return;
       board.classList.add("board","weekly");
       board.innerHTML = "";
 
@@ -447,7 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
         champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
-      } else if (champBanner) {
+      } else {
         champBanner.style.display = "none";
       }
     });
@@ -558,8 +535,8 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ---------- Tabs ---------- */
   weeklyTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
-    if (leaderboardEl) leaderboardEl.style.display = "block";
-    if (allTimeList) allTimeList.style.display = "none";
+    leaderboardEl.style.display = "block";
+    allTimeList.style.display = "none";
     weeklyTabBtn.setAttribute("aria-pressed","true");
     allTimeTabBtn.setAttribute("aria-pressed","false");
   });
@@ -567,8 +544,8 @@ document.addEventListener("DOMContentLoaded", () => {
   allTimeTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
     loadAllTimeInteractive();
-    if (leaderboardEl) leaderboardEl.style.display = "none";
-    if (allTimeList) allTimeList.style.display = "block";
+    leaderboardEl.style.display = "none";
+    allTimeList.style.display = "block";
     weeklyTabBtn.setAttribute("aria-pressed","false");
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
