@@ -1,328 +1,573 @@
-/* === Orbitron Neon — polished, centered, compact === */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap');
+document.addEventListener("DOMContentLoaded", () => {
+  const welcome = document.getElementById("welcome");
+  const fightList = document.getElementById("fightList");
+  const submitBtn = document.getElementById("submitBtn");
+  const usernamePrompt = document.getElementById("usernamePrompt");
+  const usernameInput = document.getElementById("usernameInput");
+  const champBanner = document.getElementById("champBanner");
+  const leaderboardEl = document.getElementById("leaderboard");
+  const allTimeList = document.getElementById("allTimeBoard");
+  const weeklyTabBtn = document.getElementById("tabWeekly");
+  const allTimeTabBtn = document.getElementById("tabAllTime");
+  const punchSound = new Audio("punch.mp3");
 
-:root{
-  --ink:#0b0b0d;
-  --panel:#131417;
-  --tile:#191a1e;
+  const fotnBlock = document.getElementById("fotnBlock");
+  let fotnSelect = document.getElementById("fotnSelect"); // ← let so we can rebuild
 
-  --text:#e7e9ee;
-  --muted:#aeb2bb;
+  let username = localStorage.getItem("username");
 
-  --accent:#00f5ff;
-  --accent-rgb:0,245,255;
-  --neon-red:#ff003c;
-  --silver:#b0b3b8;
+  // odds / underdog cache
+  const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
+  const FOTN_POINTS = 3;
 
-  --ok:#2fffa0;
-  --warn:#ff4e4e;
-  --gold:#ffd966;
+  /* ---------- Helpers ---------- */
+  function normalizeAmericanOdds(raw) {
+    if (raw == null) return null;
+    let s = String(raw).trim();
+    if (s === "") return null;
+    const m = s.match(/[+-]?\d+/);
+    if (!m) return null;
+    const n = parseInt(m[0], 10);
+    return isFinite(n) ? n : null;
+  }
+  function underdogBonusFromOdds(oddsRaw) {
+    const n = normalizeAmericanOdds(oddsRaw);
+    if (n == null || n < 100) return 0; // only +100 and above
+    return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
+  }
 
-  --divider:rgba(255,255,255,0.08);
-  --shadow:0 12px 40px rgba(0,0,0,0.55);
-}
+  function doLogin() {
+    const input = usernameInput.value.trim();
+    if (!input) return alert("Please enter your name.");
+    username = input;
+    localStorage.setItem("username", username);
+    finalizeLogin(username);
+  }
+  window.lockUsername = doLogin;
+  const loginBtn = document.querySelector("#usernamePrompt button");
+  if (loginBtn) loginBtn.addEventListener("click", doLogin);
 
-*{ box-sizing:border-box; }
-html,body{ height:100%; }
-body{
-  margin:0;
-  background:
-    radial-gradient(1000px 520px at 50% -180px, rgba(var(--accent-rgb),0.12), transparent 60%),
-    var(--ink);
-  color:var(--text);
-  font-family:'Orbitron',sans-serif;
-  letter-spacing:.2px;
-}
+  if (username) {
+    usernameInput.value = username;
+    finalizeLogin(username);
+  }
 
-/* ===== Header / Shell ===== */
-.banner-container{ display:flex; justify-content:center; align-items:center; padding:10px 12px 0; }
-.logo-banner{ max-width:240px; width:82%; height:auto; filter:drop-shadow(0 12px 28px rgba(0,0,0,0.55)); }
+  function finalizeLogin(name) {
+    if (usernamePrompt) usernamePrompt.style.display = "none";
+    if (welcome) {
+      welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+      welcome.style.display = "block";
+    }
+    const scoring = document.getElementById("scoringRules");
+    if (scoring) scoring.style.display = "block";
 
-#app{
-  max-width:640px;
-  margin:14px auto 64px;
-  padding:18px;
-  background:var(--panel);
-  border-radius:16px;
-  border:2px solid rgba(255,255,255,0.08);
-  box-shadow:0 0 40px rgba(0, 245, 255, 0.08), var(--shadow);
-}
+    Promise.all([
+      fetch("/api/fights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
+      fetch("/api/picks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: name })
+      }).then(r => r.json())
+    ])
+    .then(([fightsData, pickData]) => {
+      const submitted = pickData.success && pickData.picks.length > 0;
+      if (submitted) {
+        localStorage.setItem("submitted", "true");
+        if (fightList) fightList.style.display = "none";
+        if (submitBtn) submitBtn.style.display = "none";
+        if (fotnBlock) fotnBlock.style.display = "none";
+      } else {
+        localStorage.removeItem("submitted");
+        renderFightList(fightsData);
+        renderFOTN(fightsData, pickData.fotnPick);
+        if (submitBtn) submitBtn.style.display = "block";
+      }
 
-/* Champ banner */
-.champ-banner{
-  display:none;
-  text-align:center;
-  padding:12px;
-  margin:6px auto 10px;
-  font-weight:900;
-  color:var(--accent);
-  border:1px solid var(--accent);
-  border-radius:14px;
-  background:linear-gradient(120deg, rgba(0,245,255,0.22), rgba(255,0,60,0.18), rgba(0,245,255,0.22));
-  background-size:300% 300%;
-  animation:bannerGlow 6s ease infinite;
-  text-shadow:0 0 12px var(--accent), 0 0 24px var(--neon-red);
-}
-@keyframes bannerGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
+      loadMyPicks();
+      loadLeaderboard();
+      preloadAllTime();
+    })
+    .catch(err => {
+      console.error(err);
+      loadFights();
+      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
+      loadMyPicks();
+      loadLeaderboard();
+      preloadAllTime();
+    });
+  }
 
-#welcome{ text-align:center; margin:8px 0 12px; font-weight:900; font-size:26px; text-shadow:0 0 12px rgba(var(--accent-rgb),0.35); }
+  function buildFightMeta(data) {
+    fightMeta.clear();
+    (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
+      fightMeta.set(fight, {
+        f1: fighter1,
+        f2: fighter2,
+        f1Odds: f1Odds || "",
+        f2Odds: f2Odds || "",
+        underdogSide: underdog || "",
+        underdogOdds: underdogOdds || ""
+      });
+    });
+  }
 
-/* ===== Scoring box — compact futuristic ===== */
-#scoringRules{ display:block; }
-.scoring-box{
-  margin:8px auto 12px;
-  padding:10px 12px;
-  border-radius:14px;
-  border:1px solid var(--divider);
-  background:linear-gradient(180deg, #101116, #0e0f12);
-  text-align:center;
-}
-.scoring-box .rule{ font-size:15px; margin:3px 0; font-weight:900; letter-spacing:.3px; }
-.scoring-box .pill{
-  display:inline-block; min-width:36px; padding:2px 10px; margin-right:6px;
-  border-radius:999px; font-weight:900; letter-spacing:.3px;
-  background:var(--tile); border:1px solid rgba(var(--accent-rgb),0.45);
-  box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.08) inset;
-}
-.scoring-box .pill.gold{
-  background:linear-gradient(180deg, rgba(255,217,102,0.18), rgba(255,217,102,0.08));
-  border-color:rgba(255,217,102,0.55);
-}
-.scoring-box .hint{ color:var(--muted); font-size:13px; margin-left:6px; }
+  /* ---------- Fights ---------- */
+  function loadFights() {
+    fetch("/api/fights")
+      .then(res => res.json())
+      .then(data => {
+        buildFightMeta(data);
+        renderFightList(data);
+        renderFOTN(data);
+      });
+  }
 
-/* ===== Fight list — centered, tight, symmetric ===== */
-#fightList{ display:grid; gap:8px; }
-.fight{
-  background:rgba(255,255,255,0.03);
-  padding:10px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,0.06);
-  box-shadow:inset 0 0 10px rgba(0,245,255,0.05);
-  text-align:center;
-}
-.fight h3{
-  color:var(--accent);
-  margin:0 0 6px 0;
-  font-weight:900;
-  letter-spacing:.6px;
-}
+  function renderFOTN(fightsData, existingPick = "") {
+    if (!fotnBlock) return;
 
-/* keep labels centered but content aligned in 2 cols */
-.fight label{
-  display:block;
-  width:100%;
-  max-width:540px;
-  margin:4px auto;
-  background:var(--tile);
-  border:1px solid var(--divider);
-  padding:8px 10px;
-  border-radius:12px;
-  cursor:pointer;
-  transition:border-color .15s ease, transform .06s ease, box-shadow .15s ease;
-}
-.fight label:hover{ border-color:rgba(var(--accent-rgb),0.45); transform:translateY(-1px); }
-.fight label:has(input:checked){
-  border-color:rgba(var(--accent-rgb),0.75);
-  box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.18) inset, 0 8px 18px rgba(0,0,0,0.35);
-}
+    // Rebuild the block to guarantee no legacy text like "Pick Fight of the Night (+3):"
+    fotnBlock.innerHTML = `
+      <div class="fotn-title">⭐ Fight of the Night</div>
+      <select id="fotnSelect"></select>
+      <div class="hint">+3 pts if correct</div>
+    `;
+    fotnSelect = document.getElementById("fotnSelect");
 
-/* symmetric internal layout: name | chip  */
-.fighter-line{
-  display:grid;
-  grid-template-columns: 1fr auto;
-  align-items:center;
-  gap:10px;
-  width:100%;
-}
-.fighter-name{ display:inline-flex; align-items:center; gap:6px; font-weight:900; justify-self:center; text-align:center; }
-.fighter-right{ min-width:120px; justify-self:end; }
+    const names = (fightsData || []).map(f => f.fight);
+    if (!names.length) { fotnBlock.style.display = "none"; return; }
+    fotnSelect.innerHTML = `<option value="">— Select your FOTN —</option>` +
+      names.map(n => `<option value="${n}">${n}</option>`).join("");
+    if (existingPick) fotnSelect.value = existingPick;
+    fotnBlock.style.display = "block";
+  }
 
-/* === Underdog indicators === */
-.fighter-name.is-underdog{
-  color:#f6f2b4;
-  text-shadow:0 0 10px rgba(255,217,102,0.25);
-}
-.bonus-chip{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:3px 10px;
-  border-radius:999px;
-  background:linear-gradient(180deg, rgba(0,245,255,0.16), rgba(255,217,102,0.14));
-  border:1px solid rgba(0,245,255,0.45);
-  color:#fff;
-  font-weight:900; letter-spacing:.3px;
-  box-shadow:0 0 0 2px rgba(0,245,255,0.10) inset, 0 4px 12px rgba(0,0,0,0.25);
-}
-.bonus-chip .icon{ font-size:14px; line-height:1; opacity:.95; }
+  function renderFightList(data) {
+    if (!fightList) return;
+    fightList.innerHTML = "";
+    (data || []).forEach(({ fight, fighter1, fighter2 }) => {
+      const meta = fightMeta.get(fight) || {};
+      const dogSide = meta.underdogSide;                           // "Fighter 1" | "Fighter 2" | ""
+      const dogTier = underdogBonusFromOdds(meta.underdogOdds);    // 0,1,2,...
 
-/* Earned underdog bonus chip (post-results) */
-.bonus-earned{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:3px 10px;
-  border-radius:999px;
-  background:linear-gradient(180deg, rgba(47,255,160,0.20), rgba(0,245,255,0.16));
-  border:1px solid rgba(47,255,160,0.6);
-  color:#eafff5;
-  font-weight:900; letter-spacing:.3px;
-  box-shadow:0 0 0 2px rgba(47,255,160,0.12) inset, 0 4px 12px rgba(0,0,0,0.25);
-}
-.bonus-earned .icon{ font-size:14px; line-height:1; opacity:.95; }
+      const isDog1 = dogSide === "Fighter 1";
+      const isDog2 = dogSide === "Fighter 2";
 
-/* Method + Round centered & tight */
-.pick-controls{
-  display:flex; justify-content:center; gap:8px; margin-top:6px;
-}
-.pick-controls select{
-  background:var(--tile);
-  border:1px solid var(--divider);
-  color:var(--text);
-  padding:8px 10px;
-  border-radius:12px;
-  outline:none;
-  min-width:130px;
-}
+      const name1Cls = `fighter-name${isDog1 ? " is-underdog" : ""}`;
+      const name2Cls = `fighter-name${isDog2 ? " is-underdog" : ""}`;
 
-/* Submit */
-#submitBtn{
-  width:100%; margin-top:10px; padding:11px 12px;
-  background:var(--accent); color:#001214;
-  border:1px solid rgba(var(--accent-rgb),0.55);
-  border-radius:14px; font-weight:900; letter-spacing:.6px;
-  cursor:pointer;
-  transition:transform .08s ease, box-shadow .2s ease, opacity .2s ease, background .2s ease;
-  box-shadow:0 0 14px rgba(0,245,255,0.35);
-}
-#submitBtn:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; box-shadow:0 10px 22px rgba(0,0,0,0.35); }
-#submitBtn:disabled{ opacity:.6; cursor:not-allowed; }
+      const chip1 = (isDog1 && dogTier > 0)
+        ? `<span class="bonus-chip" title="+${dogTier} bonus if ${fighter1} wins"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
+        : "";
+      const chip2 = (isDog2 && dogTier > 0)
+        ? `<span class="bonus-chip" title="+${dogTier} bonus if ${fighter2} wins"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
+        : "";
 
-/* ===== FOTN — rebuilt, centered, no legacy label ===== */
-#fotnBlock{
-  background:linear-gradient(180deg, var(--panel), #0f1013);
-  border:1px solid rgba(var(--accent-rgb),0.25);
-  border-radius:16px;
-  padding:10px;
-  box-shadow:var(--shadow);
-  margin-top:8px;
-  text-align:center;
-}
-.fotn-title{
-  color:var(--accent);
-  font-weight:900;
-  letter-spacing:.6px;
-  margin-bottom:8px;
-  text-shadow:0 0 10px rgba(var(--accent-rgb),0.25);
-}
-#fotnSelect{
-  width:100%;
-  max-width:540px;
-  background:var(--tile);
-  border:1px solid var(--divider);
-  color:var(--text);
-  padding:10px 12px;
-  border-radius:12px;
-  margin:0 auto;
-}
-#fotnBlock .hint{ color:var(--muted); font-size:13px; margin-top:6px; }
+      const div = document.createElement("div");
+      div.className = "fight";
+      div.innerHTML = `
+        <h3>${fight}</h3>
 
-/* ===== Tabs (Weekly / All-Time) ===== */
-.segmented{
-  display:flex; justify-content:center; align-items:center; gap:8px;
-  margin:10px 0 12px;
-}
-.segmented button,
-#tabWeekly, #tabAllTime{
-  appearance:none;
-  padding:8px 12px;
-  background:var(--tile);
-  border:1px solid var(--divider);
-  color:var(--text);
-  border-radius:999px;
-  font-weight:900;
-  cursor:pointer;
-  transition:box-shadow .15s ease, transform .06s ease, border-color .15s ease;
-}
-.segmented button:hover,
-#tabWeekly:hover, #tabAllTime:hover{
-  border-color:rgba(var(--accent-rgb),0.55);
-  transform:translateY(-1px);
-}
-.segmented button[aria-pressed="true"],
-#tabWeekly[aria-pressed="true"], #tabAllTime[aria-pressed="true"]{
-  border-color:rgba(var(--accent-rgb),0.65);
-  box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.18) inset;
-}
+        <label>
+          <input type="radio" name="${fight}-winner" value="${fighter1}">
+          <span class="fighter-line">
+            <span class="${name1Cls}">${fighter1}</span>
+            <span class="fighter-right">${chip1}</span>
+          </span>
+        </label>
 
-/* ===== Leaderboards (centered) ===== */
-.board{ list-style:none; margin:0; padding:0; }
-#leaderboard, #allTimeBoard{ max-width:640px; margin:0 auto; }
+        <label>
+          <input type="radio" name="${fight}-winner" value="${fighter2}">
+          <span class="fighter-line">
+            <span class="${name2Cls}">${fighter2}</span>
+            <span class="fighter-right">${chip2}</span>
+          </span>
+        </label>
 
-.board.weekly li{
-  display:grid; grid-template-columns:auto 1fr auto;
-  align-items:center; gap:10px;
-  background:rgba(255,255,255,0.04);
-  border:1px solid var(--divider);
-  border-radius:12px; padding:10px 12px; margin:8px 0;
-  border-left:4px solid var(--silver);
-  transition:border-color .25s ease, transform .2s ease, box-shadow .25s ease;
-}
-.board.weekly li:hover{ border-left-color:var(--accent); box-shadow:0 0 12px rgba(0,245,255,0.40); transform:translateX(4px); }
-.board.weekly li .crown{ filter:drop-shadow(0 0 6px rgba(255,215,0,0.35)); font-size:20px; animation:crownBounce 1.6s infinite ease-in-out; }
-@keyframes crownBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-.board.weekly li:first-child,
-.board.weekly li.tied-first,
-.board.weekly li.champ-glow{
-  border-left-color:var(--accent); background:rgba(0,245,255,0.10); box-shadow:0 0 14px rgba(0,245,255,0.50); animation:pulseChampion 1.8s infinite;
-}
-@keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
-.board.weekly li.current-user{ outline:2px dashed rgba(var(--accent-rgb),0.65); outline-offset:2px; }
-.board.weekly li.loser{ opacity:.88; }
+        <div class="pick-controls">
+          <select name="${fight}-method">
+            <option value="Decision">Decision</option>
+            <option value="KO/TKO">KO/TKO</option>
+            <option value="Submission">Submission</option>
+          </select>
+          <select name="${fight}-round">
+            <option value="1">Round 1</option>
+            <option value="2">Round 2</option>
+            <option value="3">Round 3</option>
+            <option value="4">Round 4</option>
+            <option value="5">Round 5</option>
+          </select>
+        </div>
+      `;
+      fightList.appendChild(div);
+    });
 
-/* All-time (5 cols desktop) */
-.board-header.at-five,
-.board.at-five li{
-  display:grid; grid-template-columns:70px 1fr 80px 60px 80px;
-  align-items:center; gap:10px;
-  background:rgba(255,255,255,0.04);
-  border:1px solid var(--divider);
-  border-radius:12px; padding:10px 12px; margin:8px 0;
-}
-.board-header.at-five{
-  background:linear-gradient(180deg, var(--panel), #101116);
-  color:var(--muted); font-weight:900; text-transform:uppercase; letter-spacing:.6px;
-}
-.board.at-five li{ border-left:4px solid var(--silver); transition:transform .2s ease, box-shadow .2s ease, border-left-color .2s ease; }
-.board.at-five li:hover{ transform:translateX(4px); border-left-color:var(--accent); box-shadow:0 0 12px rgba(0,245,255,0.28); }
-.board.at-five .rank{ width:64px; font-weight:900; }
-.board.at-five .user{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; }
-.board.at-five .num{ text-align:right; font-weight:900; color:var(--gold); }
-.board.at-five .mobile-meta{ display:none; color:var(--muted); }
+    // Decision disables round
+    document.querySelectorAll(".fight").forEach(fight => {
+      const methodSelect = fight.querySelector(`select[name$="-method"]`);
+      const roundSelect = fight.querySelector(`select[name$="-round"]`);
+      if (!methodSelect || !roundSelect) return;
+      function syncRound() {
+        const isDecision = methodSelect.value === "Decision";
+        roundSelect.disabled = isDecision;
+        roundSelect.value = isDecision ? "" : (roundSelect.value || "1");
+      }
+      methodSelect.addEventListener("change", syncRound);
+      syncRound();
+    });
 
-/* ===== Your Picks ===== */
-#myPicks{ margin-top:12px; display:grid; gap:8px; }
-#myPicks h3{ margin:0; text-align:center; color:var(--accent); font-weight:900; }
-#myPicks > p{ text-align:center; color:var(--muted); }
-.scored-pick{
-  display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center;
-  background:rgba(255,255,255,0.04);
-  padding:9px 10px; border-radius:10px;
-  border-left:4px solid var(--accent);
-}
-.scored-pick .fight-name{ flex:1 1 100%; font-weight:900; letter-spacing:.03em; color:var(--text); }
-.points{ display:inline-block; padding:4px 10px; border-radius:999px; margin-left:6px;
-  background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900; }
+    fightList.style.display = "block";
+    if (submitBtn) submitBtn.style.display = "block";
+  }
 
-.correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); font-weight:900; }
-.wrong{ color:var(--warn); text-shadow:0 0 6px var(--warn); font-weight:900; }
+  /* ---------- Submit picks ---------- */
+  function submitPicks() {
+    if (!submitBtn) return;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
 
-.fotn-strip .fight-name{ color:var(--muted); }
-.fotn-strip .hint{ color:var(--muted); font-size:14px; display:block; margin-top:2px; }
+    const picks = [];
+    const fights = document.querySelectorAll(".fight");
 
-/* ===== Responsive ===== */
-@media (max-width:600px){
-  .logo-banner{ max-width:210px; margin-bottom:8px; }
-  #app{ margin:8px auto 52px; padding:14px; }
-  .board-header.at-five{ display:none; }
-  .board.at-five li{ grid-template-columns:60px 1fr 90px; }
-  .board.at-five .rank{ width:auto; }
-  .board.at-five .num.crowns, .board.at-five .num.events{ display:none; }
-  .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; }
-}
+    for (const fight of fights) {
+      const fightName = fight.querySelector("h3").innerText;
+      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
+
+      if (!winner || !method) {
+        alert(`Please complete all picks. Missing data for "${fightName}".`);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
+        return;
+      }
+      picks.push({ fight: fightName, winner, method, round });
+    }
+
+    const fotnPick = fotnSelect?.value || "";
+
+    fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, picks, fotnPick })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        try { punchSound.play(); } catch (_) {}
+        alert("Picks submitted!");
+        localStorage.setItem("submitted", "true");
+        if (fightList) fightList.style.display = "none";
+        if (submitBtn) submitBtn.style.display = "none";
+        if (fotnBlock) fotnBlock.style.display = "none";
+        loadMyPicks();
+        loadLeaderboard();
+      } else {
+        alert(data.error || "Something went wrong.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
+      }
+    })
+    .catch(() => {
+      alert("Network error submitting picks.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Picks";
+    });
+  }
+  if (submitBtn) {
+    submitBtn.addEventListener("click", submitPicks);
+    window.submitPicks = submitPicks;
+  }
+
+  /* ---------- My Picks (shows Bonus Earned when dog hits) ---------- */
+  function loadMyPicks() {
+    fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username })
+    })
+    .then(res => res.json())
+    .then(data => {
+      const myPicksDiv = document.getElementById("myPicks");
+      if (!myPicksDiv) return;
+      myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+      if (!data.success || !data.picks.length) {
+        myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
+        return;
+      }
+
+      Promise.all([
+        fetch("/api/leaderboard", { method: "POST" }).then(res => res.json()),
+        fetch("/api/fights").then(r => r.json())
+      ]).then(([resultData, fightsData]) => {
+        buildFightMeta(fightsData);
+
+        const fightResults = resultData.fightResults || {};
+        const officialFOTN = resultData.officialFOTN || [];
+        const myFOTN = data.fotnPick || "";
+
+        // FOTN strip
+        if (myFOTN) {
+          const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
+          const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
+          myPicksDiv.innerHTML += `
+            <div class="scored-pick fotn-strip">
+              <div class="fight-name">FOTN Pick</div>
+              <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
+                ${myFOTN} ${badge}
+                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
+              </div>
+            </div>
+          `;
+        }
+
+        // Each fight pick row
+        data.picks.forEach(({ fight, winner, method, round }) => {
+          const actual = fightResults[fight] || {};
+          const hasResult = actual.winner && actual.method;
+
+          const matchWinner = hasResult && winner === actual.winner;
+          const matchMethod = hasResult && method === actual.method;
+          const matchRound = hasResult && round == actual.round;
+
+          // Underdog info
+          const meta = fightMeta.get(fight) || {};
+          const dogSide = meta.underdogSide;
+          const dogTier = underdogBonusFromOdds(meta.underdogOdds);
+          const chosenIsUnderdog =
+            (dogSide === "Fighter 1" && winner === meta.f1) ||
+            (dogSide === "Fighter 2" && winner === meta.f2);
+
+          const potentialChip = (chosenIsUnderdog && dogTier > 0 && !hasResult)
+            ? `<span class="bonus-chip" title="+${dogTier} bonus if underdog wins"><span class="icon">⚡</span>+${dogTier} Bonus</span>`
+            : "";
+
+          const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
+          const earnedChip = (earnedBonus > 0)
+            ? `<span class="bonus-earned" title="Underdog bonus applied"><span class="icon">⚡</span>+${earnedBonus} Bonus Earned</span>`
+            : "";
+
+          // Scoring
+          let score = 0;
+          if (matchWinner) {
+            score += 3;
+            if (matchMethod) {
+              score += 2;
+              if (method !== "Decision" && matchRound) score += 1;
+            }
+            if (hasResult && actual.underdog === "Y") score += dogTier;
+          }
+
+          const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+          const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
+          const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
+            ? (matchRound ? "correct" : "wrong")
+            : "";
+
+          const roundText = method === "Decision" ? "(Decision)"
+            : `in Round <span class="${roundClass}">${round}</span>`;
+          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
+
+          myPicksDiv.innerHTML += `
+            <div class="scored-pick">
+              <div class="fight-name">${fight}</div>
+              <div class="user-pick">
+                <span class="${winnerClass}">${winner}</span>
+                ${earnedChip || potentialChip}
+                by <span class="${methodClass}">${method}</span> ${roundText}
+              </div>
+              ${pointsChip}
+            </div>`;
+        });
+      });
+    });
+  }
+
+  /* ---------- Weekly Leaderboard ---------- */
+  function loadLeaderboard() {
+    Promise.all([
+      fetch("/api/fights").then(r => r.json()),
+      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
+    ]).then(([fightsData, leaderboardData]) => {
+      const board = leaderboardEl;
+      if (!board) return;
+      board.classList.add("board","weekly");
+      board.innerHTML = "";
+
+      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
+
+      let rank = 1;
+      let prevScore = null;
+      let actualRank = 1;
+
+      scores.forEach(([user, score], index) => {
+        if (score !== prevScore) actualRank = rank;
+
+        const li = document.createElement("li");
+        let displayName = user;
+        const classes = [];
+
+        if (leaderboardData.champs?.includes(user)) {
+          classes.push("champ-glow");
+          displayName = `<span class="crown">👑</span> ${displayName}`;
+        }
+        if (index === scores.length - 1) {
+          classes.push("loser");
+          displayName = `💩 ${displayName}`;
+        }
+        if (user === username) classes.push("current-user");
+
+        li.className = classes.join(" ");
+        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
+        board.appendChild(li);
+
+        prevScore = score;
+        rank++;
+      });
+
+      // glow ties for #1
+      const lis = board.querySelectorAll("li");
+      if (lis.length > 0) {
+        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
+        lis.forEach(li => {
+          const val = parseInt(li.lastElementChild.textContent, 10);
+          if (val === topScore) li.classList.add("tied-first");
+        });
+      }
+
+      // champ banner only when event concluded
+      const totalFights = (fightsData || []).length;
+      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
+        res => res.winner && res.method
+      ).length;
+
+      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
+        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
+        champBanner.style.display = "block";
+      } else if (champBanner) {
+        champBanner.style.display = "none";
+      }
+    });
+  }
+
+  /* ---------- All-Time Leaderboard ---------- */
+  let allTimeLoaded = false;
+  let allTimeData = [];
+
+  function fetchWithTimeout(url, ms = 6000) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
+  }
+
+  function sortAllTime(rows) {
+    const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
+    return cleaned
+      .map(r => ({
+        user: r.username,
+        crowns: Number(r.crowns) || 0,
+        events: Number(r.events_played) || 0,
+        rate: Number(r.crown_rate) || 0
+      }))
+      .sort((a,b) => {
+        if (b.rate !== a.rate) return b.rate - a.rate;
+        if (b.crowns !== a.crowns) return b.crowns - a.crowns;
+        if (b.events !== a.events) return b.events - a.events;
+        return (a.user || "").localeCompare(b.user || "");
+      });
+  }
+
+  function rowsEqual(a, b) {
+    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
+  }
+
+  function renderAllTimeHeader() {
+    const li = document.createElement("li");
+    li.className = "board-header at-five";
+    li.innerHTML = `
+      <span>Rank</span>
+      <span>Player</span>
+      <span>%</span>
+      <span>👑</span>
+      <span>Events</span>
+    `;
+    allTimeList.appendChild(li);
+  }
+
+  function drawAllTime(data) {
+    allTimeList.innerHTML = "";
+    if (!data.length) {
+      allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
+      return;
+    }
+
+    renderAllTimeHeader();
+
+    let rank = 0;
+    let prev = null;
+
+    data.forEach((row, idx) => {
+      rank = (idx === 0 || !rowsEqual(row, prev)) ? (idx + 1) : rank;
+      const isTop = rank === 1;
+
+      const li = document.createElement("li");
+      const classes = [];
+      if (row.user === username) classes.push("current-user");
+      if (isTop) classes.push("tied-first");
+      li.className = classes.join(" ") + " at-five";
+
+      const rankLabel = isTop ? "🥇" : `#${rank}`;
+      const pct = (row.rate * 100).toFixed(1) + "%";
+
+      li.innerHTML = `
+        <span class="rank">${rankLabel}</span>
+        <span class="user" title="${row.user}">${row.user}</span>
+        <span class="num rate">${pct}</span>
+        <span class="num crowns">${row.crowns}</span>
+        <span class="num events">${row.events}</span>
+        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events • ${pct}</span>
+      `;
+      allTimeList.appendChild(li);
+      prev = row;
+    });
+  }
+
+  function preloadAllTime() {
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; })
+      .catch(() => {});
+  }
+
+  function loadAllTimeInteractive() {
+    if (allTimeLoaded) { drawAllTime(allTimeData); return; }
+    const keepHeight = leaderboardEl?.offsetHeight || 260;
+    allTimeList.style.minHeight = `${keepHeight}px`;
+    allTimeList.innerHTML = "";
+
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
+      .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`; })
+      .finally(() => { allTimeList.style.minHeight = ""; });
+  }
+
+  /* ---------- Tabs ---------- */
+  weeklyTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (leaderboardEl) leaderboardEl.style.display = "block";
+    if (allTimeList) allTimeList.style.display = "none";
+    weeklyTabBtn.setAttribute("aria-pressed","true");
+    allTimeTabBtn.setAttribute("aria-pressed","false");
+  });
+
+  allTimeTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    loadAllTimeInteractive();
+    if (leaderboardEl) leaderboardEl.style.display = "none";
+    if (allTimeList) allTimeList.style.display = "block";
+    weeklyTabBtn.setAttribute("aria-pressed","false");
+    allTimeTabBtn.setAttribute("aria-pressed","true");
+  });
+});
