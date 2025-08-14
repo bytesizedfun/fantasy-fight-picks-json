@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const punchSound = new Audio("punch.mp3");
 
   const fotnBlock = document.getElementById("fotnBlock");
-  let fotnSelect = null; // created when rendering
+  let fotnSelect = null;
 
   let username = localStorage.getItem("username");
 
@@ -43,7 +43,6 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("username", username);
     finalizeLogin(username);
   }
-  window.lockUsername = doLogin;
   document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
 
   if (username) {
@@ -139,14 +138,15 @@ document.addEventListener("DOMContentLoaded", () => {
     fightList.innerHTML = "";
     (data || []).forEach(({ fight, fighter1, fighter2 }) => {
       const meta = fightMeta.get(fight) || {};
-      const dogSide = meta.underdogSide;                        // "Fighter 1" | "Fighter 2" | ""
-      const dogTier = underdogBonusFromOdds(meta.underdogOdds); // 0,1,2,...
+      const dogSide = meta.underdogSide;
+      const dogTier = underdogBonusFromOdds(meta.underdogOdds);
 
       const isDog1 = dogSide === "Fighter 1";
       const isDog2 = dogSide === "Fighter 2";
 
-      const dog1 = (isDog1 && dogTier > 0) ? `🐶×${dogTier}` : "";
-      const dog2 = (isDog2 && dogTier > 0) ? `🐶×${dogTier}` : "";
+      // Clean tag: “🐶 +N pts”
+      const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
+      const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
 
       const div = document.createElement("div");
       div.className = "fight";
@@ -264,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (shows earned underdog bonus text) ---------- */
+  /* ---------- My Picks (with earned underdog bonus) ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -346,7 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
           const earnNote = (earnedBonus > 0 && hasResult)
-            ? `<span class="earn-note">🐶 underdog bonus +${earnedBonus}</span>`
+            ? `<span class="earn-note">🐶 +${earnedBonus} bonus points</span>`
             : "";
 
           myPicksDiv.innerHTML += `
