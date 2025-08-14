@@ -35,16 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (n == null || n < 100) return 0; // only +100 and above
     return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
   }
-  // display label for picks: show “=X points” instead of raw odds
-  function pointsFromOddsLabel(oddsRaw) {
-    const n = normalizeAmericanOdds(oddsRaw);
-    if (n == null) return "";
-    const pts = Math.ceil(Math.abs(n) / 100); // -400 -> 4, +180 -> 2
-    return pts > 0 ? `=${pts} points` : "";
-  }
-  const $ = (sel) => document.querySelector(sel);
 
-  /* ---------- Login ---------- */
   function doLogin() {
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
@@ -92,9 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (submitBtn) submitBtn.style.display = "block";
       }
 
-      // force OG weekly styles
-      if (leaderboardEl) leaderboardEl.classList.add("board", "weekly");
-
+      if (leaderboardEl) leaderboardEl.classList.add("board","weekly"); // OG styles
       loadMyPicks();
       loadLeaderboard();
       preloadAllTime();
@@ -102,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .catch(err => {
       console.error(err);
       loadFights();
-      if (leaderboardEl) leaderboardEl.classList.add("board", "weekly");
+      if (leaderboardEl) leaderboardEl.classList.add("board","weekly");
       loadMyPicks();
       loadLeaderboard();
       preloadAllTime();
@@ -136,6 +125,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderFOTN(fightsData, existingPick = "") {
     if (!fotnBlock || !fotnSelect) return;
+    if (!fotnBlock.querySelector(".fotn-title")) {
+      const title = document.createElement("div");
+      title.className = "fotn-title";
+      title.textContent = "⭐ Fight of the Night";
+      fotnBlock.prepend(title);
+      const hint = document.createElement("div");
+      hint.className = "hint";
+      hint.textContent = "+3 pts if correct";
+      fotnBlock.appendChild(hint);
+    }
     const names = (fightsData || []).map(f => f.fight);
     if (!names.length) { fotnBlock.style.display = "none"; return; }
     fotnSelect.innerHTML = `<option value="">— Select your FOTN —</option>` +
@@ -147,19 +146,20 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderFightList(data) {
     if (!fightList) return;
     fightList.innerHTML = "";
-    (data || []).forEach(({ fight, fighter1, fighter2, underdog, f1Odds, f2Odds }) => {
-      const dog1 = underdog === "Fighter 1" ? "🐶" : "";
-      const dog2 = underdog === "Fighter 2" ? "🐶" : "";
+    (data || []).forEach(({ fight, fighter1, fighter2 }) => {
+      const meta = fightMeta.get(fight) || {};
+      const dogSide = meta.underdogSide;
+      const dogTier = underdogBonusFromOdds(meta.underdogOdds); // N dogs
 
-      // show “=X points” chips (no raw odds, no duplicate meta line)
-      const f1Chip = (() => {
-        const lbl = pointsFromOddsLabel(f1Odds);
-        return lbl ? `<span class="odds">${lbl}</span>` : "";
-      })();
-      const f2Chip = (() => {
-        const lbl = pointsFromOddsLabel(f2Odds);
-        return lbl ? `<span class="odds">${lbl}</span>` : "";
-      })();
+      const dog1 = dogSide === "Fighter 1" ? "🐶" : "";
+      const dog2 = dogSide === "Fighter 2" ? "🐶" : "";
+
+      const dogChip1 = dogSide === "Fighter 1" && dogTier > 0
+        ? `<span class="dog-tier" title="+${dogTier} bonus if wins">🐶<span class="mult">×${dogTier}</span></span>`
+        : "";
+      const dogChip2 = dogSide === "Fighter 2" && dogTier > 0
+        ? `<span class="dog-tier" title="+${dogTier} bonus if wins">🐶<span class="mult">×${dogTier}</span></span>`
+        : "";
 
       const div = document.createElement("div");
       div.className = "fight";
@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <input type="radio" name="${fight}-winner" value="${fighter1}">
           <span class="fighter-line">
             <span class="fighter-name">${fighter1} ${dog1}</span>
-            <span class="fighter-right">${f1Chip}</span>
+            <span class="fighter-right">${dogChip1}</span>
           </span>
         </label>
 
@@ -178,22 +178,24 @@ document.addEventListener("DOMContentLoaded", () => {
           <input type="radio" name="${fight}-winner" value="${fighter2}">
           <span class="fighter-line">
             <span class="fighter-name">${fighter2} ${dog2}</span>
-            <span class="fighter-right">${f2Chip}</span>
+            <span class="fighter-right">${dogChip2}</span>
           </span>
         </label>
 
-        <select name="${fight}-method">
-          <option value="Decision">Decision</option>
-          <option value="KO/TKO">KO/TKO</option>
-          <option value="Submission">Submission</option>
-        </select>
-        <select name="${fight}-round">
-          <option value="1">Round 1</option>
-          <option value="2">Round 2</option>
-          <option value="3">Round 3</option>
-          <option value="4">Round 4</option>
-          <option value="5">Round 5</option>
-        </select>
+        <div class="pick-controls">
+          <select name="${fight}-method">
+            <option value="Decision">Decision</option>
+            <option value="KO/TKO">KO/TKO</option>
+            <option value="Submission">Submission</option>
+          </select>
+          <select name="${fight}-round">
+            <option value="1">Round 1</option>
+            <option value="2">Round 2</option>
+            <option value="3">Round 3</option>
+            <option value="4">Round 4</option>
+            <option value="5">Round 5</option>
+          </select>
+        </div>
       `;
       fightList.appendChild(div);
     });
@@ -318,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
           `;
         }
 
-        // each fight pick
+        // Each fight pick row
         data.picks.forEach(({ fight, winner, method, round }) => {
           const actual = fightResults[fight] || {};
           const hasResult = actual.winner && actual.method;
@@ -327,10 +329,18 @@ document.addEventListener("DOMContentLoaded", () => {
           const matchMethod = hasResult && method === actual.method;
           const matchRound = hasResult && round == actual.round;
 
-          // underdog bonus if actual underdog won (server truth)
+          // underdog bonus shown as 🐶×N only on the underdog side
           const meta = fightMeta.get(fight) || {};
-          const underdogWon = hasResult && actual.underdog === "Y";
-          const uOdds = meta.underdogOdds || "";
+          const dogSide = meta.underdogSide;
+          const dogTier = underdogBonusFromOdds(meta.underdogOdds);
+
+          const chosenIsUnderdog =
+            (dogSide === "Fighter 1" && winner === meta.f1) ||
+            (dogSide === "Fighter 2" && winner === meta.f2);
+
+          const dogBadge = (chosenIsUnderdog && dogTier > 0)
+            ? `<span class="dog-tier" title="+${dogTier} bonus if wins">🐶<span class="mult">×${dogTier}</span></span>`
+            : "";
 
           let score = 0;
           if (matchWinner) {
@@ -339,15 +349,10 @@ document.addEventListener("DOMContentLoaded", () => {
               score += 2;
               if (method !== "Decision" && matchRound) score += 1;
             }
-            if (underdogWon) score += underdogBonusFromOdds(uOdds);
+            if (hasResult && actual.underdog === "Y") {
+              score += dogTier; // server truth aligns with tiers
+            }
           }
-
-          const dogIcon = (() => {
-            if (!meta.underdogSide) return "";
-            const isF1 = meta.underdogSide === "Fighter 1";
-            const name = isF1 ? meta.f1 : meta.f2;
-            return name === winner ? "🐶" : "";
-          })();
 
           const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
           const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
@@ -355,19 +360,15 @@ document.addEventListener("DOMContentLoaded", () => {
             ? (matchRound ? "correct" : "wrong")
             : "";
 
-          const roundText = method === "Decision" ? "(Decision)" : `in Round <span class="${roundClass}">${round}</span>`;
+          const roundText = method === "Decision" ? "(Decision)"
+            : `in Round <span class="${roundClass}">${round}</span>`;
           const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
-
-          // display the points-from-odds label next to the chosen fighter
-          const sideOdds = (winner === meta.f1) ? (meta.f1Odds || "") : (winner === meta.f2 ? (meta.f2Odds || "") : "");
-          const sidePtsLbl = pointsFromOddsLabel(sideOdds);
-          const pointsLbl = sidePtsLbl ? `<span class="odds">${sidePtsLbl}</span>` : "";
 
           myPicksDiv.innerHTML += `
             <div class="scored-pick">
               <div class="fight-name">${fight}</div>
               <div class="user-pick">
-                <span class="${winnerClass}">${winner}</span> ${dogIcon} ${pointsLbl} by
+                <span class="${winnerClass}">${winner}</span> ${dogBadge} by
                 <span class="${methodClass}">${method}</span> ${roundText}
               </div>
               ${pointsChip}
@@ -385,7 +386,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
       if (!board) return;
-      board.classList.add("board", "weekly"); // ensure OG look
+      board.classList.add("board","weekly");
       board.innerHTML = "";
 
       const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
@@ -402,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const classes = [];
 
         if (leaderboardData.champs?.includes(user)) {
-          classes.push("champ-glow"); // neon pulse
+          classes.push("champ-glow");
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
         if (index === scores.length - 1) {
@@ -419,7 +420,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // glow all tied #1s
+      // glow ties for #1
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -429,7 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // show champ banner only when event concluded
+      // champ banner only when event concluded
       const totalFights = (fightsData || []).length;
       const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
         res => res.winner && res.method
