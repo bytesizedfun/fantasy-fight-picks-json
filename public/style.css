@@ -35,7 +35,7 @@ body{
 /* ===== Header / Shell ===== */
 .banner-container{ display:flex; justify-content:center; align-items:center; padding:12px 12px 0; }
 .logo-banner{
-  max-width:260px; width:86%; height:auto;
+  max-width:300px; width:90%; height:auto;
   filter:drop-shadow(0 12px 28px rgba(0,0,0,0.55));
 }
 
@@ -114,10 +114,10 @@ body{
 }
 .scoring-box .hint{ color:var(--muted); font-size:13px; margin-left:6px; }
 
-/* ===== Fight list — centered, tight ===== */
+/* ===== Fight list — centered, tight, two-column options ===== */
 #fightList{
   display:flex; flex-direction:column; gap:8px;
-  align-items:center; /* hard center the cards */
+  align-items:center;
 }
 .fight{
   width:100%; max-width:600px;
@@ -135,18 +135,29 @@ body{
   letter-spacing:.6px;
 }
 
-/* Unified pick label (tight) */
+/* options row */
+.options{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:8px;
+}
+
+/* option label (button-like) */
 .fight label{
   position:relative;
-  display:block;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
   width:100%;
-  margin:4px auto;
+  margin:0;
   background:var(--tile);
   border:1px solid var(--divider);
-  padding:6px 8px;             /* tighter */
+  padding:8px 8px;
   border-radius:12px;
   cursor:pointer;
   transition:border-color .15s ease, transform .06s ease, box-shadow .15s ease;
+  min-height:44px;
 }
 .fight label:hover{ border-color:rgba(var(--accent-rgb),0.45); transform:translateY(-1px); }
 .fight label:has(input:checked){
@@ -159,53 +170,33 @@ body{
   position:absolute; inset:0; opacity:0; cursor:pointer;
 }
 
-/* 3-col grid: dot | centered name | fixed dog rail (same width both lines) */
+/* inside label: small rail on right for dog tag to keep symmetry */
 .pick-row{
   display:grid;
-  grid-template-columns: 22px 1fr 60px; /* small rail to avoid shifting */
+  grid-template-columns: 1fr 56px; /* fixed rail to prevent shifting */
   align-items:center;
-  gap:8px;
-}
-
-.choice-dot{
-  width:14px; height:14px; border-radius:50%;
-  border:2px solid rgba(var(--accent-rgb),0.5);
-  box-shadow:0 0 0 2px rgba(0,245,255,0.05) inset;
-  justify-self:start;
-}
-.fight label:has(input:checked) .choice-dot{
-  background:var(--accent);
-  border-color:rgba(var(--accent-rgb),1);
-  box-shadow:0 0 8px rgba(0,245,255,0.45);
+  width:100%;
 }
 
 .fighter-name{
-  display:inline-flex; align-items:center; gap:6px;
-  font-weight:900; justify-self:center; text-align:center;
+  display:flex; align-items:center; justify-content:center;
+  gap:6px; font-weight:900; text-align:center;
 }
 
-/* same width for both lines keeps center perfect */
 .fighter-right{
-  width:60px; text-align:right; justify-self:end;
-  font-weight:900; font-size:13px; opacity:.9;
+  width:56px; text-align:right; font-weight:900; font-size:13px; opacity:.9;
 }
 
-/* Underdog indicator — no bubble, just tiny tag */
-.is-underdog + .dog-tag,
-.fighter-right .dog-tag{
-  font-variant-numeric: tabular-nums;
-}
-
-/* color only, no size change */
+/* Underdog indicator — tiny tag, no size change */
 .fighter-name.is-underdog{
   color:#d8faff;
   text-shadow:0 0 8px rgba(0,245,255,0.18);
 }
-.dog-tag{ color:#cfefff; }
+.dog-tag{ color:#cfefff; font-variant-numeric: tabular-nums; }
 
-/* Method + Round centered & tight under picks */
+/* Method + Round centered under options */
 .pick-controls{
-  display:flex; justify-content:center; gap:8px; margin-top:6px;
+  display:flex; justify-content:center; gap:8px; margin-top:8px;
 }
 .pick-controls select{
   background:var(--tile);
@@ -257,7 +248,7 @@ body{
 /* ===== Tabs ===== */
 .segmented{
   display:flex; justify-content:center; align-items:center; gap:8px;
-  margin:10px 0 12px;
+  margin:12px 0 12px;
 }
 .segmented button{
   appearance:none;
@@ -312,8 +303,8 @@ body{
 .board-header.at-five{
   background:linear-gradient(180deg, var(--panel), #101116);
   color:var(--muted); font-weight:900; text-transform:uppercase; letter-spacing:.6px;
+  text-align:left;
 }
-.board.at-five li{ border-left:4px solid rgba(255,255,255,0.18); }
 .board.at-five .rank{ width:64px; font-weight:900; text-align:left; }
 .board.at-five .user{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; }
 .board.at-five .num{ text-align:right; font-weight:900; color:var(--text); opacity:.95; }
@@ -343,11 +334,8 @@ body{
 
 /* ===== Responsive ===== */
 @media (max-width:600px){
-  .logo-banner{ max-width:220px; margin-bottom:8px; }
+  .logo-banner{ max-width:240px; margin-bottom:8px; }
   #app{ margin:8px auto 48px; padding:14px; }
-
-  .pick-row{ grid-template-columns: 20px 1fr 48px; }
-  .fighter-right{ width:48px; }
 
   .board-header.at-five{ display:none; }
   .board.at-five li{ grid-template-columns:60px 1fr 90px; }
