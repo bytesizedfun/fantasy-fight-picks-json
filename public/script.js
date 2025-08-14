@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const punchSound = new Audio("punch.mp3");
 
   const fotnBlock = document.getElementById("fotnBlock");
-  let fotnSelect = null; // will be created
+  let fotnSelect = null; // created when rendering
 
   let username = localStorage.getItem("username");
 
@@ -153,23 +153,23 @@ document.addEventListener("DOMContentLoaded", () => {
       div.innerHTML = `
         <h3>${fight}</h3>
 
-        <label>
-          <input type="radio" name="${fight}-winner" value="${fighter1}">
-          <span class="pick-row">
-            <span class="choice-dot" aria-hidden="true"></span>
-            <span class="fighter-name ${isDog1 ? 'is-underdog' : ''}">${fighter1}</span>
-            <span class="fighter-right">${dog1 ? `<span class="dog-tag">${dog1}</span>` : ""}</span>
-          </span>
-        </label>
+        <div class="options">
+          <label>
+            <input type="radio" name="${fight}-winner" value="${fighter1}">
+            <span class="pick-row">
+              <span class="fighter-name ${isDog1 ? 'is-underdog' : ''}">${fighter1}</span>
+              <span class="fighter-right">${dog1 ? `<span class="dog-tag">${dog1}</span>` : ""}</span>
+            </span>
+          </label>
 
-        <label>
-          <input type="radio" name="${fight}-winner" value="${fighter2}">
-          <span class="pick-row">
-            <span class="choice-dot" aria-hidden="true"></span>
-            <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">${fighter2}</span>
-            <span class="fighter-right">${dog2 ? `<span class="dog-tag">${dog2}</span>` : ""}</span>
-          </span>
-        </label>
+          <label>
+            <input type="radio" name="${fight}-winner" value="${fighter2}">
+            <span class="pick-row">
+              <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">${fighter2}</span>
+              <span class="fighter-right">${dog2 ? `<span class="dog-tag">${dog2}</span>` : ""}</span>
+            </span>
+          </label>
+        </div>
 
         <div class="pick-controls">
           <select name="${fight}-method">
@@ -264,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (shows earned underdog bonus in text) ---------- */
+  /* ---------- My Picks (shows earned underdog bonus text) ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -324,7 +324,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
 
-          // Scoring (same as backend)
+          // Scoring (match backend)
           let score = 0;
           if (matchWinner) {
             score += 3;
