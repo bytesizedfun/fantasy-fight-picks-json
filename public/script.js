@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const punchSound = new Audio("punch.mp3");
 
   const fotnBlock = document.getElementById("fotnBlock");
+  const scoringRulesEl = document.getElementById("scoringRules");
   let fotnSelect = null;
 
   let username = localStorage.getItem("username");
@@ -36,6 +37,23 @@ document.addEventListener("DOMContentLoaded", () => {
     return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
   }
 
+  // Injects a single, clean scoring panel with your wording
+  function injectScoringRules() {
+    if (!scoringRulesEl) return;
+    scoringRulesEl.style.display = "block";
+    scoringRulesEl.classList.add("rules"); // style this one panel in CSS
+    scoringRulesEl.innerHTML = `
+      <div class="rules-title">Scoring</div>
+      <ul class="rules-list">
+        <li><strong>+3</strong> Correct Winner</li>
+        <li><strong>+2</strong> Correct Method <span class="muted">(must have correct winner)</span></li>
+        <li><strong>+1</strong> Correct Round <span class="muted">(must have correct winner and method; finishes only)</span></li>
+        <li><strong>Underdog Bonus</strong>: +100–199 = +1, +200–299 = +2, …</li>
+        <li><strong>+3</strong> Fight of the Night</li>
+      </ul>
+    `;
+  }
+
   function doLogin() {
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
@@ -54,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
     usernamePrompt.style.display = "none";
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
     welcome.style.display = "block";
-    document.getElementById("scoringRules").style.display = "block";
+    injectScoringRules();
 
     Promise.all([
       fetch("/api/fights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
@@ -119,10 +137,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderFOTN(fightsData, existingPick = "") {
+    // Slightly more “stand-out” wrapper + badge hook for CSS
     fotnBlock.innerHTML = `
-      <div class="fotn-title">⭐ Fight of the Night</div>
-      <select id="fotnSelect"></select>
-      <div class="hint">+3 pts if correct</div>
+      <div class="fotn-card">
+        <div class="fotn-header">
+          <span class="fotn-emoji">⭐</span>
+          <span class="fotn-title">Fight of the Night</span>
+          <span class="fotn-badge">+${FOTN_POINTS}</span>
+        </div>
+        <select id="fotnSelect" class="fotn-select"></select>
+        <div class="hint">Pick the fight most likely to win FOTN</div>
+      </div>
     `;
     fotnSelect = document.getElementById("fotnSelect");
 
@@ -295,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
           const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
           myPicksDiv.innerHTML += `
-            <div class="scored-pick fotn-strip">
+            <div class="scored-pick fotn-strip emphasized">
               <div class="fight-name">FOTN Pick</div>
               <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
                 ${myFOTN} ${badge}
@@ -464,12 +489,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderAllTimeHeader() {
     const li = document.createElement("li");
     li.className = "board-header at-five";
+    // Add matching per-column classes so CSS can center headers with data
     li.innerHTML = `
-      <span>Rank</span>
-      <span>Player</span>
-      <span>%</span>
-      <span>👑</span>
-      <span>Events</span>
+      <span class="rank">Rank</span>
+      <span class="user">Player</span>
+      <span class="rate">%</span>
+      <span class="crowns">👑</span>
+      <span class="events">Events</span>
     `;
     allTimeList.appendChild(li);
   }
