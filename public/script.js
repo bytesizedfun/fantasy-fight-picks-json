@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
   }
 
+  // Inject single, clean scoring panel (no nested box)
   function injectScoringRules() {
     if (!scoringRulesEl) return;
     scoringRulesEl.style.display = "block";
@@ -286,7 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (with earned underdog bonus) ---------- */
+  /* ---------- My Picks ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -346,7 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
 
-          // Scoring (UI only)
+          // UI score
           let score = 0;
           if (matchWinner) {
             score += 3;
@@ -388,8 +389,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Weekly Leaderboard ---------- */
 
+  // Fallback: show last logged champion(s) from the champions sheet
   function showLastChampBannerFallback() {
-    // Use last logged champion(s) from champions sheet
     fetch("/getChampionBanner")
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(b => {
@@ -401,7 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
           champBanner.style.display = "block";
         }
       })
-      .catch(() => { /* no-op */ });
+      .catch(() => {});
   }
 
   function loadLeaderboard() {
@@ -422,22 +423,21 @@ document.addEventListener("DOMContentLoaded", () => {
       const hasAny = entries.length > 0;
       const maxScore = hasAny ? Math.max(...entries.map(e => e[1])) : 0;
 
-      // If no results yet (or all scores are zero), hide the board to avoid single-user crown/poop.
+      // If results haven't started (or all scores 0), don't show bogus single-user board
       const resultsStarted = completedResults > 0 && maxScore > 0;
 
       if (!resultsStarted) {
-        // show a subtle hint row instead of bogus standings
         const hint = document.createElement("li");
         hint.className = "board-hint";
         hint.textContent = "Weekly standings will appear once results start.";
         board.appendChild(hint);
 
-        // show last week's champion banner from the champions sheet
+        // show last week's champ until event concludes
         showLastChampBannerFallback();
         return;
       }
 
-      // Build live weekly board (results have started)
+      // Build weekly board (results underway)
       const scores = entries.sort((a, b) => b[1] - a[1]);
 
       let rank = 1;
@@ -451,13 +451,13 @@ document.addEventListener("DOMContentLoaded", () => {
         let displayName = user;
         const classes = [];
 
-        // Only show crown when there is a true top score (> 0)
+        // Crown only for true top score (>0)
         if (leaderboardData.champs?.includes(user) && maxScore > 0 && score === maxScore) {
           classes.push("champ-glow");
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
 
-        // "loser" style only when at least 3 rows and real standings are underway
+        // Loser styling only when enough rows & real standings
         if (scores.length >= 3 && index === scores.length - 1 && maxScore > 0) {
           classes.push("loser");
         }
@@ -472,7 +472,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // Glow ties for #1 when scores exist
+      // Glow ties for #1 only if topScore > 0
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
