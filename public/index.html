@@ -1,76 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Fantasy Fight Picks</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fight Picks</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Logo -->
+  <!-- Banner / Logo -->
   <div class="banner-container">
-    <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
+    <img class="logo-banner" src="logo.png" alt="Logo" />
   </div>
 
-  <!-- Champion banner -->
-  <div id="champBanner" class="champ-banner" style="display:none;"></div>
-
   <div id="app">
+    <!-- Champion banner (auto shown when event concludes) -->
+    <div id="champBanner" class="champ-banner"></div>
+
     <!-- Username prompt -->
-    <div id="usernamePrompt" class="center card">
-      <label for="usernameInput">Enter your name:</label>
-      <input type="text" id="usernameInput"/>
-      <button type="button" onclick="lockUsername()">Lock In</button>
+    <div id="usernamePrompt" class="card center">
+      <div style="text-align:center; font-weight:900; margin-bottom:8px;">Enter Your Name</div>
+      <input id="usernameInput" type="text" placeholder="e.g. Alex" />
+      <button type="button">Let’s Go</button>
     </div>
 
-    <!-- Welcome -->
-    <h2 id="welcome" style="display:none;"></h2>
+    <!-- Welcome headline -->
+    <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring Rules -->
-    <div id="scoringRules" style="display:none;">
+    <!-- Scoring rules -->
+    <section id="scoringRules" style="display:none;">
       <div class="scoring-box">
-        <div class="rule"><span class="pill accent">+3</span> Correct Winner</div>
-        <div class="rule"><span class="pill accent">+2</span> Correct Method <span class="hint">(only if winner matched)</span></div>
-        <div class="rule"><span class="pill accent">+1</span> Correct Round <span class="hint">(finishes only)</span></div>
+        <div class="rule"><span class="pill">=3</span> Correct Winner</div>
+        <div class="rule"><span class="pill">=2</span> Correct Method (with winner)</div>
+        <div class="rule"><span class="pill">=1</span> Correct Round (only on finishes)</div>
         <div class="rule">
-          <span class="pill gold">+Underdog</span>
-          Tiered bonus when the actual underdog wins:
-          <span class="hint">+1 per +100 starting at +100 (e.g., +100–199 = +1, +200–299 = +2, … uncapped)</span>
+          <span class="pill gold">+N</span>
+          Underdog Bonus (tiered by dog line)
+          <span class="hint">+100–199 = +1, +200–299 = +2, etc.</span>
         </div>
-        <div class="rule"><span class="pill">+3</span> Fight of the Night (FOTN) bonus</div>
+        <div class="rule">
+          <span class="pill">+3</span>
+          Fight of the Night
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Fight List -->
-    <div id="fightList" style="display:none;"></div>
+    <!-- Fights list -->
+    <div id="fightList"></div>
 
-    <!-- FOTN -->
-    <div id="fotnBlock" style="display:none;" class="card">
-      <label for="fotnSelect">Pick Fight of the Night (+3):</label>
-      <select id="fotnSelect"></select>
-    </div>
+    <!-- Fight of the Night (rebuilt by JS; no legacy text) -->
+    <div id="fotnBlock" style="display:none;"></div>
 
-    <button id="submitBtn" type="button" onclick="submitPicks()" style="display:none;">Submit Picks</button>
+    <!-- Submit -->
+    <button id="submitBtn" style="display:none;">Submit Picks</button>
 
     <!-- My Picks -->
-    <div id="myPicks" style="margin-top:20px;"></div>
+    <section id="myPicks"></section>
 
-    <!-- Leaderboard -->
-    <h2 class="leader-title">LEADERBOARD</h2>
-
-    <!-- Tabs (Weekly / All-Time) -->
-    <div id="boardTabs" class="segmented">
-      <button id="tabWeekly" aria-pressed="true" type="button">Weekly</button>
-      <button id="tabAllTime" aria-pressed="false" type="button">All-Time</button>
+    <!-- Tabs -->
+    <div class="segmented">
+      <button id="tabWeekly" aria-pressed="true">Weekly</button>
+      <button id="tabAllTime" aria-pressed="false">All-Time</button>
     </div>
 
-    <!-- Weekly -->
+    <!-- Leaderboards -->
     <ul id="leaderboard" class="board weekly"></ul>
-
-    <!-- All-Time -->
-    <ul id="allTimeBoard" class="board" style="display:none;"></ul>
+    <ul id="allTimeBoard" class="board at-five" style="display:none;"></ul>
   </div>
 
   <script src="script.js"></script>
