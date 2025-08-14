@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const punchSound = new Audio("punch.mp3");
 
   const fotnBlock = document.getElementById("fotnBlock");
-  let fotnSelect = document.getElementById("fotnSelect"); // ← let so we can rebuild
+  let fotnSelect = document.getElementById("fotnSelect"); // rebuilt each time
 
   let username = localStorage.getItem("username");
 
@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderFOTN(fightsData, existingPick = "") {
     if (!fotnBlock) return;
 
-    // Rebuild the block to guarantee no legacy text like "Pick Fight of the Night (+3):"
+    // No legacy label; fully rebuilt
     fotnBlock.innerHTML = `
       <div class="fotn-title">⭐ Fight of the Night</div>
       <select id="fotnSelect"></select>
@@ -170,7 +170,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         <label>
           <input type="radio" name="${fight}-winner" value="${fighter1}">
-          <span class="fighter-line">
+          <span class="pick-row">
+            <span class="choice-dot" aria-hidden="true"></span>
             <span class="${name1Cls}">${fighter1}</span>
             <span class="fighter-right">${chip1}</span>
           </span>
@@ -178,7 +179,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         <label>
           <input type="radio" name="${fight}-winner" value="${fighter2}">
-          <span class="fighter-line">
+          <span class="pick-row">
+            <span class="choice-dot" aria-hidden="true"></span>
             <span class="${name2Cls}">${fighter2}</span>
             <span class="fighter-right">${chip2}</span>
           </span>
