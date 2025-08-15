@@ -12,7 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const punchSound = new Audio("punch.mp3");
 
   const fotnBlock = document.getElementById("fotnBlock");
-  const scoringRulesEl = document.getElementById("scoringRules");
   let fotnSelect = null;
 
   let username = localStorage.getItem("username");
@@ -22,12 +21,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const FOTN_POINTS = 3;
 
   /* ---------- Helpers ---------- */
-  function fetchWithTimeout(url, ms = 6000, init = {}) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(t));
-  }
-
   function normalizeAmericanOdds(raw) {
     if (raw == null) return null;
     let s = String(raw).trim();
@@ -41,23 +34,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const n = normalizeAmericanOdds(oddsRaw);
     if (n == null || n < 100) return 0; // only +100 and above
     return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
-  }
-
-  // Inject single, clean scoring panel (no nested box)
-  function injectScoringRules() {
-    if (!scoringRulesEl) return;
-    scoringRulesEl.style.display = "block";
-    scoringRulesEl.classList.add("rules");
-    scoringRulesEl.innerHTML = `
-      <div class="rules-title">SCORING</div>
-      <ul class="rules-list">
-        <li><strong>+3</strong> Correct Winner</li>
-        <li><strong>+2</strong> Correct Method <span class="muted">(must have correct winner)</span></li>
-        <li><strong>+1</strong> Correct Round <span class="muted">(must have correct winner and method; finishes only)</span></li>
-        <li><strong>Underdog Bonus</strong>: +100–199 = +1, +200–299 = +2, …</li>
-        <li><strong>+3</strong> Fight of the Night</li>
-      </ul>
-    `;
   }
 
   function doLogin() {
@@ -78,14 +54,14 @@ document.addEventListener("DOMContentLoaded", () => {
     usernamePrompt.style.display = "none";
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
     welcome.style.display = "block";
-    injectScoringRules();
+    document.getElementById("scoringRules").style.display = "block";
 
     Promise.all([
-      fetch("/api?action=getFights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
-      fetch("/api", {
+      fetch("/api/fights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
+      fetch("/api/picks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "getUserPicks", username: name })
+        body: JSON.stringify({ username: name })
       }).then(r => r.json())
     ])
     .then(([fightsData, pickData]) => {
@@ -133,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Fights ---------- */
   function loadFights() {
-    fetch("/api?action=getFights")
+    fetch("/api/fights")
       .then(res => res.json())
       .then(data => {
         buildFightMeta(data);
@@ -144,15 +120,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderFOTN(fightsData, existingPick = "") {
     fotnBlock.innerHTML = `
-      <div class="fotn-card">
-        <div class="fotn-header">
-          <span class="fotn-emoji">⭐</span>
-          <span class="fotn-title">Fight of the Night</span>
-          <span class="fotn-badge">+${FOTN_POINTS}</span>
-        </div>
-        <select id="fotnSelect" class="fotn-select"></select>
-        <div class="hint">Pick the fight most likely to win FOTN</div>
-      </div>
+      <div class="fotn-title">⭐ Fight of the Night</div>
+      <select id="fotnSelect"></select>
+      <div class="hint">+3 pts if correct</div>
     `;
     fotnSelect = document.getElementById("fotnSelect");
 
@@ -262,10 +232,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const fotnPick = fotnSelect?.value || "";
 
-    fetch("/api", {
+    fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "submitPicks", username, picks, fotnPick })
+      body: JSON.stringify({ username, picks, fotnPick })
     })
     .then(res => res.json())
     .then(data => {
@@ -295,10 +265,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- My Picks (with earned underdog bonus) ---------- */
   function loadMyPicks() {
-    fetch("/api", {
+    fetch("/api/picks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getUserPicks", username })
+      body: JSON.stringify({ username })
     })
     .then(res => res.json())
     .then(data => {
@@ -310,12 +280,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       Promise.all([
-        fetch("/api", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "getLeaderboard" })
-        }).then(res => res.json()),
-        fetch("/api?action=getFights").then(r => r.json())
+        fetch("/api/leaderboard", { method: "POST" }).then(res => res.json()),
+        fetch("/api/fights").then(r => r.json())
       ]).then(([resultData, fightsData]) => {
         buildFightMeta(fightsData);
 
@@ -328,7 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
           const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
           myPicksDiv.innerHTML += `
-            <div class="scored-pick fotn-strip emphasized">
+            <div class="scored-pick fotn-strip">
               <div class="fight-name">FOTN Pick</div>
               <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
                 ${myFOTN} ${badge}
@@ -357,7 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
 
-          // Scoring (UI only)
+          // Scoring (match backend)
           let score = 0;
           if (matchWinner) {
             score += 3;
@@ -399,44 +365,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Champion banner + Weekly Leaderboard ---------- */
 
-  // Always show last week's champion from Apps Script immediately
+  // Always show last week's champion from Apps Script immediately (matches code.gs doGet -> action=getChampionBanner)
   function showPreviousChampionBanner() {
-    fetchWithTimeout("/api?action=getChampionBanner", 6000)
+    fetch("/api?action=getChampionBanner")
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
         const msg = (data && typeof data.message === "string") ? data.message : "";
         if (msg && champBanner) {
-          champBanner.textContent = msg; // message already includes 🏆 from server
+          champBanner.textContent = msg; // message includes 🏆 per your code.gs
           champBanner.style.display = "block";
         }
       })
-      .catch(() => { /* silent */ });
+      .catch(() => { /* silent: keep page usable if banner unavailable */ });
   }
 
   function loadLeaderboard() {
-    // show last week's champ right away
+    // Show last week’s champ right away
     showPreviousChampionBanner();
 
     Promise.all([
-      fetch("/api?action=getFights").then(r => r.json()),
-      fetch("/api", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "getLeaderboard" })
-      }).then(r => r.json())
+      fetch("/api/fights").then(r => r.json()),
+      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
     ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
       board.classList.add("board","weekly");
       board.innerHTML = "";
 
+      const scoresEntries = Object.entries(leaderboardData.scores || {}).map(([u,s]) => [u, Number(s)||0]);
+      const hasAny = scoresEntries.length > 0;
+      const maxScore = hasAny ? Math.max(...scoresEntries.map(e => e[1])) : 0;
+
       const totalFights = (fightsData || []).length;
       const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
         res => res.winner && res.method
       ).length;
-
-      const entries = Object.entries(leaderboardData.scores || {}).map(([u,s]) => [u, Number(s)||0]);
-      const hasAny = entries.length > 0;
-      const maxScore = hasAny ? Math.max(...entries.map(e => e[1])) : 0;
 
       const eventFinished = totalFights > 0 && completedResults === totalFights;
       const resultsStarted = completedResults > 0 && maxScore > 0;
@@ -448,6 +410,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (!resultsStarted) {
+        // No live standings yet; avoid showing users/crowns/poop
         const hint = document.createElement("li");
         hint.className = "board-hint";
         hint.textContent = "Weekly standings will appear once results start.";
@@ -455,8 +418,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Build live weekly board (results underway)
-      const scores = entries.sort((a, b) => b[1] - a[1]);
+      // Build live weekly board
+      const scores = scoresEntries.sort((a, b) => b[1] - a[1]);
 
       let rank = 1;
       let prevScore = null;
@@ -469,13 +432,17 @@ document.addEventListener("DOMContentLoaded", () => {
         let displayName = user;
         const classes = [];
 
+        // Crown only when backend declares champs (code.gs sets champs only when all fights complete)
         if (leaderboardData.champs?.includes(user) && maxScore > 0 && score === maxScore) {
           classes.push("champ-glow");
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
+
+        // Only show “loser” marker in a real, underway board with at least 3 rows
         if (scores.length >= 3 && index === scores.length - 1 && maxScore > 0) {
           classes.push("loser");
         }
+
         if (user === username) classes.push("current-user");
 
         li.className = classes.join(" ");
@@ -486,7 +453,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // glow ties for #1 when scores exist
+      // glow ties for #1 (only if >0)
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -501,6 +468,12 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ---------- All-Time Leaderboard ---------- */
   let allTimeLoaded = false;
   let allTimeData = [];
+
+  function fetchWithTimeout(url, ms = 6000) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
+  }
 
   function sortAllTime(rows) {
     const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
@@ -527,11 +500,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const li = document.createElement("li");
     li.className = "board-header at-five";
     li.innerHTML = `
-      <span class="rank">Rank</span>
-      <span class="user">Player</span>
-      <span class="rate">%</span>
-      <span class="crowns">👑</span>
-      <span class="events">Events</span>
+      <span>Rank</span>
+      <span>Player</span>
+      <span>%</span>
+      <span>👑</span>
+      <span>Events</span>
     `;
     allTimeList.appendChild(li);
   }
@@ -575,7 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function preloadAllTime() {
-    fetchWithTimeout("/api?action=getHall", 6000)
+    fetchWithTimeout("/api/hall", 6000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; })
       .catch(() => {});
@@ -587,7 +560,7 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeList.style.minHeight = `${keepHeight}px`;
     allTimeList.innerHTML = "";
 
-    fetchWithTimeout("/api?action=getHall", 6000)
+    fetchWithTimeout("/api/hall", 6000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
       .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`; })
