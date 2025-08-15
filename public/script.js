@@ -1,686 +1,588 @@
-const SHEET_MAP = {
-  "fight_picks": "1Jt_fFIR3EwcVZDIdt-JXrZq4ssDTzj-xSHk7edHB5ek",
-  "fight_results": "1Jt_fFIR3EwcVZDIdt-JXrZq4ssDTzj-xSHk7edHB5ek"
-};
+document.addEventListener("DOMContentLoaded", () => {
+  const welcome = document.getElementById("welcome");
+  const fightList = document.getElementById("fightList");
+  const submitBtn = document.getElementById("submitBtn");
+  const usernamePrompt = document.getElementById("usernamePrompt");
+  const usernameInput = document.getElementById("usernameInput");
+  const champBanner = document.getElementById("champBanner");
+  const leaderboardEl = document.getElementById("leaderboard");
+  const allTimeList = document.getElementById("allTimeBoard");
+  const weeklyTabBtn = document.getElementById("tabWeekly");
+  const allTimeTabBtn = document.getElementById("tabAllTime");
+  const punchSound = new Audio("punch.mp3");
 
-function getSpreadsheetId(key) {
-  return SHEET_MAP[key];
-}
+  const fotnBlock = document.getElementById("fotnBlock");
+  let fotnSelect = null;
 
-/* =========================
-   ADMIN MENU
-   ========================= */
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('Admin')
-    .addItem('Log Champion', 'logChampion') // one button to do all the things
-    .addToUi();
-}
+  let username = localStorage.getItem("username");
 
-/* =========================
-   HTTP ROUTES
-   ========================= */
-function doGet(e) {
-  const action = e.parameter.action;
-  if (action === "getLeaderboard") return handleLeaderboard();
-  if (action === "getFights") return handleGetFights();
-  if (action === "getChampionBanner") return getChampionBanner();
-  if (action === "getHall") return getHall(); // reads users_totals
-  return ContentService.createTextOutput("Invalid GET action");
-}
+  // odds / underdog cache
+  const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
+  const FOTN_POINTS = 3;
 
-function doPost(e) {
-  const data = JSON.parse(e.postData?.contents || "{}");
-  const action = data.action;
-  if (action === "submitPicks") return handleSubmit(data);
-  if (action === "getUserPicks") return handleGetUserPicks(data);
-  if (action === "getLeaderboard") return handleLeaderboard();
-  return ContentService.createTextOutput("Invalid POST action");
-}
-
-/* =========================
-   HELPERS
-   ========================= */
-function tzNow_() {
-  return new Date();
-}
-function weekLabel_() {
-  const today = tzNow_();
-  const d = Utilities.formatDate(today, "America/Toronto", "yyyy-MM-dd");
-  return `Week ${d}`;
-}
-function getOrCreateSheet_(ss, name, headers) {
-  let sh = ss.getSheetByName(name);
-  if (!sh) sh = ss.insertSheet(name);
-  if (headers && headers.length) {
-    if (sh.getLastRow() === 0) sh.appendRow(headers);
-    const first = sh.getRange(1,1,1,headers.length).getValues()[0] || [];
-    if (first[0] !== headers[0]) sh.getRange(1,1,1,headers.length).setValues([headers]);
-  }
-  return sh;
-}
-function clearContentBelowHeader_(sh) {
-  const last = sh.getLastRow();
-  if (last > 1) sh.getRange(2, 1, last - 1, sh.getLastColumn()).clearContent();
-}
-function removeRowsWhereColEquals_(sh, colIndex1Based, value) {
-  const values = sh.getDataRange().getValues();
-  for (let i = values.length - 1; i >= 1; i--) {
-    if (values[i][colIndex1Based - 1] === value) sh.deleteRow(i + 1);
-  }
-}
-function round2_(x){ return Math.round(x*100)/100; }
-
-/* Find the last non-empty value in a column, scanning upward */
-function lastNonEmptyInColumn_(sh, colIndex1Based) {
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) return "";
-  const colVals = sh.getRange(2, colIndex1Based, lastRow - 1, 1).getValues(); // exclude header
-  for (let i = colVals.length - 1; i >= 0; i--) {
-    const v = String(colVals[i][0] || "").trim();
-    if (v) return v;
-  }
-  return "";
-}
-
-/* =========================
-   ODDS / UNDERDOG HELPERS
-   ========================= */
-function normalizeAmericanOdds_(raw){
-  if (raw == null) return null;
-  let s = String(raw).trim();
-  if (s === "") return null;
-  if (!/^[+-]?\d+/.test(s)) {
+  /* ---------- Helpers ---------- */
+  function normalizeAmericanOdds(raw) {
+    if (raw == null) return null;
+    let s = String(raw).trim();
+    if (s === "") return null;
     const m = s.match(/[+-]?\d+/);
-    s = m ? m[0] : s;
+    if (!m) return null;
+    const n = parseInt(m[0], 10);
+    return isFinite(n) ? n : null;
   }
-  const n = parseInt(s, 10);
-  return isFinite(n) ? n : null;
-}
-function formatAmericanOdds_(n){
-  if (n == null || !isFinite(n)) return "";
-  return n > 0 ? `+${n}` : `${n}`;
-}
-function impliedProbFromAmerican_(n){
-  if (n == null || !isFinite(n)) return null;
-  if (n < 0) { const a = Math.abs(n); return a / (a + 100); }
-  return 100 / (n + 100);
-}
-function chooseUnderdog_(f1OddsRaw, f2OddsRaw, manualRaw){
-  const manual = String(manualRaw || "").trim();
-  const f1 = normalizeAmericanOdds_(f1OddsRaw);
-  const f2 = normalizeAmericanOdds_(f2OddsRaw);
-
-  // Manual override wins if valid
-  if (manual === "Fighter 1" || manual === "Fighter 2") {
-    const odds = manual === "Fighter 1" ? f1 : f2;
-    return { underdog: manual, underdogOdds: formatAmericanOdds_(odds) };
+  function underdogBonusFromOdds(oddsRaw) {
+    const n = normalizeAmericanOdds(oddsRaw);
+    if (n == null || n < 100) return 0; // only +100 and above
+    return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
   }
 
-  // Need both odds to infer properly
-  if (f1 == null || f2 == null) return { underdog: "", underdogOdds: "" };
-
-  const p1 = impliedProbFromAmerican_(f1);
-  const p2 = impliedProbFromAmerican_(f2);
-  if (p1 == null || p2 == null) return { underdog: "", underdogOdds: "" };
-
-  if (p1 < p2) return { underdog: "Fighter 1", underdogOdds: formatAmericanOdds_(f1) };
-  if (p2 < p1) return { underdog: "Fighter 2", underdogOdds: formatAmericanOdds_(f2) };
-  // exact tie -> deterministically choose Fighter 2
-  return { underdog: "Fighter 2", underdogOdds: formatAmericanOdds_(f2) };
-}
-function underdogBonusFromOdds_(oddsRaw){
-  const n = normalizeAmericanOdds_(oddsRaw);
-  if (n == null || n < 100) return 0; // only +100 and above get a bonus
-  return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ... (uncapped)
-}
-
-/* =========================
-   FIGHT LIST (flexible reader)
-   Supports either:
-   NEW: Fight | Fighter 1 | Fighter 2 | F1 Odds | F2 Odds | [Manual Underdog]
-   OLD: Fight | Fighter 1 | Fighter 2 | Underdog | [Underdog Odds]
-   ========================= */
-function readFightListFlexible_() {
-  const sh = SpreadsheetApp.openById(getSpreadsheetId("fight_picks")).getSheetByName("fight_list");
-  if (!sh) return [];
-  const lastRow = sh.getLastRow();
-  const lastCol = sh.getLastColumn();
-  if (lastRow < 2) return [];
-  const all = sh.getRange(1,1,lastRow,lastCol).getValues();
-  const headers = all[0].map(h => String(h || "").trim().toLowerCase());
-  const idx = (name) => headers.indexOf(name.toLowerCase());
-
-  const iFight = idx("fight");
-  const iF1 = idx("fighter 1");
-  const iF2 = idx("fighter 2");
-  const iF1Odds = idx("f1 odds");
-  const iF2Odds = idx("f2 odds");
-  const iManual = idx("manual underdog");
-  const iUnderdog = idx("underdog");
-  const iUnderdogOdds = idx("underdog odds");
-
-  return all.slice(1).filter(r => r[iFight] && r[iF1] && r[iF2]).map(r => {
-    const fight = String(r[iFight]).trim();
-    const fighter1 = String(r[iF1]).trim();
-    const fighter2 = String(r[iF2]).trim();
-
-    let underdog = "", underdogOdds = "", f1OddsFmt = "", f2OddsFmt = "";
-
-    if (iF1Odds >= 0 && iF2Odds >= 0) {
-      const pick = chooseUnderdog_(r[iF1Odds], r[iF2Odds], iManual>=0 ? r[iManual] : "");
-      underdog = pick.underdog;
-      underdogOdds = pick.underdogOdds;
-      f1OddsFmt = formatAmericanOdds_(normalizeAmericanOdds_(r[iF1Odds]));
-      f2OddsFmt = formatAmericanOdds_(normalizeAmericanOdds_(r[iF2Odds]));
-    } else if (iUnderdog >= 0) {
-      const u = String(r[iUnderdog] || "").trim(); // "Fighter 1" / "Fighter 2"
-      underdog = (u === "Fighter 1" || u === "Fighter 2") ? u : "";
-      if (iUnderdogOdds >= 0) underdogOdds = formatAmericanOdds_(normalizeAmericanOdds_(r[iUnderdogOdds]));
-    }
-
-    return { fight, fighter1, fighter2, f1Odds: f1OddsFmt, f2Odds: f2OddsFmt, underdog, underdogOdds };
-  });
-}
-
-/* =========================
-   EVENT META / FOTN
-   ========================= */
-function readOfficialFOTN_() {
-  const ss = SpreadsheetApp.openById(getSpreadsheetId("fight_picks"));
-  const sh = ss.getSheetByName("event_meta");
-  if (!sh || sh.getLastRow() < 2) return [];
-  const seen = new Set();
-  sh.getDataRange().getValues().slice(1).forEach(r => {
-    const key = String(r[0] || "").trim().toUpperCase();
-    if (key === "FOTN") {
-      const val = String(r[1] || "").trim();
-      if (val) val.split(",").forEach(x => { const t = String(x).trim(); if (t) seen.add(t); });
-    }
-  });
-  return Array.from(seen);
-}
-
-/* =========================
-   CORE: SUBMIT / GET PICKS
-   ========================= */
-function handleSubmit(data) {
-  const { username, picks, fotnPick } = data;
-  if (!username || !Array.isArray(picks) || picks.length === 0) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Invalid data" }))
-      .setMimeType(ContentService.MimeType.JSON);
+  function doLogin() {
+    const input = usernameInput.value.trim();
+    if (!input) return alert("Please enter your name.");
+    username = input;
+    localStorage.setItem("username", username);
+    finalizeLogin(username);
   }
 
-  const ss = SpreadsheetApp.openById(getSpreadsheetId("fight_picks"));
-  const sh = getOrCreateSheet_(ss, "fight_picks", ["username","fight","winner","method","round","timestamp"]);
-  const existing = sh.getDataRange().getValues().slice(1).some(r => r[0] === username);
-  if (existing) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Picks already submitted" }))
-      .setMimeType(ContentService.MimeType.JSON);
+  // Attach robust listeners (click + Enter)
+  const loginBtn = document.querySelector("#usernamePrompt button");
+  if (loginBtn) loginBtn.addEventListener("click", doLogin);
+  if (usernameInput) {
+    usernameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") doLogin();
+    });
   }
 
-  const timestamp = new Date().toLocaleString("en-CA", { timeZone: "America/Toronto" });
-  picks.forEach(p => {
-    sh.appendRow([
-      username,
-      p.fight,
-      p.winner,
-      p.method,
-      p.method === "Decision" ? "N/A" : p.round,
-      timestamp
-    ]);
-  });
-
-  // FOTN pick (optional)
-  if (fotnPick && String(fotnPick).trim() !== "") {
-    const fotnSh = getOrCreateSheet_(ss, "fotn_picks", ["username","fotn","timestamp"]);
-    fotnSh.appendRow([username, String(fotnPick).trim(), timestamp]);
+  if (username) {
+    usernameInput.value = username;
+    finalizeLogin(username);
   }
 
-  return ContentService.createTextOutput(JSON.stringify({ success: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+  function finalizeLogin(name) {
+    // Hide prompt immediately so "stuck on sign-in" can't happen even if network stalls
+    usernamePrompt.style.display = "none";
+    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+    welcome.style.display = "block";
+    const scoring = document.getElementById("scoringRules");
+    if (scoring) scoring.style.display = "block";
 
-function handleGetUserPicks(data) {
-  const username = data.username || data.parameter?.username;
-  if (!username) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  const ss = SpreadsheetApp.openById(getSpreadsheetId("fight_picks"));
-  const sh = ss.getSheetByName("fight_picks");
-  const picks = [];
-  sh.getDataRange().getValues().slice(1).forEach(row => {
-    const [rowUser, fight, winner, method, round] = row;
-    if (rowUser === username) picks.push({ fight, winner, method, round });
-  });
-
-  // Return latest FOTN pick if present
-  let fotnPick = "";
-  const fotnSh = ss.getSheetByName("fotn_picks");
-  if (fotnSh) {
-    const rows = fotnSh.getDataRange().getValues().slice(1).filter(r => r[0] === username);
-    if (rows.length) fotnPick = String(rows[rows.length - 1][1] || "");
-  }
-
-  return ContentService.createTextOutput(JSON.stringify({ success: true, picks, fotnPick }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/* =========================
-   LIVE LEADERBOARD + FIGHTS
-   ========================= */
-function handleLeaderboard() {
-  const ss = SpreadsheetApp.openById(getSpreadsheetId("fight_picks"));
-  const picksSheet = ss.getSheetByName("fight_picks");
-  const resultsSheet = ss.getSheetByName("fight_results");
-
-  const pickRows = picksSheet.getDataRange().getValues().slice(1);
-  const resultRows = resultsSheet.getDataRange().getValues().slice(1);
-
-  // Flexible fight list -> build underdog maps
-  const fightRows = readFightListFlexible_();
-  const underdogMap = {};     // fight -> underdog fighter NAME
-  const underdogOddsMap = {}; // fight -> "+240"
-  fightRows.forEach(r => {
-    const key = String(r.fight).trim();
-    if (r.underdog === "Fighter 1") underdogMap[key] = r.fighter1;
-    if (r.underdog === "Fighter 2") underdogMap[key] = r.fighter2;
-    if (r.underdogOdds) underdogOddsMap[key] = r.underdogOdds;
-  });
-
-  // Results map
-  const resultsMap = {};
-  resultRows.forEach(row => {
-    const [fight, winner, method, round] = row;
-    if (!fight) return;
-    resultsMap[String(fight).trim()] = {
-      winner: winner != null ? String(winner).trim() : "",
-      method: method != null ? String(method).trim() : "",
-      round:  round  != null ? String(round).trim()  : ""
-    };
-  });
-
-  // FOTN official
-  const officialFOTN = readOfficialFOTN_();
-
-  const scores = {};
-  const fightResults = {};
-  const participants = new Set();
-  const fotnPoints = {};
-
-  // Score picks
-  pickRows.forEach(row => {
-    const [username, fight, pickedWinner, pickedMethod, pickedRound] = row;
-    if (!username) return;
-    participants.add(username);
-
-    const result = resultsMap[fight];
-    if (!result) return;
-
-    const { winner, method, round } = result;
-    const isCorrectWinner = pickedWinner === winner;
-    const isCorrectMethod = pickedMethod === method;
-    const isCorrectRound  = pickedRound == round;
-
-    let s = 0;
-    if (isCorrectWinner) {
-      // 3–2–1 base scoring
-      s += 3;
-      if (isCorrectMethod) {
-        s += 2;
-        if (method !== "Decision" && isCorrectRound) s += 1;
-      }
-      // Underdog bonus if actual underdog won
-      const uName = underdogMap[String(fight).trim()];
-      if (uName && winner === uName) {
-        const odds = underdogOddsMap[String(fight).trim()];
-        s += underdogBonusFromOdds_(odds);
-      }
-    }
-
-    // ensure zero scores appear
-    if (scores[username] == null) scores[username] = 0;
-    scores[username] += s;
-
-    // one-time fightResults entry
-    if (!fightResults[fight]) {
-      const underdogF = underdogMap[fight];
-      const actualUnderdogWon = !!underdogF && underdogF === winner;
-      fightResults[fight] = { winner, method, round, underdog: actualUnderdogWon ? "Y" : "N" };
-    }
-  });
-
-  // FOTN (+3)
-  const fotnSh = ss.getSheetByName("fotn_picks");
-  if (fotnSh) {
-    fotnSh.getDataRange().getValues().slice(1).forEach(r => {
-      const u = String(r[0] || "").trim();
-      const pick = String(r[1] || "").trim();
-      if (!u) return;
-      participants.add(u);
-      if (scores[u] == null) scores[u] = 0;
-      const hit = pick && officialFOTN.some(f => f === pick);
-      if (hit) {
-        scores[u] += 3;
-        fotnPoints[u] = 3;
+    Promise.all([
+      fetch("/api/fights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
+      fetch("/api/picks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: name })
+      }).then(r => r.json())
+    ])
+    .then(([fightsData, pickData]) => {
+      const submitted = pickData.success && pickData.picks.length > 0;
+      if (submitted) {
+        localStorage.setItem("submitted", "true");
+        fightList.style.display = "none";
+        submitBtn.style.display = "none";
+        fotnBlock.style.display = "none";
       } else {
-        if (fotnPoints[u] == null) fotnPoints[u] = 0;
+        localStorage.removeItem("submitted");
+        renderFightList(fightsData);
+        renderFOTN(fightsData, pickData.fotnPick);
+        submitBtn.style.display = "block";
+      }
+
+      leaderboardEl.classList.add("board","weekly");
+      loadMyPicks();
+      loadLeaderboard();
+      preloadAllTime();
+    })
+    .catch(err => {
+      console.error(err);
+      // Fallback: still load fights & boards so the app remains usable
+      loadFights();
+      leaderboardEl.classList.add("board","weekly");
+      loadMyPicks();
+      loadLeaderboard();
+      preloadAllTime();
+    });
+  }
+
+  function buildFightMeta(data) {
+    fightMeta.clear();
+    (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
+      fightMeta.set(fight, {
+        f1: fighter1,
+        f2: fighter2,
+        f1Odds: f1Odds || "",
+        f2Odds: f2Odds || "",
+        underdogSide: underdog || "",
+        underdogOdds: underdogOdds || ""
+      });
+    });
+  }
+
+  /* ---------- Fights ---------- */
+  function loadFights() {
+    fetch("/api/fights")
+      .then(res => res.json())
+      .then(data => {
+        buildFightMeta(data);
+        renderFightList(data);
+        renderFOTN(data);
+      });
+  }
+
+  function renderFOTN(fightsData, existingPick = "") {
+    fotnBlock.innerHTML = `
+      <div class="fotn-title">⭐ Fight of the Night</div>
+      <select id="fotnSelect"></select>
+      <div class="hint">+3 pts if correct</div>
+    `;
+    fotnSelect = document.getElementById("fotnSelect");
+
+    const names = (fightsData || []).map(f => f.fight);
+    if (!names.length) { fotnBlock.style.display = "none"; return; }
+    fotnSelect.innerHTML = `<option value="">— Select your FOTN —</option>` +
+      names.map(n => `<option value="${n}">${n}</option>`).join("");
+    if (existingPick) fotnSelect.value = existingPick;
+    fotnBlock.style.display = "flex";
+  }
+
+  function renderFightList(data) {
+    fightList.innerHTML = "";
+    (data || []).forEach(({ fight, fighter1, fighter2 }) => {
+      const meta = fightMeta.get(fight) || {};
+      const dogSide = meta.underdogSide;
+      const dogTier = underdogBonusFromOdds(meta.underdogOdds);
+
+      const isDog1 = dogSide === "Fighter 1";
+      const isDog2 = dogSide === "Fighter 2";
+
+      // Clean tag: “🐶 +N pts”
+      const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
+      const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
+
+      const div = document.createElement("div");
+      div.className = "fight";
+      div.innerHTML = `
+        <h3>${fight}</h3>
+
+        <div class="options">
+          <label>
+            <input type="radio" name="${fight}-winner" value="${fighter1}">
+            <span class="pick-row">
+              <span class="fighter-name ${isDog1 ? 'is-underdog' : ''}">${fighter1}</span>
+              <span class="fighter-right">${dog1 ? `<span class="dog-tag">${dog1}</span>` : ""}</span>
+            </span>
+          </label>
+
+          <label>
+            <input type="radio" name="${fight}-winner" value="${fighter2}">
+            <span class="pick-row">
+              <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">${fighter2}</span>
+              <span class="fighter-right">${dog2 ? `<span class="dog-tag">${dog2}</span>` : ""}</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="pick-controls">
+          <select name="${fight}-method">
+            <option value="Decision">Decision</option>
+            <option value="KO/TKO">KO/TKO</option>
+            <option value="Submission">Submission</option>
+          </select>
+          <select name="${fight}-round">
+            <option value="1">Round 1</option>
+            <option value="2">Round 2</option>
+            <option value="3">Round 3</option>
+            <option value="4">Round 4</option>
+            <option value="5">Round 5</option>
+          </select>
+        </div>
+      `;
+      fightList.appendChild(div);
+    });
+
+    // Decision disables round
+    document.querySelectorAll(".fight").forEach(fight => {
+      const methodSelect = fight.querySelector(`select[name$="-method"]`);
+      const roundSelect = fight.querySelector(`select[name$="-round"]`);
+      if (!methodSelect || !roundSelect) return;
+      function syncRound() {
+        const isDecision = methodSelect.value === "Decision";
+        roundSelect.disabled = isDecision;
+        roundSelect.value = isDecision ? "" : (roundSelect.value || "1");
+      }
+      methodSelect.addEventListener("change", syncRound);
+      syncRound();
+    });
+
+    fightList.style.display = "flex";
+    submitBtn.style.display = "block";
+  }
+
+  /* ---------- Submit picks ---------- */
+  function submitPicks() {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+
+    const picks = [];
+    const fights = document.querySelectorAll(".fight");
+
+    for (const fight of fights) {
+      const fightName = fight.querySelector("h3").innerText;
+      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
+
+      if (!winner || !method) {
+        alert(`Please complete all picks. Missing data for "${fightName}".`);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
+        return;
+      }
+      picks.push({ fight: fightName, winner, method, round });
+    }
+
+    const fotnPick = fotnSelect?.value || "";
+
+    fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, picks, fotnPick })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        try { punchSound.play(); } catch (_) {}
+        alert("Picks submitted!");
+        localStorage.setItem("submitted", "true");
+        fightList.style.display = "none";
+        submitBtn.style.display = "none";
+        fotnBlock.style.display = "none";
+        loadMyPicks();
+        loadLeaderboard();
+      } else {
+        alert(data.error || "Something went wrong.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
+      }
+    })
+    .catch(() => {
+      alert("Network error submitting picks.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Picks";
+    });
+  }
+  submitBtn.addEventListener("click", submitPicks);
+  window.submitPicks = submitPicks;
+
+  /* ---------- My Picks (with earned underdog bonus) ---------- */
+  function loadMyPicks() {
+    fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username })
+    })
+    .then(res => res.json())
+    .then(data => {
+      const myPicksDiv = document.getElementById("myPicks");
+      myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+      if (!data.success || !data.picks.length) {
+        myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
+        return;
+      }
+
+      Promise.all([
+        fetch("/api/leaderboard", { method: "POST" }).then(res => res.json()),
+        fetch("/api/fights").then(r => r.json())
+      ]).then(([resultData, fightsData]) => {
+        buildFightMeta(fightsData);
+
+        const fightResults = resultData.fightResults || {};
+        const officialFOTN = resultData.officialFOTN || [];
+        const myFOTN = data.fotnPick || "";
+
+        // FOTN strip
+        if (myFOTN) {
+          const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
+          const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
+          myPicksDiv.innerHTML += `
+            <div class="scored-pick fotn-strip">
+              <div class="fight-name">FOTN Pick</div>
+              <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
+                ${myFOTN} ${badge}
+                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
+              </div>
+            </div>
+          `;
+        }
+
+        // Each fight pick row
+        data.picks.forEach(({ fight, winner, method, round }) => {
+          const actual = fightResults[fight] || {};
+          const hasResult = actual.winner && actual.method;
+
+          const matchWinner = hasResult && winner === actual.winner;
+          const matchMethod = hasResult && method === actual.method;
+          const matchRound = hasResult && round == actual.round;
+
+          // Underdog info
+          const meta = fightMeta.get(fight) || {};
+          const dogSide = meta.underdogSide;
+          const dogTier = underdogBonusFromOdds(meta.underdogOdds);
+          const chosenIsUnderdog =
+            (dogSide === "Fighter 1" && winner === meta.f1) ||
+            (dogSide === "Fighter 2" && winner === meta.f2);
+
+          const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
+
+          // Scoring (match backend)
+          let score = 0;
+          if (matchWinner) {
+            score += 3;
+            if (matchMethod) {
+              score += 2;
+              if (method !== "Decision" && matchRound) score += 1;
+            }
+            if (hasResult && actual.underdog === "Y") score += dogTier;
+          }
+
+          const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+          const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
+          const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
+            ? (matchRound ? "correct" : "wrong")
+            : "";
+
+          const roundText = method === "Decision" ? "(Decision)"
+            : `in Round <span class="${roundClass}">${round}</span>`;
+          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
+
+          const earnNote = (earnedBonus > 0 && hasResult)
+            ? `<span class="earn-note">🐶 +${earnedBonus} bonus points</span>`
+            : "";
+
+          myPicksDiv.innerHTML += `
+            <div class="scored-pick">
+              <div class="fight-name">${fight}</div>
+              <div class="user-pick">
+                <span class="${winnerClass}">${winner}</span>
+                by <span class="${methodClass}">${method}</span> ${roundText}
+                ${earnNote}
+              </div>
+              ${pointsChip}
+            </div>`;
+        });
+      });
+    });
+  }
+
+  /* ---------- Champion banner + Weekly Leaderboard ---------- */
+
+  function showPreviousChampionBanner() {
+    fetch("/api?action=getChampionBanner")
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const msg = (data && typeof data.message === "string") ? data.message.trim() : "";
+        if (msg) {
+          champBanner.textContent = `🏆 ${msg.replace(/^🏆\s*/,"")}`;
+          champBanner.style.display = "block";
+        }
+      })
+      .catch(() => { /* silent */ });
+  }
+
+  function loadLeaderboard() {
+    // show last week’s champ right away
+    showPreviousChampionBanner();
+
+    Promise.all([
+      fetch("/api/fights").then(r => r.json()),
+      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
+    ]).then(([fightsData, leaderboardData]) => {
+      const board = leaderboardEl;
+      board.classList.add("board","weekly");
+      board.innerHTML = "";
+
+      // Do NOT show users until results have started
+      const resultsArr = Object.values(leaderboardData.fightResults || {});
+      const resultsStarted = resultsArr.some(r => r && r.winner && r.method);
+
+      if (!resultsStarted) {
+        const hint = document.createElement("li");
+        hint.className = "board-hint";
+        hint.textContent = "Weekly standings will appear once results start.";
+        board.appendChild(hint);
+        return;
+      }
+
+      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
+
+      let rank = 1;
+      let prevScore = null;
+      let actualRank = 1;
+
+      scores.forEach(([user, score], index) => {
+        if (score !== prevScore) actualRank = rank;
+
+        const li = document.createElement("li");
+        let displayName = user;
+        const classes = [];
+
+        if (leaderboardData.champs?.includes(user)) {
+          classes.push("champ-glow");
+          displayName = `<span class="crown">👑</span> ${displayName}`;
+        }
+        if (scores.length >= 3 && index === scores.length - 1) {
+          classes.push("loser");
+          displayName = `💩 ${displayName}`;
+        }
+        if (user === username) classes.push("current-user");
+
+        li.className = classes.join(" ");
+        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
+        board.appendChild(li);
+
+        prevScore = score;
+        rank++;
+      });
+
+      // glow ties for #1
+      const lis = board.querySelectorAll("li");
+      if (lis.length > 0) {
+        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
+        lis.forEach(li => {
+          const val = parseInt(li.lastElementChild.textContent, 10);
+          if (val === topScore) li.classList.add("tied-first");
+        });
+      }
+
+      // If event concluded, override with current champ(s) from backend
+      const totalFights = (fightsData || []).length;
+      const completedResults = resultsArr.filter(res => res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
+
+      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
+        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
+        champBanner.style.display = "block";
       }
     });
   }
 
-  const output = { scores, fightResults, officialFOTN, fotnPoints };
+  /* ---------- All-Time Leaderboard ---------- */
+  let allTimeLoaded = false;
+  let allTimeData = [];
 
-  // Determine progress
-  const allFights = Object.keys(resultsMap);
-  const completedResults = allFights.filter(fight => {
-    const r = resultsMap[fight];
-    if (!r) return false;
-    if (!r.winner || !r.method) return false;
-    if (r.method !== "Decision" && (!r.round || r.round === "N/A" || r.round === "")) return false;
-    return true;
-  }).length;
-  const resultsStarted = completedResults > 0 || resultRows.some(r => r[1] && r[2]); // any winner+method at all
-
-  // If no results yet, suppress exposing participants to the frontend
-  if (!resultsStarted) {
-    output.scores = {}; // <- ensures the UI does NOT list users before results begin
+  function fetchWithTimeout(url, ms = 6000) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
   }
 
-  // banner only when all results complete (current event champs)
-  const allResultsFilled = allFights.length > 0 && completedResults === allFights.length;
-  if (Object.keys(scores).length && allResultsFilled) {
-    const maxScore = Math.max(...Object.values(scores));
-    const champs = Object.entries(scores).filter(([_, s]) => s === maxScore).map(([u]) => u);
-    if (champs.length) {
-      output.champs = champs;
-      output.champMessage = `Champion${champs.length > 1 ? "s" : ""} of the Week: ${champs.join(", ")}`;
+  function sortAllTime(rows) {
+    const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
+    return cleaned
+      .map(r => ({
+        user: r.username,
+        crowns: Number(r.crowns) || 0,
+        events: Number(r.events_played) || 0,
+        rate: Number(r.crown_rate) || 0
+      }))
+      .sort((a,b) => {
+        if (b.rate !== a.rate) return b.rate - a.rate;
+        if (b.crowns !== a.crowns) return b.crowns - a.crowns;
+        if (b.events !== a.events) return b.events - a.events;
+        return (a.user || "").localeCompare(b.user || "");
+      });
+  }
+
+  function rowsEqual(a, b) {
+    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
+  }
+
+  function renderAllTimeHeader() {
+    const li = document.createElement("li");
+    li.className = "board-header at-five";
+    li.innerHTML = `
+      <span>Rank</span>
+      <span>Player</span>
+      <span>%</span>
+      <span>👑</span>
+      <span>Events</span>
+    `;
+    allTimeList.appendChild(li);
+  }
+
+  function drawAllTime(data) {
+    allTimeList.innerHTML = "";
+    if (!data.length) {
+      allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
+      return;
     }
+
+    renderAllTimeHeader();
+
+    let rank = 0;
+    let prev = null;
+
+    data.forEach((row, idx) => {
+      rank = (idx === 0 || !rowsEqual(row, prev)) ? (idx + 1) : rank;
+      const isTop = rank === 1;
+
+      const li = document.createElement("li");
+      const classes = [];
+      if (row.user === username) classes.push("current-user");
+      if (isTop) classes.push("tied-first");
+      li.className = classes.join(" ") + " at-five";
+
+      const rankLabel = isTop ? "🥇" : `#${rank}`;
+      const pct = (row.rate * 100).toFixed(1) + "%";
+
+      li.innerHTML = `
+        <span class="rank">${rankLabel}</span>
+        <span class="user" title="${row.user}">${row.user}</span>
+        <span class="num rate">${pct}</span>
+        <span class="num crowns">${row.crowns}</span>
+        <span class="num events">${row.events}</span>
+        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events • ${pct}</span>
+      `;
+      allTimeList.appendChild(li);
+      prev = row;
+    });
   }
 
-  return ContentService.createTextOutput(JSON.stringify(output))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function handleGetFights() {
-  const rows = readFightListFlexible_();
-  // keep old keys, add odds, so frontend can show 🐶 + odds chip
-  const fights = rows.map(r => ({
-    fight: r.fight,
-    fighter1: r.fighter1,
-    fighter2: r.fighter2,
-    underdog: r.underdog,           // "Fighter 1" / "Fighter 2" / ""
-    underdogOdds: r.underdogOdds,   // "+200" etc
-    f1Odds: r.f1Odds || "",
-    f2Odds: r.f2Odds || ""
-  }));
-  return ContentService.createTextOutput(JSON.stringify(fights))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/* =========================
-   CHAMPION BANNER (robust)
-   - Pull from "champions" sheet (last non-empty week)
-   - Fallback to "weekly_leaderboard" latest week (rank=1)
-   ========================= */
-function getChampionBanner() {
-  const ss = SpreadsheetApp.openById(getSpreadsheetId("fight_picks"));
-
-  // 1) Try champions sheet first
-  const champSh = ss.getSheetByName("champions");
-  if (champSh && champSh.getLastRow() >= 2) {
-    const week = lastNonEmptyInColumn_(champSh, 1); // column A = week
-    if (week) {
-      const rows = champSh.getDataRange().getValues().slice(1)
-        .filter(r => String(r[0] || "").trim() === week)
-        .map(r => String(r[1] || "").trim())
-        .filter(Boolean);
-      const uniq = Array.from(new Set(rows));
-      if (uniq.length) {
-        const msg = `Champion${uniq.length > 1 ? "s" : ""} of the Week: ${uniq.join(", ")}`;
-        return ContentService.createTextOutput(JSON.stringify({ message: msg }))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
-    }
+  function preloadAllTime() {
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; })
+      .catch(() => {});
   }
 
-  // 2) Fallback: latest week in weekly_leaderboard (rank = 1)
-  const wlSh = ss.getSheetByName("weekly_leaderboard");
-  if (wlSh && wlSh.getLastRow() >= 2) {
-    const weekWL = lastNonEmptyInColumn_(wlSh, 1); // column A = week
-    if (weekWL) {
-      const rows = wlSh.getDataRange().getValues().slice(1)
-        .filter(r => String(r[0] || "").trim() === weekWL && Number(r[2]) === 1) // rank=1
-        .map(r => String(r[1] || "").trim())
-        .filter(Boolean);
-      const uniq = Array.from(new Set(rows));
-      if (uniq.length) {
-        const msg = `Champion${uniq.length > 1 ? "s" : ""} of the Week: ${uniq.join(", ")}`;
-        return ContentService.createTextOutput(JSON.stringify({ message: msg }))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
-    }
+  function loadAllTimeInteractive() {
+    if (allTimeLoaded) { drawAllTime(allTimeData); return; }
+    const keepHeight = leaderboardEl?.offsetHeight || 260;
+    allTimeList.style.minHeight = `${keepHeight}px`;
+    allTimeList.innerHTML = "";
+
+    fetchWithTimeout("/api/hall", 6000)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
+      .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`; })
+      .finally(() => { allTimeList.style.minHeight = ""; });
   }
 
-  // 3) Nothing found
-  return ContentService.createTextOutput(JSON.stringify({ message: "" }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/* =========================
-   SCORE ENGINE (shared)
-   ========================= */
-function computeScores_() {
-  const ss = SpreadsheetApp.openById(getSpreadsheetId("fight_picks"));
-  const picks = ss.getSheetByName("fight_picks").getDataRange().getValues().slice(1);
-  const results = ss.getSheetByName("fight_results").getDataRange().getValues().slice(1);
-
-  // Flexible fight list -> underdog maps
-  const fightRows = readFightListFlexible_();
-  const underdogMap = {};
-  const underdogOddsMap = {};
-  fightRows.forEach(r => {
-    const key = String(r.fight).trim();
-    if (r.underdog === "Fighter 1") underdogMap[key] = r.fighter1;
-    if (r.underdog === "Fighter 2") underdogMap[key] = r.fighter2;
-    if (r.underdogOdds) underdogOddsMap[key] = r.underdogOdds;
+  /* ---------- Tabs ---------- */
+  weeklyTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    leaderboardEl.style.display = "block";
+    allTimeList.style.display = "none";
+    weeklyTabBtn.setAttribute("aria-pressed","true");
+    allTimeTabBtn.setAttribute("aria-pressed","false");
   });
 
-  const resultsMap = {};
-  results.forEach(row => {
-    const [fight, winner, method, round] = row;
-    if (!fight) return;
-    resultsMap[String(fight).trim()] = {
-      winner: winner != null ? String(winner).trim() : "",
-      method: method != null ? String(method).trim() : "",
-      round:  round  != null ? String(round).trim()  : ""
-    };
+  allTimeTabBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    loadAllTimeInteractive();
+    leaderboardEl.style.display = "none";
+    allTimeList.style.display = "block";
+    weeklyTabBtn.setAttribute("aria-pressed","false");
+    allTimeTabBtn.setAttribute("aria-pressed","true");
   });
-
-  const scores = {};
-  const participants = new Set();
-
-  picks.forEach(row => {
-    const [user, fight, pickedWinner, pickedMethod, pickedRound] = row;
-    if (!user) return;
-    participants.add(user);
-    if (scores[user] == null) scores[user] = 0;
-
-    const r = resultsMap[fight];
-    if (!r) return;
-
-    const { winner, method, round } = r;
-    const isCorrectWinner = pickedWinner === winner;
-    const isCorrectMethod = pickedMethod === method;
-    const isCorrectRound  = pickedRound == round;
-
-    let s = 0;
-    if (isCorrectWinner) {
-      // 3–2–1 base
-      s += 3;
-      if (isCorrectMethod) {
-        s += 2;
-        if (method !== "Decision" && isCorrectRound) s += 1;
-      }
-      // underdog bonus when the actual underdog wins
-      const uName = underdogMap[String(fight).trim()];
-      if (uName && winner === uName) {
-        const odds = underdogOddsMap[String(fight).trim()];
-        s += underdogBonusFromOdds_(odds);
-      }
-    }
-    scores[user] += s;
-  });
-
-  return { scores, participants: Array.from(participants) };
-}
-
-function rankFromScores_(allUsers, scoresObj) {
-  const rows = allUsers.map(u => ({ username: u, points: Number(scoresObj[u] || 0) }));
-  rows.sort((a,b) => b.points - a.points);
-  let rank = 0, prevPts = null, seen = 0;
-  rows.forEach(r => { seen++; if (r.points !== prevPts) { rank = seen; prevPts = r.points; } r.rank = rank; });
-  return rows;
-}
-
-/* =========================
-   LOG CHAMPION (idempotent + rebuild totals)
-   ========================= */
-function logChampion() {
-  const ss = SpreadsheetApp.openById(getSpreadsheetId("fight_picks"));
-  const picksSheet = ss.getSheetByName("fight_picks");
-  const resultsSheet = ss.getSheetByName("fight_results");
-
-  // Verify all fight results are complete (winner+method, round if not Decision)
-  const results = resultsSheet.getDataRange().getValues().slice(1);
-  const resultsMap = {};
-  results.forEach(([fight, winner, method, round]) => {
-    if (!fight) return;
-    resultsMap[String(fight).trim()] = {
-      winner: winner != null ? String(winner).trim() : "",
-      method: method != null ? String(method).trim() : "",
-      round:  round  != null ? String(round).trim()  : ""
-    };
-  });
-  const allFights = Object.keys(resultsMap);
-  if (!allFights.length) { SpreadsheetApp.getUi().alert("No fights in fight_results."); return; }
-  const allFilled = allFights.every(f => {
-    const r = resultsMap[f];
-    if (!r.winner || !r.method) return false;
-    if (r.method !== "Decision" && (!r.round || r.round === "N/A" || r.round === "")) return false;
-    return true;
-  });
-  if (!allFilled) { SpreadsheetApp.getUi().alert("Results not complete yet."); return; }
-
-  // Build scores & participants from current week (includes underdog tiers)
-  const { scores, participants } = computeScores_();
-  if (!participants.length) { SpreadsheetApp.getUi().alert("No participants in fight_picks."); return; }
-
-  const ranked = rankFromScores_(participants, scores);
-  const topPoints = Math.max(...ranked.map(r => r.points));
-  const champs = ranked.filter(r => r.points === topPoints);
-
-  // Label week and date
-  const week = weekLabel_();
-  const dateStr = Utilities.formatDate(tzNow_(), "America/Toronto", "yyyy-MM-dd");
-
-  // 1) Write champions (replace this week if already present)
-  const champSh = getOrCreateSheet_(ss, "champions", ["week","username","points","date","image","comment"]);
-  removeRowsWhereColEquals_(champSh, 1, week);
-  champs.forEach(r => champSh.appendRow([week, r.username, r.points, dateStr, "", ""]));
-
-  // 2) Snapshot weekly_leaderboard (replace this week)
-  const wl = getOrCreateSheet_(ss, "weekly_leaderboard", ["week","username","rank","points"]);
-  removeRowsWhereColEquals_(wl, 1, week);
-  const rows = ranked.map(r => [week, r.username, r.rank, r.points]);
-  if (rows.length) wl.getRange(wl.getLastRow() + 1, 1, rows.length, 4).setValues(rows);
-
-  // 3) Rebuild users_totals from scratch
-  rebuildUsersTotalsFromSheets_(ss);
-
-  SpreadsheetApp.getUi().alert(`Logged ${champs.length} champion${champs.length>1?"s":""} and rebuilt totals for ${week} ✅`);
-}
-
-/* =========================
-   REBUILD users_totals (crowns from champions, events from weekly_leaderboard)
-   Crown % column is a live formula = B / D
-   ========================= */
-function rebuildUsersTotalsFromSheets_(ss) {
-  const champ = getOrCreateSheet_(ss, "champions", ["week","username","points","date","image","comment"]);
-  const wl = getOrCreateSheet_(ss, "weekly_leaderboard", ["week","username","rank","points"]);
-  const totals = getOrCreateSheet_(ss, "users_totals", ["username","crowns","crown_rate","events_played"]);
-
-  // Build crowns map from champions
-  const crownsMap = {};
-  champ.getDataRange().getValues().slice(1).forEach(r => {
-    const u = (r[1] || "").toString().trim();
-    if (!u) return;
-    crownsMap[u] = (crownsMap[u] || 0) + 1;
-  });
-
-  // Build events map from weekly_leaderboard
-  const eventsMap = {};
-  wl.getDataRange().getValues().slice(1).forEach(r => {
-    const u = (r[1] || "").toString().trim();
-    if (!u) return;
-    eventsMap[u] = (eventsMap[u] || 0) + 1; // one row per week per user
-  });
-
-  const users = Array.from(new Set([...Object.keys(crownsMap), ...Object.keys(eventsMap)]));
-
-  // Build array and sort (by computed rate desc, then crowns desc, events desc, name asc)
-  const out = users.map(u => {
-    const c = Number(crownsMap[u] || 0);
-    const e = Number(eventsMap[u] || 0);
-    const rateVal = e ? c / e : 0;
-    return { u, c, e, rateVal };
-  }).sort((a, b) => {
-    if (b.rateVal !== a.rateVal) return b.rateVal - a.rateVal;
-    if (b.c !== a.c) return b.c - a.c;
-    if (b.e !== a.e) return b.e - a.e;
-    return a.u.localeCompare(b.u);
-  });
-
-  // Clear & write values (C left blank; we’ll set a column formula)
-  clearContentBelowHeader_(totals);
-  if (out.length) {
-    const values = out.map(r => [r.u, r.c, "", r.e]);
-    totals.getRange(2, 1, values.length, 4).setValues(values);
-  }
-
-  // Set crown_rate formula (array) once starting at C2
-  const formula = '=ARRAYFORMULA(IF(A2:A="",,IFERROR(B2:B / D2:D, 0)))';
-  totals.getRange(2, 3).setFormula(formula);
-  // Optional: format as percent for readability
-  if (out.length) totals.getRange(2, 3, out.length, 1).setNumberFormat("0.00%");
-}
-
-/* =========================
-   ALL-TIME API
-   ========================= */
-function getHall() {
-  const ss = SpreadsheetApp.openById(getSpreadsheetId("fight_picks"));
-  const totals = ss.getSheetByName("users_totals");
-  if (!totals || totals.getLastRow() < 2) {
-    return ContentService.createTextOutput(JSON.stringify([]))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-  const rows = totals.getDataRange().getValues().slice(1).map(r => ({
-    username: r[0],
-    crowns: Number(r[1]) || 0,
-    crown_rate: Number(r[2]) || 0,        // already computed by sheet formula
-    events_played: Number(r[3]) || 0
-  }));
-
-  rows.sort((a,b) => {
-    if (b.crown_rate !== a.crown_rate) return b.crown_rate - a.crown_rate;
-    if (b.crowns !== a.crowns) return b.crowns - a.crowns;
-    if (b.events_played !== a.events_played) return b.events_played - a.events_played;
-    return (a.username||"").localeCompare(b.username||"");
-  });
-
-  return ContentService.createTextOutput(JSON.stringify(rows))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+});
