@@ -287,19 +287,19 @@ document.addEventListener("DOMContentLoaded", () => {
         buildFightMeta(fightsData);
 
         const fightResults = resultData.fightResults || {};
-        const officialFOTN = resultData.officialFOTN || [];
+        theOfficialFOTN = resultData.officialFOTN || [];
         const myFOTN = data.fotnPick || "";
 
         // FOTN strip
         if (myFOTN) {
-          const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
+          const gotIt = theOfficialFOTN.length && theOfficialFOTN.includes(myFOTN);
           const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
           myPicksDiv.innerHTML += `
             <div class="scored-pick fotn-strip">
               <div class="fight-name">FOTN Pick</div>
-              <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
+              <div class="user-pick ${gotIt ? 'correct' : (theOfficialFOTN.length ? 'wrong' : '')}">
                 ${myFOTN} ${badge}
-                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
+                ${theOfficialFOTN.length ? `<div class="hint">Official: ${theOfficialFOTN.join(", ")}</div>` : ""}
               </div>
             </div>
           `;
@@ -366,18 +366,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Weekly Leaderboard ---------- */
 
-  // NEW: show last week's champion immediately (from Apps Script doGet -> action=getChampionBanner)
-  function showPreviousChampionBanner() {
-    fetch("/api?action=getChampionBanner")
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => {
-        const msg = (data && typeof data.message === "string") ? data.message : "";
+  // Robust banner fetch: try both proxy styles your stack may use
+  async function showPreviousChampionBanner() {
+    const urls = [
+      "/api/getChampionBanner",          // likely proxy path → code.gs action
+      "/api?action=getChampionBanner"    // direct query param → code.gs action
+    ];
+    for (const url of urls) {
+      try {
+        const r = await fetch(url, { headers: { "Accept": "application/json" } });
+        if (!r.ok) { console.warn("[banner] non-OK:", url, r.status); continue; }
+        let data;
+        const ct = r.headers.get("content-type") || "";
+        if (ct.includes("application/json")) data = await r.json();
+        else data = JSON.parse(await r.text());
+        const msg = (data && typeof data.message === "string" && data.message.trim()) ? data.message.trim() : "";
         if (msg) {
-          champBanner.textContent = msg; // server already includes 🏆
+          const text = msg.replace(/^🏆\s*/,""); // avoid double trophy if server included it
+          champBanner.textContent = `🏆 ${text}`;
           champBanner.style.display = "block";
+          return;
         }
-      })
-      .catch(() => { /* keep silent to avoid blocking page */ });
+      } catch (e) {
+        console.warn("[banner] fetch error:", url, e);
+      }
+    }
+    // If both failed or empty, leave hidden
   }
 
   function loadLeaderboard() {
@@ -433,7 +447,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // champ banner only when event concluded (current week) — this preserves your original behavior
+      // If event concluded, override with current champ(s) message from backend
       const totalFights = (fightsData || []).length;
       const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
         res => res.winner && res.method
@@ -442,7 +456,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
         champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
-      } // else: keep the previous-champ banner we already showed
+      }
     });
   }
 
