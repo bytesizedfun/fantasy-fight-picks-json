@@ -144,6 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const isDog1 = dogSide === "Fighter 1";
       const isDog2 = dogSide === "Fighter 2";
 
+      // Clean tag: “🐶 +N pts”
       const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
       const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
 
@@ -363,24 +364,24 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ---------- Champion banner + Weekly Leaderboard ---------- */
+  /* ---------- Weekly Leaderboard ---------- */
 
-  // Always show last week's champion from Apps Script immediately (matches code.gs doGet -> action=getChampionBanner)
+  // NEW: show last week's champion immediately (from Apps Script doGet -> action=getChampionBanner)
   function showPreviousChampionBanner() {
     fetch("/api?action=getChampionBanner")
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
         const msg = (data && typeof data.message === "string") ? data.message : "";
-        if (msg && champBanner) {
-          champBanner.textContent = msg; // message includes 🏆 per your code.gs
+        if (msg) {
+          champBanner.textContent = msg; // server already includes 🏆
           champBanner.style.display = "block";
         }
       })
-      .catch(() => { /* silent: keep page usable if banner unavailable */ });
+      .catch(() => { /* keep silent to avoid blocking page */ });
   }
 
   function loadLeaderboard() {
-    // Show last week’s champ right away
+    // show last week’s champ right away
     showPreviousChampionBanner();
 
     Promise.all([
@@ -391,35 +392,7 @@ document.addEventListener("DOMContentLoaded", () => {
       board.classList.add("board","weekly");
       board.innerHTML = "";
 
-      const scoresEntries = Object.entries(leaderboardData.scores || {}).map(([u,s]) => [u, Number(s)||0]);
-      const hasAny = scoresEntries.length > 0;
-      const maxScore = hasAny ? Math.max(...scoresEntries.map(e => e[1])) : 0;
-
-      const totalFights = (fightsData || []).length;
-      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
-        res => res.winner && res.method
-      ).length;
-
-      const eventFinished = totalFights > 0 && completedResults === totalFights;
-      const resultsStarted = completedResults > 0 && maxScore > 0;
-
-      // If event finished and server sent champMessage, override banner with current champ(s)
-      if (eventFinished && leaderboardData.champMessage) {
-        champBanner.textContent = `🏆 ${leaderboardData.champMessage.replace(/^🏆\s*/,'')}`;
-        champBanner.style.display = "block";
-      }
-
-      if (!resultsStarted) {
-        // No live standings yet; avoid showing users/crowns/poop
-        const hint = document.createElement("li");
-        hint.className = "board-hint";
-        hint.textContent = "Weekly standings will appear once results start.";
-        board.appendChild(hint);
-        return;
-      }
-
-      // Build live weekly board
-      const scores = scoresEntries.sort((a, b) => b[1] - a[1]);
+      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
 
       let rank = 1;
       let prevScore = null;
@@ -432,17 +405,14 @@ document.addEventListener("DOMContentLoaded", () => {
         let displayName = user;
         const classes = [];
 
-        // Crown only when backend declares champs (code.gs sets champs only when all fights complete)
-        if (leaderboardData.champs?.includes(user) && maxScore > 0 && score === maxScore) {
+        if (leaderboardData.champs?.includes(user)) {
           classes.push("champ-glow");
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
-
-        // Only show “loser” marker in a real, underway board with at least 3 rows
-        if (scores.length >= 3 && index === scores.length - 1 && maxScore > 0) {
+        if (index === scores.length - 1) {
           classes.push("loser");
+          displayName = `💩 ${displayName}`;
         }
-
         if (user === username) classes.push("current-user");
 
         li.className = classes.join(" ");
@@ -453,15 +423,26 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // glow ties for #1 (only if >0)
+      // glow ties for #1
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
         lis.forEach(li => {
           const val = parseInt(li.lastElementChild.textContent, 10);
-          if (val === topScore && topScore > 0) li.classList.add("tied-first");
+          if (val === topScore) li.classList.add("tied-first");
         });
       }
+
+      // champ banner only when event concluded (current week) — this preserves your original behavior
+      const totalFights = (fightsData || []).length;
+      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
+        res => res.winner && res.method
+      ).length;
+
+      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
+        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
+        champBanner.style.display = "block";
+      } // else: keep the previous-champ banner we already showed
     });
   }
 
