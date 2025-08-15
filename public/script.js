@@ -22,6 +22,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const FOTN_POINTS = 3;
 
   /* ---------- Helpers ---------- */
+  function fetchWithTimeout(url, ms = 6000, init = {}) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { ...init, signal: controller.signal })
+      .finally(() => clearTimeout(t));
+  }
+
   function normalizeAmericanOdds(raw) {
     if (raw == null) return null;
     let s = String(raw).trim();
@@ -287,7 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks ---------- */
+  /* ---------- My Picks (with earned underdog bonus) ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -347,7 +354,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
 
-          // UI score
+          // Scoring (UI only)
           let score = 0;
           if (matchWinner) {
             score += 3;
@@ -387,25 +394,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ---------- Weekly Leaderboard ---------- */
+  /* ---------- Champion banner + Weekly Leaderboard ---------- */
 
-  // Fallback: show last logged champion(s) from the champions sheet
-  function showLastChampBannerFallback() {
-    fetch("/getChampionBanner")
+  // Always show last week's champion from Apps Script immediately
+  function showPreviousChampionBanner() {
+    // NOTE: Apps Script expects ?action=getChampionBanner
+    fetchWithTimeout("/api?action=getChampionBanner", 6000)
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(b => {
-        const names = Array.isArray(b?.usernames) ? b.usernames.join(", ") :
-                      (b?.username || b?.champ || b?.message || "");
-        const msg = names ? `🏆 Champion of the Week: ${names}` : "";
-        if (msg) {
-          champBanner.textContent = msg;
+      .then(data => {
+        const msg = (data && typeof data.message === "string") ? data.message : "";
+        if (msg && champBanner) {
+          champBanner.textContent = msg; // message already includes 🏆 from server
           champBanner.style.display = "block";
         }
       })
-      .catch(() => {});
+      .catch(() => { /* silent */ });
   }
 
   function loadLeaderboard() {
+    // kick banner immediately with last week's champ
+    showPreviousChampionBanner();
+
     Promise.all([
       fetch("/api/fights").then(r => r.json()),
       fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
@@ -423,21 +432,25 @@ document.addEventListener("DOMContentLoaded", () => {
       const hasAny = entries.length > 0;
       const maxScore = hasAny ? Math.max(...entries.map(e => e[1])) : 0;
 
-      // If results haven't started (or all scores 0), don't show bogus single-user board
+      const eventFinished = totalFights > 0 && completedResults === totalFights;
       const resultsStarted = completedResults > 0 && maxScore > 0;
 
+      // If event finished and server sent champMessage, override banner with current champ(s)
+      if (eventFinished && leaderboardData.champMessage) {
+        champBanner.textContent = `🏆 ${leaderboardData.champMessage.replace(/^🏆\s*/,'')}`;
+        champBanner.style.display = "block";
+      }
+
       if (!resultsStarted) {
+        // subtle hint row instead of bogus standings
         const hint = document.createElement("li");
         hint.className = "board-hint";
         hint.textContent = "Weekly standings will appear once results start.";
         board.appendChild(hint);
-
-        // show last week's champ until event concludes
-        showLastChampBannerFallback();
         return;
       }
 
-      // Build weekly board (results underway)
+      // Build live weekly board (results underway)
       const scores = entries.sort((a, b) => b[1] - a[1]);
 
       let rank = 1;
@@ -457,7 +470,7 @@ document.addEventListener("DOMContentLoaded", () => {
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
 
-        // Loser styling only when enough rows & real standings
+        // "loser" style only when at least 3 rows and real standings are underway
         if (scores.length >= 3 && index === scores.length - 1 && maxScore > 0) {
           classes.push("loser");
         }
@@ -472,7 +485,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // Glow ties for #1 only if topScore > 0
+      // glow ties for #1 when scores exist
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -481,28 +494,12 @@ document.addEventListener("DOMContentLoaded", () => {
           if (val === topScore && topScore > 0) li.classList.add("tied-first");
         });
       }
-
-      // Champ banner logic:
-      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
-        // Event finished → show current champ(s)
-        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
-        champBanner.style.display = "block";
-      } else {
-        // Event not finished → show last week's champ(s)
-        showLastChampBannerFallback();
-      }
     });
   }
 
   /* ---------- All-Time Leaderboard ---------- */
   let allTimeLoaded = false;
   let allTimeData = [];
-
-  function fetchWithTimeout(url, ms = 6000) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
-  }
 
   function sortAllTime(rows) {
     const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
