@@ -25,8 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function fetchWithTimeout(url, ms = 6000, init = {}) {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { ...init, signal: controller.signal })
-      .finally(() => clearTimeout(t));
+    return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(t));
   }
 
   function normalizeAmericanOdds(raw) {
@@ -82,11 +81,11 @@ document.addEventListener("DOMContentLoaded", () => {
     injectScoringRules();
 
     Promise.all([
-      fetch("/api/fights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
-      fetch("/api/picks", {
+      fetch("/api?action=getFights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
+      fetch("/api", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: name })
+        body: JSON.stringify({ action: "getUserPicks", username: name })
       }).then(r => r.json())
     ])
     .then(([fightsData, pickData]) => {
@@ -134,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Fights ---------- */
   function loadFights() {
-    fetch("/api/fights")
+    fetch("/api?action=getFights")
       .then(res => res.json())
       .then(data => {
         buildFightMeta(data);
@@ -263,10 +262,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const fotnPick = fotnSelect?.value || "";
 
-    fetch("/api/submit", {
+    fetch("/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, picks, fotnPick })
+      body: JSON.stringify({ action: "submitPicks", username, picks, fotnPick })
     })
     .then(res => res.json())
     .then(data => {
@@ -296,10 +295,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- My Picks (with earned underdog bonus) ---------- */
   function loadMyPicks() {
-    fetch("/api/picks", {
+    fetch("/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ action: "getUserPicks", username })
     })
     .then(res => res.json())
     .then(data => {
@@ -311,8 +310,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       Promise.all([
-        fetch("/api/leaderboard", { method: "POST" }).then(res => res.json()),
-        fetch("/api/fights").then(r => r.json())
+        fetch("/api", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getLeaderboard" })
+        }).then(res => res.json()),
+        fetch("/api?action=getFights").then(r => r.json())
       ]).then(([resultData, fightsData]) => {
         buildFightMeta(fightsData);
 
@@ -398,7 +401,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Always show last week's champion from Apps Script immediately
   function showPreviousChampionBanner() {
-    // NOTE: Apps Script expects ?action=getChampionBanner
     fetchWithTimeout("/api?action=getChampionBanner", 6000)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
@@ -412,12 +414,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadLeaderboard() {
-    // kick banner immediately with last week's champ
+    // show last week's champ right away
     showPreviousChampionBanner();
 
     Promise.all([
-      fetch("/api/fights").then(r => r.json()),
-      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
+      fetch("/api?action=getFights").then(r => r.json()),
+      fetch("/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "getLeaderboard" })
+      }).then(r => r.json())
     ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
       board.classList.add("board","weekly");
@@ -442,7 +448,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (!resultsStarted) {
-        // subtle hint row instead of bogus standings
         const hint = document.createElement("li");
         hint.className = "board-hint";
         hint.textContent = "Weekly standings will appear once results start.";
@@ -464,17 +469,13 @@ document.addEventListener("DOMContentLoaded", () => {
         let displayName = user;
         const classes = [];
 
-        // Crown only for true top score (>0)
         if (leaderboardData.champs?.includes(user) && maxScore > 0 && score === maxScore) {
           classes.push("champ-glow");
           displayName = `<span class="crown">👑</span> ${displayName}`;
         }
-
-        // "loser" style only when at least 3 rows and real standings are underway
         if (scores.length >= 3 && index === scores.length - 1 && maxScore > 0) {
           classes.push("loser");
         }
-
         if (user === username) classes.push("current-user");
 
         li.className = classes.join(" ");
@@ -574,7 +575,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function preloadAllTime() {
-    fetchWithTimeout("/api/hall", 6000)
+    fetchWithTimeout("/api?action=getHall", 6000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; })
       .catch(() => {});
@@ -586,7 +587,7 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeList.style.minHeight = `${keepHeight}px`;
     allTimeList.innerHTML = "";
 
-    fetchWithTimeout("/api/hall", 6000)
+    fetchWithTimeout("/api?action=getHall", 6000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
       .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`; })
