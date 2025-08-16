@@ -30,7 +30,7 @@ body{
   color:var(--text);
   font-family:'Orbitron',sans-serif;
   letter-spacing:.2px;
-  text-align:center; /* hard-center default text */
+  text-align:center; /* center baseline */
 }
 
 /* ===== Header / Shell ===== */
@@ -92,8 +92,7 @@ body{
 }
 #usernamePrompt button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
 
-/* ===== Scoring ===== */
-#scoringRules{ display:block; }
+/* ===== Scoring base styles ===== */
 .rules{
   margin:8px auto 12px;
   padding:12px 14px;
@@ -110,6 +109,40 @@ body{
 .rules-list{ list-style:none; padding:0; margin:0; }
 .rules-list li{ font-size:15px; margin:4px 0; font-weight:900; letter-spacing:.3px; }
 .rules .muted{ color:var(--muted); font-weight:600; }
+
+/* --- Scoring: collapsible wrapper (closed by default) --- */
+.rules-collapsible{
+  max-width:640px;
+  margin:10px auto 12px;
+}
+.rules-collapsible summary{
+  list-style:none;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border:1px solid var(--divider);
+  border-radius:12px;
+  background:var(--tile);
+  font-weight:900;
+  cursor:pointer;
+  user-select:none;
+  transition:transform .06s ease, background .15s ease, border-color .15s ease;
+}
+.rules-collapsible summary::-webkit-details-marker{ display:none; }
+.rules-toggle-label{ letter-spacing:.08em; }
+.rules-caret{ transition:transform .2s ease, opacity .2s ease; opacity:.9; }
+.rules-collapsible[open] summary{
+  background:rgba(255,255,255,0.06);
+  border-color:rgba(255,255,255,0.20);
+}
+.rules-collapsible[open] .rules-caret{ transform:rotate(90deg); }
+.rules-collapsible .rules{ margin-top:8px; }
+/* small perf win */
+.rules-collapsible > .rules{
+  content-visibility:auto;
+  contain-intrinsic-size: 220px;
+}
 
 /* ===== Fight list ===== */
 #fightList{ display:flex; flex-direction:column; gap:6px; align-items:center; }
@@ -246,28 +279,27 @@ body{
   box-shadow:none !important;
 }
 
-/* ===== Leaderboards — FULLY CENTERED, NO LEFT BORDERS ===== */
+/* ===== Leaderboards — CENTERED, NO LEFT BORDERS ===== */
 .board{ list-style:none; margin:0; padding:0; }
 #leaderboard, #allTimeBoard{ max-width:640px; margin:0 auto; }
 
-/* Weekly list */
+/* Weekly */
 .board.weekly li{
   display:grid;
   grid-template-columns:auto 1fr auto;
   align-items:center;
-  justify-items:center;        /* center grid cells */
+  justify-items:center;
   gap:10px;
   background:rgba(255,255,255,0.04);
   border:1px solid var(--divider);
   border-radius:12px;
   padding:10px 12px;
   margin:8px 0;
-  /* removed border-left accent */
   transition:border-color .25s ease, transform .2s ease, box-shadow .25s ease;
 }
 .board.weekly li:hover{
   box-shadow:0 0 12px rgba(0,245,255,0.40);
-  transform:translateY(-2px);  /* no left shift */
+  transform:translateY(-2px);
 }
 .board.weekly li .crown{ filter:drop-shadow(0 0 6px rgba(0,245,255,0.35)); font-size:20px; }
 .board.weekly li:first-child,
@@ -279,24 +311,20 @@ body{
 }
 @keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
 
-/* remove ugly dashed outline */
-.board.weekly li.current-user{ outline:none !important; }
-.board.weekly li.loser{ opacity:.88; }
-
-/* Placeholder when results haven't started */
+/* Placeholder */
 .board-hint{
   display:flex; justify-content:center; align-items:center;
   padding:12px; border-radius:12px; border:1px dashed var(--divider);
   color:var(--muted); background:rgba(255,255,255,0.03); margin:8px 0;
 }
 
-/* All-Time — headers & data centered, no left borders */
+/* All-Time */
 .board-header.at-five,
 .board.at-five li{
   display:grid;
   grid-template-columns:70px 1fr 80px 60px 80px;
   align-items:center;
-  justify-items:center;       /* center all cells */
+  justify-items:center;
   gap:10px;
   background:rgba(255,255,255,0.04);
   border:1px solid var(--divider);
@@ -308,46 +336,54 @@ body{
   background:linear-gradient(180deg, var(--panel), #101116);
   color:var(--muted); font-weight:900; text-transform:uppercase; letter-spacing:.6px;
 }
-.board-header.at-five .rank,
-.board-header.at-five .user,
-.board-header.at-five .rate,
-.board-header.at-five .crowns,
-.board-header.at-five .events{ text-align:center; }
-
-.board.at-five li{
-  /* removed border-left accent */
-  transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-}
+.board.at-five li{ transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
 .board.at-five li:hover{ transform:translateY(-2px); box-shadow:0 0 12px rgba(0,245,255,0.28); }
 .board.at-five .rank{ width:64px; font-weight:900; }
 .board.at-five .user{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; }
 .board.at-five .num{ font-weight:900; color:var(--text); opacity:.95; }
 .board.at-five .mobile-meta{ display:none; color:var(--muted); }
 
-/* ===== Your Picks — CENTERED, NO LEFT BORDER STRIP ===== */
+/* ===== Your Picks — clear contrast & bonus note ===== */
 #myPicks{
   margin-top:12px;
   display:grid;
   gap:8px;
-  justify-items:center;   /* center each card */
+  justify-items:center;
 }
 #myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
-#myPicks > p{ color:var(--muted); }
 
+/* Card */
 .scored-pick{
   display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; justify-content:center;
   background:rgba(255,255,255,0.04);
   padding:9px 10px; border-radius:10px;
-  border:1px solid var(--divider); /* replaces old border-left */
+  border:1px solid var(--divider);
 }
+
+/* Fight name muted & uppercase to separate from the pick content */
 .scored-pick .fight-name{
-  flex:1 1 100%; font-weight:900; letter-spacing:.03em; color:var(--text);
+  flex:1 1 100%;
+  font-weight:900;
+  letter-spacing:.12em;
+  color:var(--muted);
+  text-transform:uppercase;
+  text-align:center;
 }
+
 .points{
   display:inline-block; padding:4px 10px; border-radius:999px; margin-left:0;
   background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900;
 }
-.earn-note{ font-size:12.5px; margin-left:0; opacity:.9; width:100%; }
+
+/* Bonus note (earned or potential) */
+.earn-note{
+  font-size:12.5px;
+  margin-left:0;
+  opacity:.95;
+  width:100%;
+  text-align:center;
+  color:var(--muted);
+}
 
 /* Result colors */
 .correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); font-weight:900; }
