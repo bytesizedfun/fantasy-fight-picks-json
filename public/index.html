@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fantasy Fight Picks</title>
 
-  <!-- Performance: load Orbitron from the head (faster than @import) -->
+  <!-- Performance: load Orbitron from the head -->
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap" rel="stylesheet">
@@ -16,21 +16,21 @@
 
   <link rel="stylesheet" href="style.css" />
   <script>
-    // If your GAS is on a different URL, set it here, e.g.:
+    // Adjust if your GAS is on a different URL:
     // window.API_BASE = "https://script.google.com/macros/s/AKfycb.../exec";
     window.API_BASE = window.API_BASE || "/api";
   </script>
 </head>
 <body>
-  <!-- Banner / Logo -->
+  <!-- Logo -->
   <div class="banner-container">
     <img class="logo-banner" src="logo_fighter.png" alt="Logo" decoding="async" />
   </div>
 
-  <div id="app">
-    <!-- Champion banner -->
-    <div id="champBanner" class="champ-banner"></div>
+  <!-- Champion banner (moved OUTSIDE app, under logo) -->
+  <div id="champBanner" class="champ-banner"></div>
 
+  <div id="app">
     <!-- Username prompt -->
     <div id="usernamePrompt" class="card center">
       <div class="prompt-title">Enter Your Name</div>
@@ -41,10 +41,10 @@
     <!-- Welcome -->
     <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring (collapsible; closed by default). JS injects rules into #scoringRules -->
+    <!-- Scoring (collapsible only; content is injected by JS) -->
     <details id="scoringPanel" class="rules-collapsible">
       <summary>
-        <span class="rules-toggle-label">🧠 Simple scoring</span>
+        <span class="rules-toggle-label">🧠 Scoring</span>
         <span class="rules-caret" aria-hidden="true">▸</span>
       </summary>
       <section id="scoringRules" class="rules"></section>
