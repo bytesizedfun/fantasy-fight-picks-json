@@ -40,21 +40,12 @@ body{
   filter:drop-shadow(0 12px 28px rgba(0,0,0,0.55));
 }
 
-#app{
-  max-width:640px;
-  margin:12px auto 48px;
-  padding:18px;
-  background:var(--panel);
-  border-radius:16px;
-  border:2px solid rgba(255,255,255,0.08);
-  box-shadow:0 0 40px rgba(0, 245, 255, 0.08), var(--shadow);
-}
-
-/* Champ banner */
+/* Champion banner (outside the app, wider on desktop) */
 .champ-banner{
   display:none;
+  width:min(92%, 820px);
+  margin:8px auto 8px;
   padding:12px;
-  margin:6px auto 10px;
   font-weight:900;
   color:var(--accent);
   border:1px solid var(--accent);
@@ -65,6 +56,16 @@ body{
   text-shadow:0 0 12px var(--accent), 0 0 24px var(--neon-red);
 }
 @keyframes bannerGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+#app{
+  max-width:640px;
+  margin:12px auto 48px;
+  padding:18px;
+  background:var(--panel);
+  border-radius:16px;
+  border:2px solid rgba(255,255,255,0.08);
+  box-shadow:0 0 40px rgba(0, 245, 255, 0.08), var(--shadow);
+}
 
 #welcome{ margin:8px 0 12px; font-weight:900; font-size:26px; text-shadow:0 0 12px rgba(var(--accent-rgb),0.35); }
 
@@ -91,7 +92,7 @@ body{
 }
 #usernamePrompt button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
 
-/* ===== Scoring (muted, collapsible) ===== */
+/* ===== Scoring (collapsible only, muted) ===== */
 .rules{
   margin:8px auto 12px;
   padding:12px 14px;
@@ -99,7 +100,6 @@ body{
   border:1px solid var(--divider);
   background:linear-gradient(180deg, #101116, #0e0f12);
 }
-.rules-title{ font-weight:900; font-size:18px; letter-spacing:.12em; color:var(--accent); text-shadow:0 0 10px rgba(var(--accent-rgb),0.35); margin-bottom:6px; }
 .rules-list{ list-style:none; padding:0; margin:0; }
 .rules-list li{ font-size:15px; margin:4px 0; font-weight:900; letter-spacing:.3px; }
 .rules .muted{ color:var(--muted); font-weight:600; }
@@ -117,8 +117,7 @@ body{
 .rules-collapsible summary:hover{ border-color:rgba(255,255,255,0.20); color:var(--text); background:rgba(255,255,255,0.03); }
 .rules-collapsible[open] summary{ background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.20); }
 .rules-collapsible[open] .rules-caret{ transform:rotate(90deg); }
-.rules-collapsible .rules{ margin-top:8px; }
-.rules-collapsible > .rules{ content-visibility:auto; contain-intrinsic-size:220px; }
+.rules-collapsible .rules{ margin-top:8px; content-visibility:auto; contain-intrinsic-size:220px; }
 
 /* ===== Fight list ===== */
 #fightList{ display:flex; flex-direction:column; gap:6px; align-items:center; }
@@ -152,13 +151,22 @@ body{
 /* hide radio */
 .fight label input[type="radio"]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
 
-/* inside label */
-.pick-row{ display:grid; grid-template-columns: 1fr 72px; align-items:center; width:100%; }
-.fighter-name{ display:flex; align-items:center; justify-content:center; gap:6px; font-weight:900; }
+/* inside label — no empty right column anymore */
+.pick-row{
+  display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+}
+.fighter-name{ display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:900; }
 .fighter-name.is-underdog{ color:var(--text); text-shadow:0 0 6px rgba(0,245,255,0.18); }
-.fighter-right{ width:72px; text-align:right; font-weight:900; font-size:12.5px; opacity:.95; }
-.dog-tag{ color:#e7faff; font-variant-numeric:tabular-nums; }
-.bonus-chip{ display:none !important; }
+
+/* Neon underdog chip (cool tag) */
+.dog-tag{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 8px; border-radius:999px;
+  border:1px solid rgba(var(--accent-rgb),0.65);
+  background:linear-gradient(180deg, rgba(0,245,255,0.12), rgba(0,245,255,0.06));
+  box-shadow:0 0 12px rgba(0,245,255,0.18) inset, 0 2px 12px rgba(0,0,0,0.25);
+  color:#e7faff; font-weight:900; font-variant-numeric:tabular-nums;
+}
 
 /* Method + Round */
 .pick-controls{ display:flex; justify-content:center; gap:6px; margin-top:6px; }
@@ -183,7 +191,7 @@ body{
 }
 .fotn-card{ width:100%; max-width:600px; background:rgba(255,255,255,0.04); border:1px solid var(--divider); border-radius:14px; padding:10px 12px; }
 .fotn-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
-.fotn-emoji{ text-shadow:0 0 8px rgba(var(--accent-rgb),0.35); }
+.fotn-emoji{ text-shadow:0 0 8px rgba(0,245,255,0.35); }
 .fotn-title{ font-weight:900; letter-spacing:.4px; }
 .fotn-badge{ font-weight:900; padding:2px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.06); }
 .fotn-select{ width:100%; background:var(--tile); border:1px solid var(--divider); color:var(--text); padding:10px 12px; border-radius:12px; }
@@ -215,11 +223,12 @@ body{
 }
 @keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
 
-/* Placeholder */
+/* Placeholder (centered) */
 .board-hint{
   display:flex; justify-content:center; align-items:center;
   padding:12px; border-radius:12px; border:1px dashed var(--divider);
   color:var(--muted); background:rgba(255,255,255,0.03); margin:8px 0;
+  text-align:center; width:100%;
 }
 
 /* All-Time */
@@ -235,19 +244,17 @@ body{
 .board.at-five .num{ font-weight:900; color:var(--text); opacity:.95; }
 .board.at-five .mobile-meta{ display:none; color:var(--muted); }
 
-/* ===== Your Picks — clear contrast & dog chip ===== */
+/* ===== Your Picks — contrasty neon chips & tighter spacing ===== */
 #myPicks{ margin-top:12px; display:grid; gap:8px; justify-items:center; }
 #myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
 
-/* Card */
 .scored-pick{
-  display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; justify-content:center;
+  display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; justify-content:center;
   background:rgba(255,255,255,0.04);
-  padding:9px 10px; border-radius:10px;
+  padding:10px; border-radius:12px;
   border:1px solid var(--divider);
 }
 
-/* Fight name muted & uppercase to separate from the pick content */
 .scored-pick .fight-name{
   flex:1 1 100%;
   font-weight:900;
@@ -255,21 +262,27 @@ body{
   color:var(--muted);
   text-transform:uppercase;
   text-align:center;
+  margin-bottom:2px;
 }
 
+/* Chips (pre-results) — distinct looks */
+.chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; line-height:1; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+.chip-winner{ background:rgba(0,245,255,0.12); border:1px solid rgba(var(--accent-rgb),0.65); box-shadow:0 0 10px rgba(0,245,255,0.18) inset; }
+.chip-method{ background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); }
+.chip-round{ background:transparent; border:1px dashed rgba(255,255,255,0.22); }
+
+/* When results land, color comes from .correct/.wrong; chips go neutral */
+.correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); }
+.wrong{ color:var(--warn); text-shadow:0 0 6px var(--warn); }
+
 .points{
-  display:inline-block; padding:4px 10px; border-radius:999px; margin-left:0;
+  display:inline-block; padding:4px 10px; border-radius:999px;
   background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900;
 }
 
-/* Bonus note (earned or potential) */
 .earn-note{
-  font-size:12.5px; margin-left:0; opacity:.95; width:100%; text-align:center; color:var(--muted);
+  font-size:12.5px; margin:2px 0 0 0; opacity:.95; width:100%; text-align:center; color:var(--muted);
 }
-
-/* Result colors */
-.correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); font-weight:900; }
-.wrong{ color:var(--warn); text-shadow:0 0 6px var(--warn); font-weight:900; }
 
 .fotn-strip .fight-name{ color:var(--muted); }
 .fotn-strip .hint{ color:var(--muted); font-size:14px; display:block; margin-top:2px; }
@@ -279,6 +292,8 @@ body{
   .logo-banner{ max-width:260px; }
   #app{ margin:8px auto 44px; padding:14px; }
 
+  .champ-banner{ width:94%; }
+
   .board-header.at-five{ display:none; }
   .board.at-five li{ grid-template-columns:60px 1fr 90px; }
   .board.at-five .rank{ width:auto; }
@@ -286,7 +301,7 @@ body{
   .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; }
 }
 
-/* ======== Performance-only additions (no visual change) ======== */
+/* ======== Performance-only additions ======== */
 #fightList, #leaderboard, #allTimeBoard, #myPicks{
   content-visibility:auto;
   contain-intrinsic-size:600px;
