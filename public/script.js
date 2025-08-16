@@ -1,18 +1,119 @@
 document.addEventListener("DOMContentLoaded", () => {
   /* =========================
-     API CLIENT — matches your Apps Script routing
+     API CLIENT — auto-detects backend style
      ========================= */
-  const API_BASE = "/api"; // keep your reverse-proxy; change to Web App URL if needed
+  const BASE = window.API_BASE || "/api";
 
-  const apiGet = (action) =>
-    fetch(`${API_BASE}?action=${encodeURIComponent(action)}`).then(r => r.json());
+  const withTimeout = (p, ms = 10000) =>
+    new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error("timeout")), ms);
+      p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
+    });
 
-  const apiPost = (action, payload = {}) =>
-    fetch(API_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...payload })
-    }).then(r => r.json());
+  async function detectApiMode() {
+    // cache between sessions
+    const cached = localStorage.getItem("apiMode");
+    if (cached === "path" || cached === "action") return cached;
+
+    // Try path style: GET /api/fights
+    try {
+      const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/fights`, { method: "GET" }), 7000);
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j)) { localStorage.setItem("apiMode", "path"); return "path"; }
+      }
+    } catch (_) {}
+
+    // Try action style: GET /api?action=getFights
+    try {
+      const sep = BASE.includes("?") ? "&" : "?";
+      const r = await withTimeout(fetch(`${BASE}${sep}action=getFights`, { method: "GET" }), 7000);
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j)) { localStorage.setItem("apiMode", "action"); return "action"; }
+      }
+    } catch (_) {}
+
+    // Default to path (matches your earlier working setup)
+    localStorage.setItem("apiMode", "path");
+    return "path";
+  }
+
+  function clearApiModeCache() { localStorage.removeItem("apiMode"); }
+
+  const api = {
+    mode: "path",
+    async init() { this.mode = await detectApiMode(); },
+
+    getFights() {
+      if (this.mode === "path") {
+        return fetch(`${BASE.replace(/\/$/,"")}/fights`).then(r => r.json());
+      } else {
+        const sep = BASE.includes("?") ? "&" : "?";
+        return fetch(`${BASE}${sep}action=getFights`).then(r => r.json());
+      }
+    },
+
+    getUserPicks(username) {
+      if (this.mode === "path") {
+        return fetch(`${BASE.replace(/\/$/,"")}/picks`, {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ username })
+        }).then(r => r.json());
+      } else {
+        return fetch(BASE, {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ action:"getUserPicks", username })
+        }).then(r => r.json());
+      }
+    },
+
+    submitPicks(payload) {
+      if (this.mode === "path") {
+        return fetch(`${BASE.replace(/\/$/,"")}/submit`, {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        }).then(r => r.json());
+      } else {
+        return fetch(BASE, {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ action:"submitPicks", ...payload })
+        }).then(r => r.json());
+      }
+    },
+
+    getLeaderboard() {
+      if (this.mode === "path") {
+        return fetch(`${BASE.replace(/\/$/,"")}/leaderboard`, {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({})
+        }).then(r => r.json());
+      } else {
+        return fetch(BASE, {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ action:"getLeaderboard" })
+        }).then(r => r.json());
+      }
+    },
+
+    getChampionBanner() {
+      // this one always worked with action in your older code; keep it that way (works for both setups)
+      const sep = BASE.includes("?") ? "&" : "?";
+      return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
+    },
+
+    getHall() {
+      if (this.mode === "path") {
+        return fetch(`${BASE.replace(/\/$/,"")}/hall`).then(r => r.json());
+      } else {
+        const sep = BASE.includes("?") ? "&" : "?";
+        return fetch(`${BASE}${sep}action=getHall`).then(r => r.json());
+      }
+    },
+
+    // helpful if you change server config on the fly
+    resetDetection() { clearApiModeCache(); }
+  };
 
   /* =========================
      DOM refs
@@ -36,20 +137,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
   const FOTN_POINTS = 3;
 
-  /* ---------- Tiny response caches (performance only; no logic change) ---------- */
+  /* ---------- Perf caches (same visuals) ---------- */
   const now = () => Date.now();
-  const FIGHTS_TTL = 5 * 60 * 1000; // 5 minutes
-  const LB_TTL    = 8 * 1000;       // 8 seconds
+  const FIGHTS_TTL = 5 * 60 * 1000;
+  const LB_TTL    = 8 * 1000;
 
   let fightsCache = { data: null, ts: 0, promise: null };
   let lbCache     = { data: null, ts: 0, promise: null };
 
-  function getFights() {
+  function getFightsCached() {
     const fresh = fightsCache.data && (now() - fightsCache.ts < FIGHTS_TTL);
     if (fresh) return Promise.resolve(fightsCache.data);
     if (fightsCache.promise) return fightsCache.promise;
 
-    fightsCache.promise = apiGet("getFights")
+    fightsCache.promise = api.getFights()
       .then(data => {
         fightsCache = { data, ts: now(), promise: null };
         buildFightMeta(data);
@@ -59,13 +160,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return fightsCache.promise;
   }
-
-  function getLeaderboard() {
+  function getLeaderboardCached() {
     const fresh = lbCache.data && (now() - lbCache.ts < LB_TTL);
     if (fresh) return Promise.resolve(lbCache.data);
     if (lbCache.promise) return lbCache.promise;
 
-    lbCache.promise = apiPost("getLeaderboard")
+    lbCache.promise = api.getLeaderboard()
       .then(data => { lbCache = { data, ts: now(), promise: null }; return data; })
       .catch(err => { lbCache.promise = null; throw err; });
 
@@ -84,8 +184,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function underdogBonusFromOdds(oddsRaw) {
     const n = normalizeAmericanOdds(oddsRaw);
-    if (n == null || n < 100) return 0; // only +100 and above
-    return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
+    if (n == null || n < 100) return 0;
+    return 1 + Math.floor((n - 100) / 100);
   }
 
   function doLogin() {
@@ -93,19 +193,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!input) return alert("Please enter your name.");
     username = input;
     localStorage.setItem("username", username);
-    finalizeLogin(username);
+    startApp();
   }
 
-  // Attach robust listeners (click + Enter)
-  const loginBtn = document.querySelector("#usernamePrompt button");
-  if (loginBtn) loginBtn.addEventListener("click", doLogin);
-  if (usernameInput) {
-    usernameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") doLogin();
-    });
-  }
+  // Login interactions
+  document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
+  usernameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 
-  // Populate scoring rules (collapsed by default)
+  // Scoring rules content
   (function renderScoringRules(){
     const el = document.getElementById("scoringRules");
     if (!el) return;
@@ -123,21 +218,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (username) {
     usernameInput.value = username;
-    finalizeLogin(username);
+    startApp();
   }
 
-  function finalizeLogin(name) {
-    // Hide prompt immediately
+  async function startApp() {
+    // Show welcome & hide prompt immediately
     usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
     welcome.style.display = "block";
 
+    // Ensure we know which API mode to use before any network calls
+    await api.init();
+
+    // Proceed
     Promise.all([
-      getFights(),
-      apiPost("getUserPicks", { username: name })
+      getFightsCached(),
+      api.getUserPicks(username)
     ])
     .then(([fightsData, pickData]) => {
-      const submitted = pickData.success && pickData.picks.length > 0;
+      const submitted = pickData.success && Array.isArray(pickData.picks) && pickData.picks.length > 0;
       if (submitted) {
         localStorage.setItem("submitted", "true");
         fightList.style.display = "none";
@@ -155,14 +254,11 @@ document.addEventListener("DOMContentLoaded", () => {
       loadLeaderboard();
       preloadAllTime();
     })
-    .catch(err => {
-      console.error(err);
-      // Fallback
-      loadFights();
-      leaderboardEl.classList.add("board","weekly");
-      loadMyPicks();
-      loadLeaderboard();
-      preloadAllTime();
+    .catch((err) => {
+      console.error("Startup error:", err);
+      // Show a friendly placeholder instead of blank UI
+      fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base in index.html (window.API_BASE).</div>`;
+      submitBtn.style.display = "none";
     });
   }
 
@@ -170,26 +266,14 @@ document.addEventListener("DOMContentLoaded", () => {
     fightMeta.clear();
     (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
       fightMeta.set(fight, {
-        f1: fighter1,
-        f2: fighter2,
-        f1Odds: f1Odds || "",
-        f2Odds: f2Odds || "",
-        underdogSide: underdog || "",
-        underdogOdds: underdogOdds || ""
+        f1: fighter1, f2: fighter2,
+        f1Odds: f1Odds || "", f2Odds: f2Odds || "",
+        underdogSide: underdog || "", underdogOdds: underdogOdds || ""
       });
     });
   }
 
   /* ---------- Fights ---------- */
-  function loadFights() {
-    getFights()
-      .then(data => {
-        renderFightList(data);
-        renderFOTN(data);
-      })
-      .catch(() => {/* silent */});
-  }
-
   function renderFOTN(fightsData, existingPick = "") {
     fotnBlock.innerHTML = `
       <div class="fotn-title">⭐ Fight of the Night</div>
@@ -212,10 +296,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const meta = fightMeta.get(fight) || {};
       const dogSide = meta.underdogSide;
       const dogTier = underdogBonusFromOdds(meta.underdogOdds);
-
       const isDog1 = dogSide === "Fighter 1";
       const isDog2 = dogSide === "Fighter 2";
-
       const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
       const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
 
@@ -304,7 +386,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const fotnPick = fotnSelect?.value || "";
 
-    apiPost("submitPicks", { username, picks, fotnPick })
+    api.submitPicks({ username, picks, fotnPick })
       .then(data => {
         if (data.success) {
           alert("Picks submitted!");
@@ -312,8 +394,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.style.display = "none";
           submitBtn.style.display = "none";
           fotnBlock.style.display = "none";
-          // ensure next leaderboard fetch isn't served from cache
-          lbCache = { data: null, ts: 0, promise: null };
+          lbCache = { data: null, ts: 0, promise: null }; // refresh scoreboard soon
           loadMyPicks();
           loadLeaderboard();
         } else {
@@ -331,9 +412,9 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (with underdog chip always shown if you picked the dog) ---------- */
+  /* ---------- My Picks (with always-visible dog chip if you picked the dog) ---------- */
   function loadMyPicks() {
-    apiPost("getUserPicks", { username })
+    api.getUserPicks(username)
       .then(data => {
         const myPicksDiv = document.getElementById("myPicks");
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
@@ -342,7 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        Promise.all([ getLeaderboard(), getFights() ]).then(([resultData, fightsData]) => {
+        Promise.all([ getLeaderboardCached(), getFightsCached() ]).then(([resultData, fightsData]) => {
           buildFightMeta(fightsData);
 
           const fightResults = resultData.fightResults || {};
@@ -371,7 +452,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const matchWinner = hasResult && winner === actual.winner;
             const matchMethod = hasResult && method === actual.method;
-            const matchRound = hasResult && round == actual.round;
+            const matchRound  = hasResult && round == actual.round;
 
             const meta = fightMeta.get(fight) || {};
             const dogSide = meta.underdogSide;
@@ -384,8 +465,6 @@ document.addEventListener("DOMContentLoaded", () => {
               ? `<span class="dog-tag">🐶 +${dogTier} pts</span>`
               : "";
 
-            const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
-
             let score = 0;
             if (matchWinner) {
               score += 3;
@@ -393,26 +472,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 score += 2;
                 if (method !== "Decision" && matchRound) score += 1;
               }
-              if (hasResult && actual.underdog === "Y") score += dogTier;
+              if (hasResult && actual.underdog === "Y" && chosenIsUnderdog) {
+                score += dogTier;
+              }
             }
 
             const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
             const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-            const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
+            const roundClass  = hasResult && matchWinner && matchMethod && method !== "Decision"
               ? (matchRound ? "correct" : "wrong")
               : "";
 
-            const roundText = (method === "Decision")
-              ? ""  // no "(Decision)"
-              : `in Round <span class="${roundClass}">${round}</span>`;
+            const roundText = (method === "Decision") ? "" : `in Round <span class="${roundClass}">${round}</span>`;
             const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
-            const earnNote = (earnedBonus > 0 && hasResult)
-              ? `<span class="earn-note">🐶 +${earnedBonus} bonus points</span>`
-              : "";
-            const potentialNote = (!hasResult && chosenIsUnderdog && dogTier > 0)
-              ? `<span class="earn-note">🐶 +${dogTier} potential bonus if correct</span>`
-              : "";
+            const earnNote = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
+              ? `<span class="earn-note">🐶 +${dogTier} bonus points</span>`
+              : (!hasResult && chosenIsUnderdog && dogTier > 0)
+                ? `<span class="earn-note">🐶 +${dogTier} potential bonus if correct</span>`
+                : "";
 
             myPicksDiv.innerHTML += `
               <div class="scored-pick">
@@ -420,7 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="user-pick">
                   <span class="${winnerClass}">${winner}</span> ${dogChip}
                   by <span class="${methodClass}">${method}</span> ${roundText}
-                  ${earnNote || potentialNote}
+                  ${earnNote}
                 </div>
                 ${pointsChip}
               </div>`;
@@ -430,9 +508,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ---------- Champion banner + Weekly Leaderboard ---------- */
-
   function showPreviousChampionBanner() {
-    apiGet("getChampionBanner")
+    api.getChampionBanner()
       .then(data => {
         const msg = (data && typeof data.message === "string") ? data.message.trim() : "";
         if (msg) {
@@ -446,7 +523,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadLeaderboard() {
     showPreviousChampionBanner();
 
-    Promise.all([ getFights(), getLeaderboard() ]).then(([fightsData, leaderboardData]) => {
+    Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
       board.classList.add("board","weekly");
       board.innerHTML = "";
@@ -542,9 +619,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function rowsEqual(a, b) {
-    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
-  }
+  function rowsEqual(a, b) { return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events; }
 
   function renderAllTimeHeader() {
     const li = document.createElement("li");
@@ -561,10 +636,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function drawAllTime(data) {
     allTimeList.innerHTML = "";
-    if (!data.length) {
-      allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
-      return;
-    }
+    if (!data.length) { allTimeList.innerHTML = "<li>No All-Time data yet.</li>"; return; }
 
     renderAllTimeHeader();
 
@@ -598,9 +670,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function preloadAllTime() {
-    // Keep as-is (your /api/hall is likely reverse-proxied to GAS getHall)
-    fetchWithTimeout("/api/hall", 6000)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+    const base = (window.API_BASE || "/api").replace(/\/$/,"");
+    // Compatible with both path and action modes
+    api.getHall()
       .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; })
       .catch(() => {});
   }
@@ -611,10 +683,9 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeList.style.minHeight = `${keepHeight}px`;
     allTimeList.innerHTML = "";
 
-    fetchWithTimeout("/api/hall", 6000)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+    api.getHall()
       .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
-      .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`; })
+      .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable.</li>`; })
       .finally(() => { allTimeList.style.minHeight = ""; });
   }
 
