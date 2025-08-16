@@ -275,7 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (with earned underdog bonus) ---------- */
+  /* ---------- My Picks (clean, conditional text; no "by in Round") ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -309,8 +309,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="scored-pick fotn-strip">
               <div class="fight-name">FOTN Pick</div>
               <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
-                ${myFOTN} ${badge}
-                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
+                ${escapeHtml(myFOTN)} ${badge}
+                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.map(escapeHtml).join(", ")}</div>` : ""}
               </div>
             </div>
           `;
@@ -318,12 +318,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Each fight pick row
         data.picks.forEach(({ fight, winner, method, round }) => {
+          winner = (winner || "").trim();
+          method = (method || "").trim();
+          round  = (round  || "").toString().trim();
+
           const actual = fightResults[fight] || {};
-          const hasResult = actual.winner && actual.method;
+          const hasResult = !!(actual.winner && actual.method);
 
           const matchWinner = hasResult && winner === actual.winner;
           const matchMethod = hasResult && method === actual.method;
-          const matchRound = hasResult && round == actual.round;
+          const matchRound  = hasResult && round && actual.round && round == actual.round;
 
           // Underdog info
           const meta = fightMeta.get(fight) || {};
@@ -335,7 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
 
-          // Scoring (match backend)
+          // Scoring (mirror backend)
           let score = 0;
           if (matchWinner) {
             score += 3;
@@ -346,26 +350,44 @@ document.addEventListener("DOMContentLoaded", () => {
             if (hasResult && actual.underdog === "Y") score += dogTier;
           }
 
+          // Result classes (only color after results exist)
           const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
           const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-          const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
+          const roundClass  = hasResult && matchWinner && matchMethod && method !== "Decision"
             ? (matchRound ? "correct" : "wrong")
             : "";
 
-          const roundText = method === "Decision" ? "(Decision)"
-            : `in Round <span class="${roundClass}">${round}</span>`;
-          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
+          // Build clean, conditional fragments
+          const hasMethod = !!method;
+          const hasRound  = !!round && round !== "N/A";
+          const showRound = hasMethod && method !== "Decision" && hasRound;
+
+          const winnerHtml = winner
+            ? `<span class="winner ${winnerClass}">${escapeHtml(winner)}</span>`
+            : "";
+
+          const methodHtml = hasMethod
+            ? ` by <span class="method ${methodClass}">${escapeHtml(method)}</span>`
+            : "";
+
+          const roundHtml = showRound
+            ? ` in Round <span class="round ${roundClass}">${escapeHtml(round)}</span>`
+            : "";
 
           const earnNote = (earnedBonus > 0 && hasResult)
             ? `<span class="earn-note">🐶 +${earnedBonus} bonus points</span>`
             : "";
 
+          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
+
+          // Skip rows with nothing selected (paranoia guard)
+          if (!winner && !hasMethod && !hasRound) return;
+
           myPicksDiv.innerHTML += `
             <div class="scored-pick">
-              <div class="fight-name">${fight}</div>
+              <div class="fight-name">${escapeHtml(fight)}</div>
               <div class="user-pick">
-                <span class="${winnerClass}">${winner}</span>
-                by <span class="${methodClass}">${method}</span> ${roundText}
+                ${winnerHtml}${methodHtml}${roundHtml}
                 ${earnNote}
               </div>
               ${pointsChip}
@@ -373,6 +395,12 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       });
     });
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, m => (
+        { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]
+      ));
+    }
   }
 
   /* ---------- Champion banner + Weekly Leaderboard ---------- */
