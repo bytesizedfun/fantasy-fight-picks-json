@@ -1,7 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  /* =========================
-     API CLIENT — auto-detects backend style
-     ========================= */
   const BASE = window.API_BASE || "/api";
 
   const withTimeout = (p, ms = 10000) =>
@@ -34,7 +31,6 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("apiMode", "path");
     return "path";
   }
-
   function clearApiModeCache() { localStorage.removeItem("apiMode"); }
 
   const api = {
@@ -127,14 +123,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = localStorage.getItem("username");
 
-  // odds / underdog cache
-  const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
+  const fightMeta = new Map();
   const FOTN_POINTS = 3;
 
   /* ---------- Perf caches ---------- */
   const now = () => Date.now();
   const FIGHTS_TTL = 5 * 60 * 1000;
-  const LB_TTL    = 0; // kill cache so new submissions reflect immediately
+  const LB_TTL    = 0; // immediate refresh
 
   let fightsCache = { data: null, ts: 0, promise: null };
   let lbCache     = { data: null, ts: 0, promise: null };
@@ -166,7 +161,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return lbCache.promise;
   }
 
-  /* ---------- Helpers ---------- */
   function normalizeAmericanOdds(raw) {
     if (raw == null) return null;
     let s = String(raw).trim();
@@ -190,11 +184,9 @@ document.addEventListener("DOMContentLoaded", () => {
     startApp();
   }
 
-  // Login interactions
   document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
   usernameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 
-  // Scoring rules content (short wording; no inner title)
   (function renderScoringRules(){
     const el = document.getElementById("scoringRules");
     if (!el) return;
@@ -215,7 +207,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function startApp() {
-    // Show welcome & hide prompt immediately
     usernamePrompt.style.display = "none";
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
     welcome.style.display = "block";
@@ -410,7 +401,6 @@ document.addEventListener("DOMContentLoaded", () => {
     api.getUserPicks(username)
       .then(data => {
         const myPicksDiv = document.getElementById("myPicks");
-        // Hide section entirely until there are picks
         if (!data.success || !data.picks.length) {
           myPicksDiv.style.display = "none";
           myPicksDiv.innerHTML = "";
@@ -576,7 +566,6 @@ document.addEventListener("DOMContentLoaded", () => {
         rank++;
       });
 
-      // glow ties for #1
       const lis = board.querySelectorAll("li");
       if (lis.length > 0) {
         const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
@@ -586,7 +575,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // If event concluded, override with current champ(s)
       const totalFights = (fightsData || []).length;
       const completedResults = resultsArr.filter(res => res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
 
