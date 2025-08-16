@@ -36,8 +36,14 @@
     <!-- Welcome -->
     <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring rules (JS injects content) -->
-    <section id="scoringRules" style="display:none;"></section>
+    <!-- Scoring (collapsible; closed by default). JS still injects into #scoringRules -->
+    <details id="scoringPanel" class="rules-collapsible">
+      <summary>
+        <span class="rules-toggle-label">How scoring works</span>
+        <span class="rules-caret" aria-hidden="true">▸</span>
+      </summary>
+      <section id="scoringRules" class="rules"></section>
+    </details>
 
     <!-- Fights -->
     <div id="fightList"></div>
