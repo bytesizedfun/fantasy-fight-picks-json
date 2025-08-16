@@ -1,5 +1,5 @@
 /* === Orbitron Neon — centered, compact, no gold === */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap');
+/* (Fonts now loaded in HTML for speed) */
 
 :root{
   --ink:#0b0b0d;
@@ -229,7 +229,7 @@ body{
 }
 #fotnBlock .hint{ color:var(--muted); font-size:13px; text-align:center; }
 
-/* ===== Tabs ===== */
+/* ===== Tabs (neon removed) ===== */
 .segmented{
   display:flex; justify-content:center; align-items:center; gap:8px;
   margin:12px 0 12px;
@@ -245,7 +245,6 @@ body{
   cursor:pointer;
   box-shadow:none !important; text-shadow:none !important;
   transition:transform .06s ease, background .15s ease, border-color .15s ease;
-  text-align:center;
 }
 .segmented button:hover{ transform:translateY(-1px); }
 .segmented button[aria-pressed="true"]{
@@ -254,28 +253,26 @@ body{
   box-shadow:none !important;
 }
 
-/* ===== Leaderboards (ALL centered; left borders removed) ===== */
+/* ===== Leaderboards ===== */
 .board{ list-style:none; margin:0; padding:0; }
 #leaderboard, #allTimeBoard{ max-width:640px; margin:0 auto; }
 
 /* Weekly list */
 .board.weekly li{
   display:grid; grid-template-columns:auto 1fr auto;
-  align-items:center; justify-items:center; gap:10px;
+  align-items:center; gap:10px;
   background:rgba(255,255,255,0.04);
   border:1px solid var(--divider);
   border-radius:12px; padding:10px 12px; margin:8px 0;
-  /* removed left border */
+  border-left:4px solid rgba(255,255,255,0.18);
   transition:border-color .25s ease, transform .2s ease, box-shadow .25s ease;
-  text-align:center;
 }
-.board.weekly li:hover{ box-shadow:0 0 12px rgba(0,245,255,0.40); transform:translateY(-2px); }
+.board.weekly li:hover{ border-left-color:var(--accent); box-shadow:0 0 12px rgba(0,245,255,0.40); transform:translateX(4px); }
 .board.weekly li .crown{ filter:drop-shadow(0 0 6px rgba(0,245,255,0.35)); font-size:20px; }
 .board.weekly li:first-child,
 .board.weekly li.tied-first,
 .board.weekly li.champ-glow{
-  background:rgba(0,245,255,0.10);
-  box-shadow:0 0 14px rgba(0,245,255,0.50);
+  border-left-color:var(--accent); background:rgba(0,245,255,0.10); box-shadow:0 0 14px rgba(0,245,255,0.50);
   animation:pulseChampion 1.8s infinite;
 }
 @keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
@@ -289,7 +286,6 @@ body{
   display:flex; justify-content:center; align-items:center;
   padding:12px; border-radius:12px; border:1px dashed var(--divider);
   color:var(--muted); background:rgba(255,255,255,0.03); margin:8px 0;
-  text-align:center;
 }
 
 /* ===== All-Time Board — headers & data centered ===== */
@@ -297,11 +293,10 @@ body{
 .board.at-five li{
   display:grid;
   grid-template-columns:70px 1fr 80px 60px 80px; /* EXACT match */
-  align-items:center; justify-items:center; gap:10px;
+  align-items:center; gap:10px;
   background:rgba(255,255,255,0.04);
   border:1px solid var(--divider);
   border-radius:12px; padding:10px 12px; margin:8px 0;
-  text-align:center;
 }
 .board-header.at-five{
   background:linear-gradient(180deg, var(--panel), #101116);
@@ -313,117 +308,33 @@ body{
 .board-header.at-five .crowns,
 .board-header.at-five .events{ text-align:center; }
 
-.board.at-five li{
-  /* removed left border */
-  transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-}
-.board.at-five li:hover{ transform:translateY(-2px); box-shadow:0 0 12px rgba(0,245,255,0.28); }
+.board.at-five li{ border-left:4px solid rgba(255,255,255,0.18); transition:transform .2s ease, box-shadow .2s ease, border-left-color .2s ease; }
+.board.at-five li:hover{ transform:translateX(4px); border-left-color:var(--accent); box-shadow:0 0 12px rgba(0,245,255,0.28); }
 .board.at-five .rank{ width:64px; font-weight:900; text-align:center; }
 .board.at-five .user{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; text-align:center; }
 .board.at-five .num{ text-align:center; font-weight:900; color:var(--text); opacity:.95; }
 .board.at-five .mobile-meta{ display:none; color:var(--muted); }
 
-/* ===== Your Picks (CENTERED & clean) ===== */
-#myPicks{
-  margin-top:12px;
-  display:grid;
-  gap:8px;
-  justify-items:center;
-  text-align:center;
-}
-#myPicks h3{ margin:0; text-align:center; color:var(--accent); font-weight:900; letter-spacing:.08em; }
+/* ===== Your Picks ===== */
+#myPicks{ margin-top:12px; display:grid; gap:8px; }
+#myPicks h3{ margin:0; text-align:center; color:var(--accent); font-weight:900; }
 #myPicks > p{ text-align:center; color:var(--muted); }
-
-/* Card */
 .scored-pick{
-  display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; justify-content:center;
+  display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center;
   background:rgba(255,255,255,0.04);
-  padding:12px 12px; border-radius:12px;
-  border:1px solid var(--divider);   /* left border removed */
-  text-align:center;
+  padding:9px 10px; border-radius:10px;
+  border-left:4px solid var(--accent);
 }
-.scored-pick .fight-name{
-  flex:1 1 100%;
-  font-weight:900;
-  letter-spacing:.12em;
-  color:var(--muted);
-  text-transform:uppercase;
-  text-align:center;
-}
+.scored-pick .fight-name{ flex:1 1 100%; font-weight:900; letter-spacing:.03em; color:var(--text); }
+.points{ display:inline-block; padding:4px 10px; border-radius:999px; margin-left:6px;
+  background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900; }
+.earn-note{ font-size:12.5px; margin-left:8px; opacity:.9; }
 
-/* Winner chip (neutral before results) */
-.scored-pick .winner,
-.scored-pick .my-winner,
-.scored-pick [class*="winner"]{
-  display:inline-block;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid rgba(var(--accent-rgb),0.35);
-  background:rgba(0,245,255,0.08);
-  color:var(--text);
-  font-weight:900;
-  letter-spacing:.06em;
-  text-transform:uppercase;
-  line-height:1;
-}
-
-/* Method/Round are plain text (no circles) */
-.scored-pick .method,
-.scored-pick .round,
-.scored-pick [class*="method"],
-.scored-pick [class*="round"]{
-  background:transparent !important;
-  border:0 !important;
-  padding:0 !important;
-  text-transform:none !important;
-  letter-spacing:.02em !important;
-}
-
-/* Winner chip lights up on results */
-.scored-pick .winner.correct{
-  background:rgba(47,255,160,0.12) !important;
-  border-color:var(--ok) !important;
-  box-shadow:0 0 12px rgba(47,255,160,0.45) !important;
-}
-.scored-pick .winner.wrong{
-  background:rgba(255,78,78,0.12) !important;
-  border-color:var(--warn) !important;
-  box-shadow:0 0 12px rgba(255,78,78,0.45) !important;
-}
-
-/* Points chip */
-.points{
-  display:inline-block;
-  padding:6px 12px;
-  border-radius:999px;
-  margin-left:0;
-  background:rgba(0,245,255,0.12);
-  border:1px solid var(--accent);
-  color:var(--accent);
-  font-weight:900;
-  letter-spacing:.06em;
-}
-
-/* tiny notes under chips */
-.earn-note{ font-size:12.5px; margin-left:0; opacity:.9; width:100%; text-align:center; }
-
-/* Strong result colors */
-.correct{
-  color:var(--ok) !important;
-  text-shadow:0 0 10px var(--ok), 0 0 22px rgba(47,255,160,0.55) !important;
-  font-weight:900;
-}
-.wrong{
-  color:var(--warn) !important;
-  text-shadow:0 0 10px var(--warn), 0 0 22px rgba(255,78,78,0.55) !important;
-  font-weight:900;
-}
-
-/* ensure the line itself doesn't mute colors */
-.scored-pick .user-pick{ color:var(--text); }
+.correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); font-weight:900; }
+.wrong{ color:var(--warn); text-shadow:0 0 6px var(--warn); font-weight:900; }
 
 .fotn-strip .fight-name{ color:var(--muted); }
-.fotn-strip .hint{ color:var(--muted); font-size:14px; display:block; margin-top:2px; text-align:center; }
+.fotn-strip .hint{ color:var(--muted); font-size:14px; display:block; margin-top:2px; }
 
 /* ===== Responsive ===== */
 @media (max-width:600px){
@@ -435,4 +346,27 @@ body{
   .board.at-five .rank{ width:auto; }
   .board.at-five .num.crowns, .board.at-five .num.events{ display:none; }
   .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; text-align:center; }
+}
+
+/* ======== Performance-only additions (no visual change) ======== */
+
+/* Defer painting of big sections until they scroll into view */
+#fightList,
+#leaderboard,
+#allTimeBoard,
+#myPicks{
+  content-visibility: auto;
+  contain-intrinsic-size: 600px; /* placeholder block-size to prevent layout jumps */
+}
+
+/* Isolate the app container to reduce reflow/paint cost from inner effects */
+#app{
+  contain: content;
+}
+
+/* Respect users who prefer reduced motion (does not affect default visuals) */
+@media (prefers-reduced-motion: reduce){
+  .champ-banner{ animation: none; }
+  .segmented button,
+  .fight label{ transition: none; }
 }
