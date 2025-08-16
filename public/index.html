@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fantasy Fight Picks</title>
 
-  <!-- Performance: load fonts from head (replaces @import in CSS) -->
+  <!-- Performance: load Orbitron from the head (faster than @import) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap" rel="stylesheet">
@@ -15,6 +15,11 @@
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
 
   <link rel="stylesheet" href="style.css" />
+  <script>
+    // If your GAS is on a different URL, set it here, e.g.:
+    // window.API_BASE = "https://script.google.com/macros/s/AKfycb.../exec";
+    window.API_BASE = window.API_BASE || "/api";
+  </script>
 </head>
 <body>
   <!-- Banner / Logo -->
@@ -36,7 +41,7 @@
     <!-- Welcome -->
     <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring (collapsible; closed by default). JS injects content into #scoringRules -->
+    <!-- Scoring (collapsible; closed by default). JS injects rules into #scoringRules -->
     <details id="scoringPanel" class="rules-collapsible">
       <summary>
         <span class="rules-toggle-label">🧠 Simple scoring</span>
