@@ -133,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
   const FOTN_POINTS = 3;
 
-  /* ---------- Perf caches (same visuals) ---------- */
+  /* ---------- Perf caches ---------- */
   const now = () => Date.now();
   const FIGHTS_TTL = 5 * 60 * 1000;
   const LB_TTL    = 0; // lower or kill the cache (was 8000ms)
@@ -295,8 +295,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
       const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
 
-      const chip1 = dog1 ? `<span class="dog-tag">${dog1}</span>` : "";
-      const chip2 = dog2 ? `<span class="dog-tag">${dog2}</span>` : "";
+      const chip1 = dog1 ? `<span class="dog-tag dog-tag--plain">${dog1}</span>` : "";
+      const chip2 = dog2 ? `<span class="dog-tag dog-tag--plain">${dog2}</span>` : "";
 
       const div = document.createElement("div");
       div.className = "fight";
@@ -411,7 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (always-visible dog chip if you picked the dog) ---------- */
+  /* ---------- My Picks ---------- */
   function loadMyPicks() {
     api.getUserPicks(username)
       .then(data => {
@@ -429,13 +429,13 @@ document.addEventListener("DOMContentLoaded", () => {
           const officialFOTN = resultData.officialFOTN || [];
           const myFOTN = data.fotnPick || "";
 
-          // FOTN strip
+          // FOTN strip (title changed)
           if (myFOTN) {
             const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
             const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
             myPicksDiv.innerHTML += `
               <div class="scored-pick fotn-strip">
-                <div class="fight-name">FOTN Pick</div>
+                <div class="fight-name">⭐ Fight of the Night</div>
                 <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
                   ${myFOTN} ${badge}
                   ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
@@ -460,10 +460,12 @@ document.addEventListener("DOMContentLoaded", () => {
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
 
+            // Dog chip style in "Your Picks" (we keep the cool chip here)
             const dogChip = (chosenIsUnderdog && dogTier > 0)
-              ? `<span class="dog-tag">🐶 +${dogTier} pts</span>`
+              ? `<span class="dog-tag dog-tag--chip">🐶 +${dogTier} pts</span>`
               : "";
 
+            // Score (unchanged)
             let score = 0;
             if (matchWinner) {
               score += 3;
@@ -482,7 +484,19 @@ document.addEventListener("DOMContentLoaded", () => {
               ? (matchRound ? "correct" : "wrong")
               : "";
 
-            const roundHtml = (method === "Decision") ? "" : `in Round <span class="chip chip-round ${roundClass}">${round}</span>`;
+            // PRE vs POST result presentation
+            let winnerHtml, methodHtml, roundHtml;
+
+            if (!hasResult) {
+              winnerHtml = `<span class="winner-text pre">${winner}</span>`;
+              methodHtml = `<span class="method-text pre">${method}</span>`;
+              roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round">${round}</span>`;
+            } else {
+              winnerHtml = `<span class="winner-text ${winnerClass}">${winner}</span>`;
+              methodHtml = `<span class="${methodClass}">${method}</span>`;
+              roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round ${roundClass}">${round}</span>`;
+            }
+
             const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
             const earnNote = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
@@ -495,8 +509,8 @@ document.addEventListener("DOMContentLoaded", () => {
               <div class="scored-pick">
                 <div class="fight-name">${fight}</div>
                 <div class="user-pick">
-                  <span class="chip chip-winner ${winnerClass}">${winner}</span> ${dogChip}
-                  by <span class="chip chip-method ${methodClass}">${method}</span> ${roundHtml}
+                  ${winnerHtml} ${dogChip}
+                  &nbsp;by&nbsp; ${methodHtml} ${roundHtml}
                   ${earnNote}
                 </div>
                 ${pointsChip}
