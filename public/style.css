@@ -119,21 +119,27 @@ body{
   list-style:none;
   display:inline-flex;
   align-items:center;
-  gap:10px;
-  padding:8px 12px;
-  border:1px solid var(--divider);
+  gap:8px;
+  padding:6px 10px;
+  border:1px dashed rgba(255,255,255,0.12);
   border-radius:12px;
-  background:var(--tile);
-  font-weight:900;
+  background:transparent;              /* less noticeable */
+  color:var(--muted);                  /* muted label */
+  font-weight:800;
   cursor:pointer;
   user-select:none;
-  transition:transform .06s ease, background .15s ease, border-color .15s ease;
+  transition:transform .06s ease, background .15s ease, border-color .15s ease, color .15s ease;
 }
 .rules-collapsible summary::-webkit-details-marker{ display:none; }
-.rules-toggle-label{ letter-spacing:.08em; }
-.rules-caret{ transition:transform .2s ease, opacity .2s ease; opacity:.9; }
+.rules-toggle-label{ letter-spacing:.06em; }
+.rules-caret{ transition:transform .2s ease, opacity .2s ease; opacity:.7; }
+.rules-collapsible summary:hover{
+  border-color:rgba(255,255,255,0.20);
+  color:var(--text);
+  background:rgba(255,255,255,0.03);
+}
 .rules-collapsible[open] summary{
-  background:rgba(255,255,255,0.06);
+  background:rgba(255,255,255,0.05);
   border-color:rgba(255,255,255,0.20);
 }
 .rules-collapsible[open] .rules-caret{ transform:rotate(90deg); }
@@ -343,7 +349,7 @@ body{
 .board.at-five .num{ font-weight:900; color:var(--text); opacity:.95; }
 .board.at-five .mobile-meta{ display:none; color:var(--muted); }
 
-/* ===== Your Picks — clear contrast & bonus note ===== */
+/* ===== Your Picks — clear contrast & dog chip ===== */
 #myPicks{
   margin-top:12px;
   display:grid;
