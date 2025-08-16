@@ -40,24 +40,27 @@ body{
   filter:drop-shadow(0 12px 28px rgba(0,0,0,0.55));
 }
 
-/* Champion banner: FULL-WIDTH EDGE-TO-EDGE, taller */
+/* Champion banner: FULL-WIDTH EDGE-TO-EDGE, BIGGER */
 .champ-banner{
   display:none;
   width:100vw;
   max-width:100vw;
-  margin:10px 0;
-  margin-left:calc(50% - 50vw);  /* span full viewport width */
+  margin:14px 0;
+  margin-left:calc(50% - 50vw);
   margin-right:calc(50% - 50vw);
-  padding:18px 0;                /* taller */
+  padding:28px 0; /* taller */
   font-weight:900;
+  font-size:clamp(26px, 3.8vw, 48px); /* bigger than welcome */
+  line-height:1.1;
+  letter-spacing:.06em;
   color:var(--accent);
-  border-top:1px solid var(--accent);
-  border-bottom:1px solid var(--accent);
+  border-top:2px solid var(--accent);
+  border-bottom:2px solid var(--accent);
   border-left:none; border-right:none;
   background:linear-gradient(120deg, rgba(0,245,255,0.22), rgba(255,0,60,0.18), rgba(0,245,255,0.22));
   background-size:300% 300%;
   animation:bannerGlow 6s ease infinite;
-  text-shadow:0 0 12px var(--accent), 0 0 24px var(--neon-red);
+  text-shadow:0 0 14px var(--accent), 0 0 26px var(--neon-red);
 }
 @keyframes bannerGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 
@@ -96,7 +99,7 @@ body{
 }
 #usernamePrompt button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
 
-/* ===== Scoring (collapsible only, muted) ===== */
+/* ===== Scoring (collapsible only, muted; NO dashed border) ===== */
 .rules{
   margin:8px auto 10px;
   padding:10px 12px;
@@ -111,45 +114,45 @@ body{
 .rules-collapsible{ max-width:640px; margin:8px auto 10px; }
 .rules-collapsible summary{
   list-style:none; display:inline-flex; align-items:center; gap:8px;
-  padding:6px 10px; border:1px dashed rgba(255,255,255,0.12); border-radius:12px;
+  padding:6px 10px; border:none; border-radius:12px;
   background:transparent; color:var(--muted); font-weight:800; cursor:pointer;
-  user-select:none; transition:transform .06s ease, background .15s ease, border-color .15s ease, color .15s ease;
+  user-select:none; transition:transform .06s ease, background .15s ease, color .15s ease;
 }
 .rules-collapsible summary::-webkit-details-marker{ display:none; }
 .rules-toggle-label{ letter-spacing:.06em; }
 .rules-caret{ transition:transform .2s ease, opacity .2s ease; opacity:.7; }
-.rules-collapsible summary:hover{ border-color:rgba(255,255,255,0.20); color:var(--text); background:rgba(255,255,255,0.03); }
-.rules-collapsible[open] summary{ background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.20); }
+.rules-collapsible summary:hover{ color:var(--text); background:rgba(255,255,255,0.03); }
+.rules-collapsible[open] summary{ background:rgba(255,255,255,0.05); }
 .rules-collapsible[open] .rules-caret{ transform:rotate(90deg); }
 .rules-collapsible .rules{ margin-top:8px; content-visibility:auto; contain-intrinsic-size:220px; }
 
 /* ===== Fight list ===== */
 #fightList{ display:flex; flex-direction:column; gap:6px; align-items:center; }
 
-/* cleaner, less boxy */
+/* cleaner, less boxy + less empty space */
 .fight{
   width:100%; max-width:600px;
   background:rgba(255,255,255,0.02);
-  padding:8px 10px;
+  padding:6px 8px;          /* tighter */
   border-radius:12px;
   border:1px solid rgba(255,255,255,0.04);
   box-shadow:inset 0 0 8px rgba(0,245,255,0.04);
 }
 .fight h3{
   color:var(--accent);
-  margin:0 0 6px 0;
+  margin:0 0 4px 0;         /* tighter */
   font-weight:900;
   letter-spacing:.6px;
 }
 
 /* options row */
-.options{ display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
+.options{ display:grid; grid-template-columns: 1fr 1fr; gap:4px; } /* tighter gap */
 
-/* option label: soften borders (less boxy) */
+/* option label: soften & tighten */
 .fight label{
   position:relative; display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
-  margin:0; background:var(--tile); border:1px solid transparent; padding:6px 8px; border-radius:12px;
-  cursor:pointer; transition:border-color .15s ease, transform .06s ease, box-shadow .15s ease; min-height:42px;
+  margin:0; background:var(--tile); border:1px solid transparent; padding:5px 6px; border-radius:12px;
+  cursor:pointer; transition:border-color .15s ease, transform .06s ease, box-shadow .15s ease; min-height:38px;
 }
 .fight label:hover{ border-color:rgba(var(--accent-rgb),0.35); transform:translateY(-1px); }
 .fight label:has(input:checked){ border-color:rgba(var(--accent-rgb),0.70); box-shadow:0 0 0 2px rgba(0,245,255,0.14) inset, 0 8px 18px rgba(0,0,0,0.35); }
@@ -157,27 +160,34 @@ body{
 /* hide radio */
 .fight label input[type="radio"]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
 
-/* inside label — tighter, centered */
+/* inside label — centered */
 .pick-row{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
 .fighter-name{ display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:900; }
 .fighter-name.is-underdog{ color:var(--text); text-shadow:0 0 6px rgba(0,245,255,0.18); }
 
-/* underdog indicator:
-   - plain in selection (no bubble)
-   - bubbled chip variant used in "Your Picks" */
+/* underdog indicator (selection = plain; picks = chip) */
 .dog-tag{ color:#e7faff; font-weight:900; font-variant-numeric:tabular-nums; }
 .dog-tag--plain{ padding:0; border:none; background:none; box-shadow:none; }
 .dog-tag--chip{
   display:inline-flex; align-items:center; gap:6px;
   padding:4px 8px; border-radius:999px;
-  border:1px solid rgba(var(--accent-rgb),0.65);
-  background:linear-gradient(180deg, rgba(0,245,255,0.12), rgba(0,245,255,0.06));
-  box-shadow:0 0 12px rgba(0,245,255,0.18) inset, 0 2px 12px rgba(0,0,0,0.25);
+  border:1px solid rgba(255,255,255,0.25);     /* neutral (not success-looking) */
+  background:rgba(255,255,255,0.06);
+  box-shadow:0 0 8px rgba(0,0,0,0.25) inset;
 }
 
 /* Method + Round */
 .pick-controls{ display:flex; justify-content:center; gap:6px; margin-top:4px; }
-.pick-controls select{ background:var(--tile); border:1px solid var(--divider); color:var(--text); padding:7px 10px; border-radius:12px; outline:none; min-width:124px; }
+.pick-controls select{
+  background:var(--tile);
+  border:1px solid var(--divider);
+  color:var(--text);
+  padding:10px 14px;            /* bigger tap target */
+  border-radius:12px;
+  outline:none;
+  min-width:140px;              /* wider */
+  font-size:16px;               /* easier to tap */
+}
 
 /* Submit */
 #submitBtn{
@@ -201,7 +211,17 @@ body{
 .fotn-emoji{ text-shadow:0 0 8px rgba(0,245,255,0.35); }
 .fotn-title{ font-weight:900; letter-spacing:.4px; }
 .fotn-badge{ font-weight:900; padding:2px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.06); }
-.fotn-select{ width:100%; background:var(--tile); border:1px solid var(--divider); color:var(--text); padding:10px 12px; border-radius:12px; }
+.fotn-select{
+  width:100%;
+  max-width:420px;
+  background:var(--tile);
+  border:1px solid var(--divider);
+  color:var(--text);
+  padding:10px 14px;
+  border-radius:12px;
+  text-align:center;
+  text-align-last:center; /* center selected text */
+}
 
 /* ===== Tabs ===== */
 .segmented{ display:flex; justify-content:center; align-items:center; gap:8px; margin:12px 0 12px; }
@@ -258,7 +278,8 @@ body{
 .scored-pick{
   display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; justify-content:center;
   background:rgba(255,255,255,0.04);
-  padding:10px; border-radius:12px;
+  padding:8px;                 /* slightly tighter */
+  border-radius:12px;
   border:1px solid var(--divider);
 }
 
@@ -272,7 +293,7 @@ body{
   margin-bottom:2px;
 }
 
-/* Pre-results: make winner accent (no bubble), method plain; round chip stays if present */
+/* Pre-results: winner accent (no bubble), method plain; round chip if present */
 .winner-text.pre{
   color:var(--accent);
   text-shadow:0 0 8px rgba(var(--accent-rgb),0.35);
@@ -309,7 +330,7 @@ body{
   .logo-banner{ max-width:260px; }
   #app{ margin:8px auto 44px; padding:14px; }
 
-  .champ-banner{ padding:14px 0; }
+  .champ-banner{ padding:22px 0; font-size:clamp(22px, 5.0vw, 36px); }
 
   .board-header.at-five{ display:none; }
   .board.at-five li{ grid-template-columns:60px 1fr 90px; }
