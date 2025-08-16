@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fantasy Fight Picks</title>
 
+  <!-- Performance: load fonts from head (replaces @import in CSS) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap" rel="stylesheet">
+
   <!-- Favicon: 👊 -->
   <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
@@ -14,7 +19,7 @@
 <body>
   <!-- Banner / Logo -->
   <div class="banner-container">
-    <img class="logo-banner" src="logo_fighter.png" alt="Logo" />
+    <img class="logo-banner" src="logo_fighter.png" alt="Logo" decoding="async" />
   </div>
 
   <div id="app">
@@ -57,6 +62,7 @@
     <ul id="allTimeBoard" class="board at-five" style="display:none;"></ul>
   </div>
 
-  <script src="script.js"></script>
+  <!-- Defer JS so the page paints first -->
+  <script src="script.js" defer></script>
 </body>
 </html>
