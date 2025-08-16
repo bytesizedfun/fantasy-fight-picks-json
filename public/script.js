@@ -11,11 +11,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   async function detectApiMode() {
-    // cache between sessions
     const cached = localStorage.getItem("apiMode");
     if (cached === "path" || cached === "action") return cached;
 
-    // Try path style: GET /api/fights
+    // Try path: GET /api/fights
     try {
       const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/fights`, { method: "GET" }), 7000);
       if (r.ok) {
@@ -24,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (_) {}
 
-    // Try action style: GET /api?action=getFights
+    // Try action: GET /api?action=getFights
     try {
       const sep = BASE.includes("?") ? "&" : "?";
       const r = await withTimeout(fetch(`${BASE}${sep}action=getFights`, { method: "GET" }), 7000);
@@ -34,7 +33,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (_) {}
 
-    // Default to path (matches your earlier working setup)
     localStorage.setItem("apiMode", "path");
     return "path";
   }
@@ -97,7 +95,6 @@ document.addEventListener("DOMContentLoaded", () => {
     },
 
     getChampionBanner() {
-      // this one always worked with action in your older code; keep it that way (works for both setups)
       const sep = BASE.includes("?") ? "&" : "?";
       return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
     },
@@ -111,7 +108,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // helpful if you change server config on the fly
     resetDetection() { clearApiModeCache(); }
   };
 
@@ -140,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ---------- Perf caches (same visuals) ---------- */
   const now = () => Date.now();
   const FIGHTS_TTL = 5 * 60 * 1000;
-  const LB_TTL    = 8 * 1000;
+  const LB_TTL    = 0; // lower or kill the cache (was 8000ms)
 
   let fightsCache = { data: null, ts: 0, promise: null };
   let lbCache     = { data: null, ts: 0, promise: null };
@@ -200,12 +196,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
   usernameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 
-  // Scoring rules content
+  // Scoring rules content (no inner title, just the bullets)
   (function renderScoringRules(){
     const el = document.getElementById("scoringRules");
     if (!el) return;
     el.innerHTML = `
-      <div class="rules-title">Scoring</div>
       <ul class="rules-list">
         <li>+3 for correct winner</li>
         <li>+2 for correct method <span class="muted">(if winner is correct)</span></li>
@@ -227,10 +222,8 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
     welcome.style.display = "block";
 
-    // Ensure we know which API mode to use before any network calls
     await api.init();
 
-    // Proceed
     Promise.all([
       getFightsCached(),
       api.getUserPicks(username)
@@ -256,7 +249,6 @@ document.addEventListener("DOMContentLoaded", () => {
     })
     .catch((err) => {
       console.error("Startup error:", err);
-      // Show a friendly placeholder instead of blank UI
       fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base in index.html (window.API_BASE).</div>`;
       submitBtn.style.display = "none";
     });
@@ -296,10 +288,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const meta = fightMeta.get(fight) || {};
       const dogSide = meta.underdogSide;
       const dogTier = underdogBonusFromOdds(meta.underdogOdds);
+
       const isDog1 = dogSide === "Fighter 1";
       const isDog2 = dogSide === "Fighter 2";
+
       const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
       const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
+
+      const chip1 = dog1 ? `<span class="dog-tag">${dog1}</span>` : "";
+      const chip2 = dog2 ? `<span class="dog-tag">${dog2}</span>` : "";
 
       const div = document.createElement("div");
       div.className = "fight";
@@ -310,16 +307,18 @@ document.addEventListener("DOMContentLoaded", () => {
           <label>
             <input type="radio" name="${fight}-winner" value="${fighter1}">
             <span class="pick-row">
-              <span class="fighter-name ${isDog1 ? 'is-underdog' : ''}">${fighter1}</span>
-              <span class="fighter-right">${dog1 ? `<span class="dog-tag">${dog1}</span>` : ""}</span>
+              <span class="fighter-name ${isDog1 ? 'is-underdog' : ''}">
+                ${fighter1} ${chip1}
+              </span>
             </span>
           </label>
 
           <label>
             <input type="radio" name="${fight}-winner" value="${fighter2}">
             <span class="pick-row">
-              <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">${fighter2}</span>
-              <span class="fighter-right">${dog2 ? `<span class="dog-tag">${dog2}</span>` : ""}</span>
+              <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
+                ${fighter2} ${chip2}
+              </span>
             </span>
           </label>
         </div>
@@ -394,7 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.style.display = "none";
           submitBtn.style.display = "none";
           fotnBlock.style.display = "none";
-          lbCache = { data: null, ts: 0, promise: null }; // refresh scoreboard soon
+          lbCache = { data: null, ts: 0, promise: null }; // refresh scoreboard immediately
           loadMyPicks();
           loadLeaderboard();
         } else {
@@ -412,7 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (with always-visible dog chip if you picked the dog) ---------- */
+  /* ---------- My Picks (always-visible dog chip if you picked the dog) ---------- */
   function loadMyPicks() {
     api.getUserPicks(username)
       .then(data => {
@@ -483,7 +482,7 @@ document.addEventListener("DOMContentLoaded", () => {
               ? (matchRound ? "correct" : "wrong")
               : "";
 
-            const roundText = (method === "Decision") ? "" : `in Round <span class="${roundClass}">${round}</span>`;
+            const roundHtml = (method === "Decision") ? "" : `in Round <span class="chip chip-round ${roundClass}">${round}</span>`;
             const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
             const earnNote = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
@@ -496,8 +495,8 @@ document.addEventListener("DOMContentLoaded", () => {
               <div class="scored-pick">
                 <div class="fight-name">${fight}</div>
                 <div class="user-pick">
-                  <span class="${winnerClass}">${winner}</span> ${dogChip}
-                  by <span class="${methodClass}">${method}</span> ${roundText}
+                  <span class="chip chip-winner ${winnerClass}">${winner}</span> ${dogChip}
+                  by <span class="chip chip-method ${methodClass}">${method}</span> ${roundHtml}
                   ${earnNote}
                 </div>
                 ${pointsChip}
@@ -586,8 +585,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const completedResults = resultsArr.filter(res => res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
 
       if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
-        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
-        champBanner.style.display = "block";
+        const champEl = document.getElementById("champBanner");
+        champEl.textContent = `🏆 ${leaderboardData.champMessage}`;
+        champEl.style.display = "block";
       }
     });
   }
@@ -595,12 +595,6 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ---------- All-Time Leaderboard ---------- */
   let allTimeLoaded = false;
   let allTimeData = [];
-
-  function fetchWithTimeout(url, ms = 6000) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
-  }
 
   function sortAllTime(rows) {
     const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
@@ -670,8 +664,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function preloadAllTime() {
-    const base = (window.API_BASE || "/api").replace(/\/$/,"");
-    // Compatible with both path and action modes
     api.getHall()
       .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; })
       .catch(() => {});
@@ -685,7 +677,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     api.getHall()
       .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
-      .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable.</li>`; })
+      .catch(() => { allTimeList.innerHTML = `<li>All-Time unavailable.</li>`; })
       .finally(() => { allTimeList.style.minHeight = ""; });
   }
 
