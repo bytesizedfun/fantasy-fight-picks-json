@@ -196,15 +196,15 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
   usernameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 
-  // Scoring rules content (no inner title, just the bullets)
+  // Scoring rules content (short wording; no inner title)
   (function renderScoringRules(){
     const el = document.getElementById("scoringRules");
     if (!el) return;
     el.innerHTML = `
       <ul class="rules-list">
-        <li>+3 for correct winner</li>
-        <li>+2 for correct method <span class="muted">(if winner is correct)</span></li>
-        <li>+1 for round <span class="muted">(if winner & method are both correct)</span></li>
+        <li>+3 for winner</li>
+        <li>+2 for method <span class="muted">(if winner is correct)</span></li>
+        <li>+1 for round <span class="muted">(if winner & method are correct)</span></li>
         <li>Bonus points for underdogs</li>
         <li>Pick the correct FOTN for 3 points</li>
       </ul>
@@ -269,8 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderFOTN(fightsData, existingPick = "") {
     fotnBlock.innerHTML = `
       <div class="fotn-title">⭐ Fight of the Night</div>
-      <select id="fotnSelect"></select>
-      <div class="hint">+3 pts if correct</div>
+      <select id="fotnSelect" class="fotn-select"></select>
     `;
     fotnSelect = document.getElementById("fotnSelect");
 
@@ -313,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </span>
           </label>
 
-          <label>
+        <label>
             <input type="radio" name="${fight}-winner" value="${fighter2}">
             <span class="pick-row">
               <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
@@ -416,11 +415,15 @@ document.addEventListener("DOMContentLoaded", () => {
     api.getUserPicks(username)
       .then(data => {
         const myPicksDiv = document.getElementById("myPicks");
-        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+        // Hide section entirely until there are picks
         if (!data.success || !data.picks.length) {
-          myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
+          myPicksDiv.style.display = "none";
+          myPicksDiv.innerHTML = "";
           return;
         }
+
+        myPicksDiv.style.display = "grid";
+        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
 
         Promise.all([ getLeaderboardCached(), getFightsCached() ]).then(([resultData, fightsData]) => {
           buildFightMeta(fightsData);
@@ -460,7 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
 
-            // Dog chip style in "Your Picks" (we keep the cool chip here)
+            // Dog chip: neutral style so it doesn't imply correctness
             const dogChip = (chosenIsUnderdog && dogTier > 0)
               ? `<span class="dog-tag dog-tag--chip">🐶 +${dogTier} pts</span>`
               : "";
