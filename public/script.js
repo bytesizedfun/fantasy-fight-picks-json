@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const allTimeList = document.getElementById("allTimeBoard");
   const weeklyTabBtn = document.getElementById("tabWeekly");
   const allTimeTabBtn = document.getElementById("tabAllTime");
-  const punchSound = new Audio("punch.mp3");
 
   const fotnBlock = document.getElementById("fotnBlock");
   let fotnSelect = null;
@@ -19,6 +18,44 @@ document.addEventListener("DOMContentLoaded", () => {
   // odds / underdog cache
   const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
   const FOTN_POINTS = 3;
+
+  /* ---------- Tiny response caches (performance only; no logic change) ---------- */
+  const now = () => Date.now();
+  const FIGHTS_TTL = 5 * 60 * 1000; // 5 minutes
+  const LB_TTL = 8 * 1000;          // 8 seconds
+
+  let fightsCache = { data: null, ts: 0, promise: null };
+  let lbCache = { data: null, ts: 0, promise: null };
+
+  function getFights() {
+    const fresh = fightsCache.data && (now() - fightsCache.ts < FIGHTS_TTL);
+    if (fresh) return Promise.resolve(fightsCache.data);
+    if (fightsCache.promise) return fightsCache.promise;
+
+    fightsCache.promise = fetch("/api/fights")
+      .then(r => r.json())
+      .then(data => {
+        fightsCache = { data, ts: now(), promise: null };
+        buildFightMeta(data);
+        return data;
+      })
+      .catch(err => { fightsCache.promise = null; throw err; });
+
+    return fightsCache.promise;
+  }
+
+  function getLeaderboard() {
+    const fresh = lbCache.data && (now() - lbCache.ts < LB_TTL);
+    if (fresh) return Promise.resolve(lbCache.data);
+    if (lbCache.promise) return lbCache.promise;
+
+    lbCache.promise = fetch("/api/leaderboard", { method: "POST" })
+      .then(r => r.json())
+      .then(data => { lbCache = { data, ts: now(), promise: null }; return data; })
+      .catch(err => { lbCache.promise = null; throw err; });
+
+    return lbCache.promise;
+  }
 
   /* ---------- Helpers ---------- */
   function normalizeAmericanOdds(raw) {
@@ -67,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (scoring) scoring.style.display = "block";
 
     Promise.all([
-      fetch("/api/fights").then(r => r.json()).then(data => { buildFightMeta(data); return data; }),
+      getFights(),
       fetch("/api/picks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,13 +157,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Fights ---------- */
   function loadFights() {
-    fetch("/api/fights")
-      .then(res => res.json())
+    getFights()
       .then(data => {
-        buildFightMeta(data);
         renderFightList(data);
         renderFOTN(data);
-      });
+      })
+      .catch(() => {/* silent */});
   }
 
   function renderFOTN(fightsData, existingPick = "") {
@@ -252,12 +288,13 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        try { punchSound.play(); } catch (_) {}
         alert("Picks submitted!");
         localStorage.setItem("submitted", "true");
         fightList.style.display = "none";
         submitBtn.style.display = "none";
         fotnBlock.style.display = "none";
+        // ensure next leaderboard fetch isn't served from cache
+        lbCache = { data: null, ts: 0, promise: null };
         loadMyPicks();
         loadLeaderboard();
       } else {
@@ -275,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (clean, conditional text; no "by in Round") ---------- */
+  /* ---------- My Picks (with earned underdog bonus) ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -292,8 +329,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       Promise.all([
-        fetch("/api/leaderboard", { method: "POST" }).then(res => res.json()),
-        fetch("/api/fights").then(r => r.json())
+        getLeaderboard(),
+        getFights()
       ]).then(([resultData, fightsData]) => {
         buildFightMeta(fightsData);
 
@@ -309,8 +346,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="scored-pick fotn-strip">
               <div class="fight-name">FOTN Pick</div>
               <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
-                ${escapeHtml(myFOTN)} ${badge}
-                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.map(escapeHtml).join(", ")}</div>` : ""}
+                ${myFOTN} ${badge}
+                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
               </div>
             </div>
           `;
@@ -318,16 +355,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Each fight pick row
         data.picks.forEach(({ fight, winner, method, round }) => {
-          winner = (winner || "").trim();
-          method = (method || "").trim();
-          round  = (round  || "").toString().trim();
-
           const actual = fightResults[fight] || {};
-          const hasResult = !!(actual.winner && actual.method);
+          const hasResult = actual.winner && actual.method;
 
           const matchWinner = hasResult && winner === actual.winner;
           const matchMethod = hasResult && method === actual.method;
-          const matchRound  = hasResult && round && actual.round && round == actual.round;
+          const matchRound = hasResult && round == actual.round;
 
           // Underdog info
           const meta = fightMeta.get(fight) || {};
@@ -339,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
 
-          // Scoring (mirror backend)
+          // Scoring (match backend)
           let score = 0;
           if (matchWinner) {
             score += 3;
@@ -350,44 +383,26 @@ document.addEventListener("DOMContentLoaded", () => {
             if (hasResult && actual.underdog === "Y") score += dogTier;
           }
 
-          // Result classes (only color after results exist)
           const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
           const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-          const roundClass  = hasResult && matchWinner && matchMethod && method !== "Decision"
+          const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
             ? (matchRound ? "correct" : "wrong")
             : "";
 
-          // Build clean, conditional fragments
-          const hasMethod = !!method;
-          const hasRound  = !!round && round !== "N/A";
-          const showRound = hasMethod && method !== "Decision" && hasRound;
-
-          const winnerHtml = winner
-            ? `<span class="winner ${winnerClass}">${escapeHtml(winner)}</span>`
-            : "";
-
-          const methodHtml = hasMethod
-            ? ` by <span class="method ${methodClass}">${escapeHtml(method)}</span>`
-            : "";
-
-          const roundHtml = showRound
-            ? ` in Round <span class="round ${roundClass}">${escapeHtml(round)}</span>`
-            : "";
+          const roundText = method === "Decision" ? "(Decision)"
+            : `in Round <span class="${roundClass}">${round}</span>`;
+          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
           const earnNote = (earnedBonus > 0 && hasResult)
             ? `<span class="earn-note">🐶 +${earnedBonus} bonus points</span>`
             : "";
 
-          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
-
-          // Skip rows with nothing selected (paranoia guard)
-          if (!winner && !hasMethod && !hasRound) return;
-
           myPicksDiv.innerHTML += `
             <div class="scored-pick">
-              <div class="fight-name">${escapeHtml(fight)}</div>
+              <div class="fight-name">${fight}</div>
               <div class="user-pick">
-                ${winnerHtml}${methodHtml}${roundHtml}
+                <span class="${winnerClass}">${winner}</span>
+                by <span class="${methodClass}">${method}</span> ${roundText}
                 ${earnNote}
               </div>
               ${pointsChip}
@@ -395,12 +410,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       });
     });
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, m => (
-        { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]
-      ));
-    }
   }
 
   /* ---------- Champion banner + Weekly Leaderboard ---------- */
@@ -423,8 +432,8 @@ document.addEventListener("DOMContentLoaded", () => {
     showPreviousChampionBanner();
 
     Promise.all([
-      fetch("/api/fights").then(r => r.json()),
-      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
+      getFights(),
+      getLeaderboard()
     ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
       board.classList.add("board","weekly");
