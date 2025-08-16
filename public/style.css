@@ -323,12 +323,12 @@ body{
 .board.at-five .num{ text-align:center; font-weight:900; color:var(--text); opacity:.95; }
 .board.at-five .mobile-meta{ display:none; color:var(--muted); }
 
-/* ===== Your Picks (CENTERED & futuristic chips) ===== */
+/* ===== Your Picks (CENTERED & clean) ===== */
 #myPicks{
   margin-top:12px;
   display:grid;
   gap:8px;
-  justify-items:center; /* hard center grid items */
+  justify-items:center;
   text-align:center;
 }
 #myPicks h3{ margin:0; text-align:center; color:var(--accent); font-weight:900; letter-spacing:.08em; }
@@ -342,8 +342,6 @@ body{
   border:1px solid var(--divider);   /* left border removed */
   text-align:center;
 }
-
-/* Fight name is muted to distinguish from your picks */
 .scored-pick .fight-name{
   flex:1 1 100%;
   font-weight:900;
@@ -353,14 +351,10 @@ body{
   text-align:center;
 }
 
-/* Neutral (pre-results) futuristic chips for your picks
-   These target common class names without needing HTML changes */
+/* Winner chip (neutral before results) */
 .scored-pick .winner,
 .scored-pick .my-winner,
-.scored-pick [class*="winner"],
-.scored-pick [class*="method"],
-.scored-pick [class*="round"],
-.scored-pick [class*="pick"]{
+.scored-pick [class*="winner"]{
   display:inline-block;
   padding:6px 10px;
   border-radius:999px;
@@ -373,31 +367,36 @@ body{
   line-height:1;
 }
 
-/* Only apply the neutral look BEFORE results (i.e., not .correct/.wrong) */
-.scored-pick .winner.correct,
-.scored-pick .my-winner.correct,
-.scored-pick [class*="winner"].correct,
-.scored-pick [class*="method"].correct,
-.scored-pick [class*="round"].correct,
-.scored-pick [class*="pick"].correct{
-  background:transparent; border-color:transparent;
+/* Method/Round are plain text (no circles) */
+.scored-pick .method,
+.scored-pick .round,
+.scored-pick [class*="method"],
+.scored-pick [class*="round"]{
+  background:transparent !important;
+  border:0 !important;
+  padding:0 !important;
+  text-transform:none !important;
+  letter-spacing:.02em !important;
 }
 
-.scored-pick .winner.wrong,
-.scored-pick .my-winner.wrong,
-.scored-pick [class*="winner"].wrong,
-.scored-pick [class*="method"].wrong,
-.scored-pick [class*="round"].wrong,
-.scored-pick [class*="pick"].wrong{
-  background:transparent; border-color:transparent;
+/* Winner chip lights up on results */
+.scored-pick .winner.correct{
+  background:rgba(47,255,160,0.12) !important;
+  border-color:var(--ok) !important;
+  box-shadow:0 0 12px rgba(47,255,160,0.45) !important;
+}
+.scored-pick .winner.wrong{
+  background:rgba(255,78,78,0.12) !important;
+  border-color:var(--warn) !important;
+  box-shadow:0 0 12px rgba(255,78,78,0.45) !important;
 }
 
-/* Points chip stays prominent and centered */
+/* Points chip */
 .points{
   display:inline-block;
   padding:6px 12px;
   border-radius:999px;
-  margin-left:0; /* no left lean */
+  margin-left:0;
   background:rgba(0,245,255,0.12);
   border:1px solid var(--accent);
   color:var(--accent);
@@ -408,9 +407,20 @@ body{
 /* tiny notes under chips */
 .earn-note{ font-size:12.5px; margin-left:0; opacity:.9; width:100%; text-align:center; }
 
-/* Result colors (unchanged behavior) */
-.correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); font-weight:900; }
-.wrong{ color:var(--warn); text-shadow:0 0 6px var(--warn); font-weight:900; }
+/* Strong result colors */
+.correct{
+  color:var(--ok) !important;
+  text-shadow:0 0 10px var(--ok), 0 0 22px rgba(47,255,160,0.55) !important;
+  font-weight:900;
+}
+.wrong{
+  color:var(--warn) !important;
+  text-shadow:0 0 10px var(--warn), 0 0 22px rgba(255,78,78,0.55) !important;
+  font-weight:900;
+}
+
+/* ensure the line itself doesn't mute colors */
+.scored-pick .user-pick{ color:var(--text); }
 
 .fotn-strip .fight-name{ color:var(--muted); }
 .fotn-strip .hint{ color:var(--muted); font-size:14px; display:block; margin-top:2px; text-align:center; }
