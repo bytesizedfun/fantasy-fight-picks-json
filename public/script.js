@@ -1,625 +1,417 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const welcome = document.getElementById("welcome");
-  const fightList = document.getElementById("fightList");
-  const submitBtn = document.getElementById("submitBtn");
-  const usernamePrompt = document.getElementById("usernamePrompt");
-  const usernameInput = document.getElementById("usernameInput");
-  const champBanner = document.getElementById("champBanner");
-  const leaderboardEl = document.getElementById("leaderboard");
-  const allTimeList = document.getElementById("allTimeBoard");
-  const weeklyTabBtn = document.getElementById("tabWeekly");
-  const allTimeTabBtn = document.getElementById("tabAllTime");
-
-  const fotnBlock = document.getElementById("fotnBlock");
-  let fotnSelect = null;
-
-  let username = localStorage.getItem("username");
-
-  // odds / underdog cache
-  const fightMeta = new Map(); // fight -> { f1, f2, f1Odds, f2Odds, underdogSide, underdogOdds }
-  const FOTN_POINTS = 3;
-
-  /* ---------- Tiny response caches (performance only; no logic change) ---------- */
-  const now = () => Date.now();
-  const FIGHTS_TTL = 5 * 60 * 1000; // 5 minutes
-  const LB_TTL = 8 * 1000;          // 8 seconds
-
-  let fightsCache = { data: null, ts: 0, promise: null };
-  let lbCache = { data: null, ts: 0, promise: null };
-
-  function getFights() {
-    const fresh = fightsCache.data && (now() - fightsCache.ts < FIGHTS_TTL);
-    if (fresh) return Promise.resolve(fightsCache.data);
-    if (fightsCache.promise) return fightsCache.promise;
-
-    fightsCache.promise = fetch("/api/fights")
-      .then(r => r.json())
-      .then(data => {
-        fightsCache = { data, ts: now(), promise: null };
-        buildFightMeta(data);
-        return data;
-      })
-      .catch(err => { fightsCache.promise = null; throw err; });
-
-    return fightsCache.promise;
-  }
-
-  function getLeaderboard() {
-    const fresh = lbCache.data && (now() - lbCache.ts < LB_TTL);
-    if (fresh) return Promise.resolve(lbCache.data);
-    if (lbCache.promise) return lbCache.promise;
-
-    lbCache.promise = fetch("/api/leaderboard", { method: "POST" })
-      .then(r => r.json())
-      .then(data => { lbCache = { data, ts: now(), promise: null }; return data; })
-      .catch(err => { lbCache.promise = null; throw err; });
-
-    return lbCache.promise;
-  }
-
-  /* ---------- Helpers ---------- */
-  function normalizeAmericanOdds(raw) {
-    if (raw == null) return null;
-    let s = String(raw).trim();
-    if (s === "") return null;
-    const m = s.match(/[+-]?\d+/);
-    if (!m) return null;
-    const n = parseInt(m[0], 10);
-    return isFinite(n) ? n : null;
-  }
-  function underdogBonusFromOdds(oddsRaw) {
-    const n = normalizeAmericanOdds(oddsRaw);
-    if (n == null || n < 100) return 0; // only +100 and above
-    return 1 + Math.floor((n - 100) / 100); // +100–199=+1, +200–299=+2, ...
-  }
-
-  function doLogin() {
-    const input = usernameInput.value.trim();
-    if (!input) return alert("Please enter your name.");
-    username = input;
-    localStorage.setItem("username", username);
-    finalizeLogin(username);
-  }
-
-  // Attach robust listeners (click + Enter)
-  const loginBtn = document.querySelector("#usernamePrompt button");
-  if (loginBtn) loginBtn.addEventListener("click", doLogin);
-  if (usernameInput) {
-    usernameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") doLogin();
-    });
-  }
-
-  if (username) {
-    usernameInput.value = username;
-    finalizeLogin(username);
-  }
-
-  function finalizeLogin(name) {
-    // Hide prompt immediately so "stuck on sign-in" can't happen even if network stalls
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
-    welcome.style.display = "block";
-    const scoring = document.getElementById("scoringRules");
-    if (scoring) scoring.style.display = "block";
-
-    Promise.all([
-      getFights(),
-      fetch("/api/picks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: name })
-      }).then(r => r.json())
-    ])
-    .then(([fightsData, pickData]) => {
-      const submitted = pickData.success && pickData.picks.length > 0;
-      if (submitted) {
-        localStorage.setItem("submitted", "true");
-        fightList.style.display = "none";
-        submitBtn.style.display = "none";
-        fotnBlock.style.display = "none";
-      } else {
-        localStorage.removeItem("submitted");
-        renderFightList(fightsData);
-        renderFOTN(fightsData, pickData.fotnPick);
-        submitBtn.style.display = "block";
-      }
-
-      leaderboardEl.classList.add("board","weekly");
-      loadMyPicks();
-      loadLeaderboard();
-      preloadAllTime();
-    })
-    .catch(err => {
-      console.error(err);
-      // Fallback: still load fights & boards so the app remains usable
-      loadFights();
-      leaderboardEl.classList.add("board","weekly");
-      loadMyPicks();
-      loadLeaderboard();
-      preloadAllTime();
-    });
-  }
-
-  function buildFightMeta(data) {
-    fightMeta.clear();
-    (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
-      fightMeta.set(fight, {
-        f1: fighter1,
-        f2: fighter2,
-        f1Odds: f1Odds || "",
-        f2Odds: f2Odds || "",
-        underdogSide: underdog || "",
-        underdogOdds: underdogOdds || ""
-      });
-    });
-  }
-
-  /* ---------- Fights ---------- */
-  function loadFights() {
-    getFights()
-      .then(data => {
-        renderFightList(data);
-        renderFOTN(data);
-      })
-      .catch(() => {/* silent */});
-  }
-
-  function renderFOTN(fightsData, existingPick = "") {
-    fotnBlock.innerHTML = `
-      <div class="fotn-title">⭐ Fight of the Night</div>
-      <select id="fotnSelect"></select>
-      <div class="hint">+3 pts if correct</div>
-    `;
-    fotnSelect = document.getElementById("fotnSelect");
-
-    const names = (fightsData || []).map(f => f.fight);
-    if (!names.length) { fotnBlock.style.display = "none"; return; }
-    fotnSelect.innerHTML = `<option value="">— Select your FOTN —</option>` +
-      names.map(n => `<option value="${n}">${n}</option>`).join("");
-    if (existingPick) fotnSelect.value = existingPick;
-    fotnBlock.style.display = "flex";
-  }
-
-  function renderFightList(data) {
-    fightList.innerHTML = "";
-    (data || []).forEach(({ fight, fighter1, fighter2 }) => {
-      const meta = fightMeta.get(fight) || {};
-      const dogSide = meta.underdogSide;
-      const dogTier = underdogBonusFromOdds(meta.underdogOdds);
-
-      const isDog1 = dogSide === "Fighter 1";
-      const isDog2 = dogSide === "Fighter 2";
-
-      // Clean tag: “🐶 +N pts”
-      const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
-      const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
-
-      const div = document.createElement("div");
-      div.className = "fight";
-      div.innerHTML = `
-        <h3>${fight}</h3>
-
-        <div class="options">
-          <label>
-            <input type="radio" name="${fight}-winner" value="${fighter1}">
-            <span class="pick-row">
-              <span class="fighter-name ${isDog1 ? 'is-underdog' : ''}">${fighter1}</span>
-              <span class="fighter-right">${dog1 ? `<span class="dog-tag">${dog1}</span>` : ""}</span>
-            </span>
-          </label>
-
-          <label>
-            <input type="radio" name="${fight}-winner" value="${fighter2}">
-            <span class="pick-row">
-              <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">${fighter2}</span>
-              <span class="fighter-right">${dog2 ? `<span class="dog-tag">${dog2}</span>` : ""}</span>
-            </span>
-          </label>
-        </div>
-
-        <div class="pick-controls">
-          <select name="${fight}-method">
-            <option value="Decision">Decision</option>
-            <option value="KO/TKO">KO/TKO</option>
-            <option value="Submission">Submission</option>
-          </select>
-          <select name="${fight}-round">
-            <option value="1">Round 1</option>
-            <option value="2">Round 2</option>
-            <option value="3">Round 3</option>
-            <option value="4">Round 4</option>
-            <option value="5">Round 5</option>
-          </select>
-        </div>
-      `;
-      fightList.appendChild(div);
-    });
-
-    // Decision disables round
-    document.querySelectorAll(".fight").forEach(fight => {
-      const methodSelect = fight.querySelector(`select[name$="-method"]`);
-      const roundSelect = fight.querySelector(`select[name$="-round"]`);
-      if (!methodSelect || !roundSelect) return;
-      function syncRound() {
-        const isDecision = methodSelect.value === "Decision";
-        roundSelect.disabled = isDecision;
-        roundSelect.value = isDecision ? "" : (roundSelect.value || "1");
-      }
-      methodSelect.addEventListener("change", syncRound);
-      syncRound();
-    });
-
-    fightList.style.display = "flex";
-    submitBtn.style.display = "block";
-  }
-
-  /* ---------- Submit picks ---------- */
-  function submitPicks() {
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting...";
-
-    const picks = [];
-    const fights = document.querySelectorAll(".fight");
-
-    for (const fight of fights) {
-      const fightName = fight.querySelector("h3").innerText;
-      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
-      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
-
-      if (!winner || !method) {
-        alert(`Please complete all picks. Missing data for "${fightName}".`);
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit Picks";
-        return;
-      }
-      picks.push({ fight: fightName, winner, method, round });
-    }
-
-    const fotnPick = fotnSelect?.value || "";
-
-    fetch("/api/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, picks, fotnPick })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert("Picks submitted!");
-        localStorage.setItem("submitted", "true");
-        fightList.style.display = "none";
-        submitBtn.style.display = "none";
-        fotnBlock.style.display = "none";
-        // ensure next leaderboard fetch isn't served from cache
-        lbCache = { data: null, ts: 0, promise: null };
-        loadMyPicks();
-        loadLeaderboard();
-      } else {
-        alert(data.error || "Something went wrong.");
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit Picks";
-      }
-    })
-    .catch(() => {
-      alert("Network error submitting picks.");
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Submit Picks";
-    });
-  }
-  submitBtn.addEventListener("click", submitPicks);
-  window.submitPicks = submitPicks;
-
-  /* ---------- My Picks (with earned underdog bonus) ---------- */
-  function loadMyPicks() {
-    fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
-    })
-    .then(res => res.json())
-    .then(data => {
-      const myPicksDiv = document.getElementById("myPicks");
-      myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-      if (!data.success || !data.picks.length) {
-        myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
-        return;
-      }
-
-      Promise.all([
-        getLeaderboard(),
-        getFights()
-      ]).then(([resultData, fightsData]) => {
-        buildFightMeta(fightsData);
-
-        const fightResults = resultData.fightResults || {};
-        const officialFOTN = resultData.officialFOTN || [];
-        const myFOTN = data.fotnPick || "";
-
-        // FOTN strip
-        if (myFOTN) {
-          const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
-          const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
-          myPicksDiv.innerHTML += `
-            <div class="scored-pick fotn-strip">
-              <div class="fight-name">FOTN Pick</div>
-              <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
-                ${myFOTN} ${badge}
-                ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
-              </div>
-            </div>
-          `;
-        }
-
-        // Each fight pick row
-        data.picks.forEach(({ fight, winner, method, round }) => {
-          const actual = fightResults[fight] || {};
-          const hasResult = actual.winner && actual.method;
-
-          const matchWinner = hasResult && winner === actual.winner;
-          const matchMethod = hasResult && method === actual.method;
-          const matchRound = hasResult && round == actual.round;
-
-          // Underdog info
-          const meta = fightMeta.get(fight) || {};
-          const dogSide = meta.underdogSide;
-          const dogTier = underdogBonusFromOdds(meta.underdogOdds);
-          const chosenIsUnderdog =
-            (dogSide === "Fighter 1" && winner === meta.f1) ||
-            (dogSide === "Fighter 2" && winner === meta.f2);
-
-          const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
-
-          // Scoring (match backend)
-          let score = 0;
-          if (matchWinner) {
-            score += 3;
-            if (matchMethod) {
-              score += 2;
-              if (method !== "Decision" && matchRound) score += 1;
-            }
-            if (hasResult && actual.underdog === "Y") score += dogTier;
-          }
-
-          const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
-          const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-          const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
-            ? (matchRound ? "correct" : "wrong")
-            : "";
-
-          const roundText = method === "Decision" ? "(Decision)"
-            : `in Round <span class="${roundClass}">${round}</span>`;
-          const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
-
-          const earnNote = (earnedBonus > 0 && hasResult)
-            ? `<span class="earn-note">🐶 +${earnedBonus} bonus points</span>`
-            : "";
-
-          myPicksDiv.innerHTML += `
-            <div class="scored-pick">
-              <div class="fight-name">${fight}</div>
-              <div class="user-pick">
-                <span class="${winnerClass}">${winner}</span>
-                by <span class="${methodClass}">${method}</span> ${roundText}
-                ${earnNote}
-              </div>
-              ${pointsChip}
-            </div>`;
-        });
-      });
-    });
-  }
-
-  /* ---------- Champion banner + Weekly Leaderboard ---------- */
-
-  function showPreviousChampionBanner() {
-    fetch("/api?action=getChampionBanner")
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => {
-        const msg = (data && typeof data.message === "string") ? data.message.trim() : "";
-        if (msg) {
-          champBanner.textContent = `🏆 ${msg.replace(/^🏆\s*/,"")}`;
-          champBanner.style.display = "block";
-        }
-      })
-      .catch(() => { /* silent */ });
-  }
-
-  function loadLeaderboard() {
-    // show last week’s champ right away
-    showPreviousChampionBanner();
-
-    Promise.all([
-      getFights(),
-      getLeaderboard()
-    ]).then(([fightsData, leaderboardData]) => {
-      const board = leaderboardEl;
-      board.classList.add("board","weekly");
-      board.innerHTML = "";
-
-      // Do NOT show users until results have started
-      const resultsArr = Object.values(leaderboardData.fightResults || {});
-      const resultsStarted = resultsArr.some(r => r && r.winner && r.method);
-
-      if (!resultsStarted) {
-        const hint = document.createElement("li");
-        hint.className = "board-hint";
-        hint.textContent = "Weekly standings will appear once results start.";
-        board.appendChild(hint);
-        return;
-      }
-
-      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
-
-      let rank = 1;
-      let prevScore = null;
-      let actualRank = 1;
-
-      scores.forEach(([user, score], index) => {
-        if (score !== prevScore) actualRank = rank;
-
-        const li = document.createElement("li");
-        let displayName = user;
-        const classes = [];
-
-        if (leaderboardData.champs?.includes(user)) {
-          classes.push("champ-glow");
-          displayName = `<span class="crown">👑</span> ${displayName}`;
-        }
-        if (scores.length >= 3 && index === scores.length - 1) {
-          classes.push("loser");
-          displayName = `💩 ${displayName}`;
-        }
-        if (user === username) classes.push("current-user");
-
-        li.className = classes.join(" ");
-        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
-        board.appendChild(li);
-
-        prevScore = score;
-        rank++;
-      });
-
-      // glow ties for #1
-      const lis = board.querySelectorAll("li");
-      if (lis.length > 0) {
-        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
-        lis.forEach(li => {
-          const val = parseInt(li.lastElementChild.textContent, 10);
-          if (val === topScore) li.classList.add("tied-first");
-        });
-      }
-
-      // If event concluded, override with current champ(s) from backend
-      const totalFights = (fightsData || []).length;
-      const completedResults = resultsArr.filter(res => res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
-
-      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
-        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
-        champBanner.style.display = "block";
-      }
-    });
-  }
-
-  /* ---------- All-Time Leaderboard ---------- */
-  let allTimeLoaded = false;
-  let allTimeData = [];
-
-  function fetchWithTimeout(url, ms = 6000) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(t));
-  }
-
-  function sortAllTime(rows) {
-    const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
-    return cleaned
-      .map(r => ({
-        user: r.username,
-        crowns: Number(r.crowns) || 0,
-        events: Number(r.events_played) || 0,
-        rate: Number(r.crown_rate) || 0
-      }))
-      .sort((a,b) => {
-        if (b.rate !== a.rate) return b.rate - a.rate;
-        if (b.crowns !== a.crowns) return b.crowns - a.crowns;
-        if (b.events !== a.events) return b.events - a.events;
-        return (a.user || "").localeCompare(b.user || "");
-      });
-  }
-
-  function rowsEqual(a, b) {
-    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
-  }
-
-  function renderAllTimeHeader() {
-    const li = document.createElement("li");
-    li.className = "board-header at-five";
-    li.innerHTML = `
-      <span>Rank</span>
-      <span>Player</span>
-      <span>%</span>
-      <span>👑</span>
-      <span>Events</span>
-    `;
-    allTimeList.appendChild(li);
-  }
-
-  function drawAllTime(data) {
-    allTimeList.innerHTML = "";
-    if (!data.length) {
-      allTimeList.innerHTML = "<li>No All-Time data yet.</li>";
-      return;
-    }
-
-    renderAllTimeHeader();
-
-    let rank = 0;
-    let prev = null;
-
-    data.forEach((row, idx) => {
-      rank = (idx === 0 || !rowsEqual(row, prev)) ? (idx + 1) : rank;
-      const isTop = rank === 1;
-
-      const li = document.createElement("li");
-      const classes = [];
-      if (row.user === username) classes.push("current-user");
-      if (isTop) classes.push("tied-first");
-      li.className = classes.join(" ") + " at-five";
-
-      const rankLabel = isTop ? "🥇" : `#${rank}`;
-      const pct = (row.rate * 100).toFixed(1) + "%";
-
-      li.innerHTML = `
-        <span class="rank">${rankLabel}</span>
-        <span class="user" title="${row.user}">${row.user}</span>
-        <span class="num rate">${pct}</span>
-        <span class="num crowns">${row.crowns}</span>
-        <span class="num events">${row.events}</span>
-        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events • ${pct}</span>
-      `;
-      allTimeList.appendChild(li);
-      prev = row;
-    });
-  }
-
-  function preloadAllTime() {
-    fetchWithTimeout("/api/hall", 6000)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; })
-      .catch(() => {});
-  }
-
-  function loadAllTimeInteractive() {
-    if (allTimeLoaded) { drawAllTime(allTimeData); return; }
-    const keepHeight = leaderboardEl?.offsetHeight || 260;
-    allTimeList.style.minHeight = `${keepHeight}px`;
-    allTimeList.innerHTML = "";
-
-    fetchWithTimeout("/api/hall", 6000)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
-      .catch(err => { allTimeList.innerHTML = `<li>All-Time unavailable. ${err?.message ? '('+err.message+')' : ''}</li>`; })
-      .finally(() => { allTimeList.style.minHeight = ""; });
-  }
-
-  /* ---------- Tabs ---------- */
-  weeklyTabBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    leaderboardEl.style.display = "block";
-    allTimeList.style.display = "none";
-    weeklyTabBtn.setAttribute("aria-pressed","true");
-    allTimeTabBtn.setAttribute("aria-pressed","false");
-  });
-
-  allTimeTabBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    loadAllTimeInteractive();
-    leaderboardEl.style.display = "none";
-    allTimeList.style.display = "block";
-    weeklyTabBtn.setAttribute("aria-pressed","false");
-    allTimeTabBtn.setAttribute("aria-pressed","true");
-  });
-});
+/* === Orbitron Neon — centered, compact, no gold === */
+/* (Fonts now loaded in HTML for speed) */
+
+:root{
+  --ink:#0b0b0d;
+  --panel:#131417;
+  --tile:#191a1e;
+
+  --text:#e7e9ee;
+  --muted:#aeb2bb;
+
+  --accent:#00f5ff;
+  --accent-rgb:0,245,255;
+  --neon-red:#ff003c;
+
+  --ok:#2fffa0;
+  --warn:#ff4e4e;
+
+  --divider:rgba(255,255,255,0.10);
+  --shadow:0 12px 40px rgba(0,0,0,0.55);
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:
+    radial-gradient(1000px 520px at 50% -180px, rgba(var(--accent-rgb),0.10), transparent 60%),
+    var(--ink);
+  color:var(--text);
+  font-family:'Orbitron',sans-serif;
+  letter-spacing:.2px;
+  text-align:center; /* center baseline */
+}
+
+/* ===== Header / Shell ===== */
+.banner-container{ display:flex; justify-content:center; align-items:center; padding:12px 12px 0; }
+.logo-banner{
+  max-width:320px; width:92%; height:auto;
+  filter:drop-shadow(0 12px 28px rgba(0,0,0,0.55));
+}
+
+#app{
+  max-width:640px;
+  margin:12px auto 48px;
+  padding:18px;
+  background:var(--panel);
+  border-radius:16px;
+  border:2px solid rgba(255,255,255,0.08);
+  box-shadow:0 0 40px rgba(0, 245, 255, 0.08), var(--shadow);
+}
+
+/* Champ banner */
+.champ-banner{
+  display:none;
+  text-align:center;
+  padding:12px;
+  margin:6px auto 10px;
+  font-weight:900;
+  color:var(--accent);
+  border:1px solid var(--accent);
+  border-radius:14px;
+  background:linear-gradient(120deg, rgba(0,245,255,0.22), rgba(255,0,60,0.18), rgba(0,245,255,0.22));
+  background-size:300% 300%;
+  animation:bannerGlow 6s ease infinite;
+  text-shadow:0 0 12px var(--accent), 0 0 24px var(--neon-red);
+}
+@keyframes bannerGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+#welcome{ margin:8px 0 12px; font-weight:900; font-size:26px; text-shadow:0 0 12px rgba(var(--accent-rgb),0.35); }
+
+/* ===== Username prompt ===== */
+#usernamePrompt.center{
+  display:flex; flex-direction:column; gap:8px; align-items:center;
+}
+.prompt-title{ font-weight:900; margin-bottom:4px; }
+#usernamePrompt input{
+  width:100%; max-width:320px;
+  background:var(--tile);
+  border:1px solid var(--divider);
+  border-radius:12px;
+  padding:10px 12px;
+  color:var(--text);
+  outline:none;
+}
+#usernamePrompt button{
+  background:var(--accent); color:#001214;
+  border:1px solid rgba(var(--accent-rgb),0.55);
+  border-radius:12px; padding:10px 16px; font-weight:900; letter-spacing:.5px;
+  cursor:pointer; box-shadow:0 0 14px rgba(0,245,255,0.35);
+  transition:transform .08s ease, box-shadow .2s ease, background .2s ease;
+}
+#usernamePrompt button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
+
+/* ===== Scoring base styles ===== */
+.rules{
+  margin:8px auto 12px;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid var(--divider);
+  background:linear-gradient(180deg, #101116, #0e0f12);
+}
+.rules-title{
+  font-weight:900; font-size:18px; letter-spacing:.12em;
+  color:var(--accent);
+  text-shadow:0 0 10px rgba(var(--accent-rgb),0.35);
+  margin-bottom:6px;
+}
+.rules-list{ list-style:none; padding:0; margin:0; }
+.rules-list li{ font-size:15px; margin:4px 0; font-weight:900; letter-spacing:.3px; }
+.rules .muted{ color:var(--muted); font-weight:600; }
+
+/* --- Scoring: collapsible wrapper (closed by default) --- */
+.rules-collapsible{
+  max-width:640px;
+  margin:10px auto 12px;
+}
+.rules-collapsible summary{
+  list-style:none;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border:1px solid var(--divider);
+  border-radius:12px;
+  background:var(--tile);
+  font-weight:900;
+  cursor:pointer;
+  user-select:none;
+  transition:transform .06s ease, background .15s ease, border-color .15s ease;
+}
+.rules-collapsible summary::-webkit-details-marker{ display:none; }
+.rules-toggle-label{ letter-spacing:.08em; }
+.rules-caret{ transition:transform .2s ease, opacity .2s ease; opacity:.9; }
+.rules-collapsible[open] summary{
+  background:rgba(255,255,255,0.06);
+  border-color:rgba(255,255,255,0.20);
+}
+.rules-collapsible[open] .rules-caret{ transform:rotate(90deg); }
+.rules-collapsible .rules{ margin-top:8px; }
+/* small perf win */
+.rules-collapsible > .rules{
+  content-visibility:auto;
+  contain-intrinsic-size: 220px;
+}
+
+/* ===== Fight list ===== */
+#fightList{ display:flex; flex-direction:column; gap:6px; align-items:center; }
+.fight{
+  width:100%; max-width:600px;
+  background:rgba(255,255,255,0.03);
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.06);
+  box-shadow:inset 0 0 10px rgba(0,245,255,0.05);
+}
+.fight h3{
+  color:var(--accent);
+  margin:0 0 6px 0;
+  font-weight:900;
+  letter-spacing:.6px;
+}
+
+/* options row */
+.options{
+  display:grid; grid-template-columns: 1fr 1fr;
+  gap:6px;
+}
+
+/* option label (button-like) */
+.fight label{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  margin:0;
+  background:var(--tile);
+  border:1px solid var(--divider);
+  padding:6px 8px;
+  border-radius:12px;
+  cursor:pointer;
+  transition:border-color .15s ease, transform .06s ease, box-shadow .15s ease;
+  min-height:42px;
+}
+.fight label:hover{ border-color:rgba(var(--accent-rgb),0.45); transform:translateY(-1px); }
+.fight label:has(input:checked){
+  border-color:rgba(var(--accent-rgb),0.75);
+  box-shadow:0 0 0 2px rgba(0,245,255,0.18) inset, 0 8px 18px rgba(0,0,0,0.35);
+}
+
+/* hide radio */
+.fight label input[type="radio"]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+/* inside label */
+.pick-row{
+  display:grid;
+  grid-template-columns: 1fr 72px;
+  align-items:center; width:100%;
+}
+.fighter-name{ display:flex; align-items:center; justify-content:center; gap:6px; font-weight:900; }
+.fighter-name.is-underdog{ color:var(--text); text-shadow:0 0 6px rgba(0,245,255,0.18); }
+.fighter-right{ width:72px; text-align:right; font-weight:900; font-size:12.5px; opacity:.95; }
+.dog-tag{ color:#e7faff; font-variant-numeric:tabular-nums; }
+.bonus-chip{ display:none !important; }
+
+/* Method + Round */
+.pick-controls{ display:flex; justify-content:center; gap:6px; margin-top:6px; }
+.pick-controls select{
+  background:var(--tile);
+  border:1px solid var(--divider);
+  color:var(--text);
+  padding:7px 10px;
+  border-radius:12px;
+  outline:none;
+  min-width:124px;
+}
+
+/* Submit */
+#submitBtn{
+  width:100%; margin:10px auto 0; padding:11px 12px;
+  background:var(--accent); color:#001214;
+  border:1px solid rgba(var(--accent-rgb),0.55);
+  border-radius:14px; font-weight:900; letter-spacing:.6px;
+  cursor:pointer;
+  transition:transform .08s ease, box-shadow .2s ease, opacity .2s ease, background .2s ease;
+  box-shadow:0 0 14px rgba(0,245,255,0.35);
+}
+#submitBtn:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; box-shadow:0 10px 22px rgba(0,0,0,0.35); }
+#submitBtn:disabled{ opacity:.6; cursor:not-allowed; }
+
+/* ===== FOTN ===== */
+#fotnBlock{
+  width:100%;
+  background:linear-gradient(180deg, var(--panel), #0f1013);
+  border:1px solid rgba(var(--accent-rgb),0.25);
+  border-radius:16px;
+  padding:10px; box-shadow:var(--shadow); margin-top:8px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+}
+.fotn-card{
+  width:100%; max-width:600px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--divider);
+  border-radius:14px; padding:10px 12px;
+}
+.fotn-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+.fotn-emoji{ text-shadow:0 0 8px rgba(var(--accent-rgb),0.35); }
+.fotn-title{ font-weight:900; letter-spacing:.4px; }
+.fotn-badge{ font-weight:900; padding:2px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.06); }
+.fotn-select{
+  width:100%; background:var(--tile);
+  border:1px solid var(--divider); color:var(--text);
+  padding:10px 12px; border-radius:12px;
+}
+
+/* ===== Tabs ===== */
+.segmented{
+  display:flex; justify-content:center; align-items:center; gap:8px;
+  margin:12px 0 12px;
+}
+.segmented button{
+  appearance:none;
+  padding:8px 12px;
+  background:var(--tile);
+  border:1px solid var(--divider);
+  color:var(--text);
+  border-radius:10px;
+  font-weight:900;
+  cursor:pointer;
+  box-shadow:none !important; text-shadow:none !important;
+  transition:transform .06s ease, background .15s ease, border-color .15s ease;
+}
+.segmented button:hover{ transform:translateY(-1px); }
+.segmented button[aria-pressed="true"]{
+  background:rgba(255,255,255,0.06);
+  border-color:rgba(255,255,255,0.20);
+  box-shadow:none !important;
+}
+
+/* ===== Leaderboards — CENTERED, NO LEFT BORDERS ===== */
+.board{ list-style:none; margin:0; padding:0; }
+#leaderboard, #allTimeBoard{ max-width:640px; margin:0 auto; }
+
+/* Weekly */
+.board.weekly li{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  justify-items:center;
+  gap:10px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--divider);
+  border-radius:12px;
+  padding:10px 12px;
+  margin:8px 0;
+  transition:border-color .25s ease, transform .2s ease, box-shadow .25s ease;
+}
+.board.weekly li:hover{
+  box-shadow:0 0 12px rgba(0,245,255,0.40);
+  transform:translateY(-2px);
+}
+.board.weekly li .crown{ filter:drop-shadow(0 0 6px rgba(0,245,255,0.35)); font-size:20px; }
+.board.weekly li:first-child,
+.board.weekly li.tied-first,
+.board.weekly li.champ-glow{
+  background:rgba(0,245,255,0.10);
+  box-shadow:0 0 14px rgba(0,245,255,0.50);
+  animation:pulseChampion 1.8s infinite;
+}
+@keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
+
+/* Placeholder */
+.board-hint{
+  display:flex; justify-content:center; align-items:center;
+  padding:12px; border-radius:12px; border:1px dashed var(--divider);
+  color:var(--muted); background:rgba(255,255,255,0.03); margin:8px 0;
+}
+
+/* All-Time */
+.board-header.at-five,
+.board.at-five li{
+  display:grid;
+  grid-template-columns:70px 1fr 80px 60px 80px;
+  align-items:center;
+  justify-items:center;
+  gap:10px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--divider);
+  border-radius:12px;
+  padding:10px 12px;
+  margin:8px 0;
+}
+.board-header.at-five{
+  background:linear-gradient(180deg, var(--panel), #101116);
+  color:var(--muted); font-weight:900; text-transform:uppercase; letter-spacing:.6px;
+}
+.board.at-five li{ transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.board.at-five li:hover{ transform:translateY(-2px); box-shadow:0 0 12px rgba(0,245,255,0.28); }
+.board.at-five .rank{ width:64px; font-weight:900; }
+.board.at-five .user{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; }
+.board.at-five .num{ font-weight:900; color:var(--text); opacity:.95; }
+.board.at-five .mobile-meta{ display:none; color:var(--muted); }
+
+/* ===== Your Picks — clear contrast & bonus note ===== */
+#myPicks{
+  margin-top:12px;
+  display:grid;
+  gap:8px;
+  justify-items:center;
+}
+#myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
+
+/* Card */
+.scored-pick{
+  display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; justify-content:center;
+  background:rgba(255,255,255,0.04);
+  padding:9px 10px; border-radius:10px;
+  border:1px solid var(--divider);
+}
+
+/* Fight name muted & uppercase to separate from the pick content */
+.scored-pick .fight-name{
+  flex:1 1 100%;
+  font-weight:900;
+  letter-spacing:.12em;
+  color:var(--muted);
+  text-transform:uppercase;
+  text-align:center;
+}
+
+.points{
+  display:inline-block; padding:4px 10px; border-radius:999px; margin-left:0;
+  background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900;
+}
+
+/* Bonus note (earned or potential) */
+.earn-note{
+  font-size:12.5px;
+  margin-left:0;
+  opacity:.95;
+  width:100%;
+  text-align:center;
+  color:var(--muted);
+}
+
+/* Result colors */
+.correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); font-weight:900; }
+.wrong{ color:var(--warn); text-shadow:0 0 6px var(--warn); font-weight:900; }
+
+.fotn-strip .fight-name{ color:var(--muted); }
+.fotn-strip .hint{ color:var(--muted); font-size:14px; display:block; margin-top:2px; }
+
+/* ===== Responsive ===== */
+@media (max-width:600px){
+  .logo-banner{ max-width:260px; }
+  #app{ margin:8px auto 44px; padding:14px; }
+
+  .board-header.at-five{ display:none; }
+  .board.at-five li{ grid-template-columns:60px 1fr 90px; }
+  .board.at-five .rank{ width:auto; }
+  .board.at-five .num.crowns, .board.at-five .num.events{ display:none; }
+  .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; }
+}
+
+/* ======== Performance-only additions (no visual change) ======== */
+#fightList, #leaderboard, #allTimeBoard, #myPicks{
+  content-visibility: auto;
+  contain-intrinsic-size: 600px;
+}
+#app{ contain: content; }
+
+@media (prefers-reduced-motion: reduce){
+  .champ-banner{ animation: none; }
+  .segmented button, .fight label{ transition: none; }
+}
