@@ -90,6 +90,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Populate scoring rules (collapsed by default)
+  (function renderScoringRules(){
+    const el = document.getElementById("scoringRules");
+    if (!el) return;
+    el.innerHTML = `
+      <div class="rules-title">Scoring</div>
+      <ul class="rules-list">
+        <li>+3 for correct winner</li>
+        <li>+2 for correct method <span class="muted">(if winner is correct)</span></li>
+        <li>+1 for round <span class="muted">(if winner & method are both correct)</span></li>
+        <li>Bonus points for underdogs</li>
+        <li>Pick the correct FOTN for 3 points</li>
+      </ul>
+    `;
+  })();
+
   if (username) {
     usernameInput.value = username;
     finalizeLogin(username);
@@ -310,7 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (earned + potential underdog bonus) ---------- */
+  /* ---------- My Picks (earned + potential underdog; always show dog chip if you picked the dog) ---------- */
   function loadMyPicks() {
     fetch("/api/picks", {
       method: "POST",
@@ -360,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const matchMethod = hasResult && method === actual.method;
           const matchRound = hasResult && round == actual.round;
 
-          // Underdog info
+          // Underdog info for the chosen winner
           const meta = fightMeta.get(fight) || {};
           const dogSide = meta.underdogSide;
           const dogTier = underdogBonusFromOdds(meta.underdogOdds);
@@ -368,6 +384,12 @@ document.addEventListener("DOMContentLoaded", () => {
             (dogSide === "Fighter 1" && winner === meta.f1) ||
             (dogSide === "Fighter 2" && winner === meta.f2);
 
+          // Always show dog chip if you picked the dog (pre or post results)
+          const dogChip = (chosenIsUnderdog && dogTier > 0)
+            ? `<span class="dog-tag">🐶 +${dogTier} pts</span>`
+            : "";
+
+          // Earned bonus after results if dog actually won
           const earnedBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog) ? dogTier : 0;
 
           // Scoring (match backend)
@@ -387,7 +409,8 @@ document.addEventListener("DOMContentLoaded", () => {
             ? (matchRound ? "correct" : "wrong")
             : "";
 
-          const roundText = method === "Decision" ? "(Decision)"
+          const roundText = (method === "Decision")
+            ? ""  // no "(Decision)" tail
             : `in Round <span class="${roundClass}">${round}</span>`;
           const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
@@ -403,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="scored-pick">
               <div class="fight-name">${fight}</div>
               <div class="user-pick">
-                <span class="${winnerClass}">${winner}</span>
+                <span class="${winnerClass}">${winner}</span> ${dogChip}
                 by <span class="${methodClass}">${method}</span> ${roundText}
                 ${earnNote || potentialNote}
               </div>
