@@ -118,18 +118,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const allTimeList = document.getElementById("allTimeBoard");
   const weeklyTabBtn = document.getElementById("tabWeekly");
   const allTimeTabBtn = document.getElementById("tabAllTime");
-  const fotnBlock = document.getElementById("fotnBlock");
-  let fotnSelect = null;
+  const myPicksDiv = document.getElementById("myPicks");
 
   let username = localStorage.getItem("username");
 
   const fightMeta = new Map();
-  const FOTN_POINTS = 3;
 
   /* ---------- Perf caches ---------- */
   const now = () => Date.now();
   const FIGHTS_TTL = 5 * 60 * 1000;
-  const LB_TTL    = 0; // immediate refresh
+  const LB_TTL    = 0;
 
   let fightsCache = { data: null, ts: 0, promise: null };
   let lbCache     = { data: null, ts: 0, promise: null };
@@ -183,7 +181,6 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("username", username);
     startApp();
   }
-
   document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
   usernameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 
@@ -196,7 +193,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <li>+2 for method <span class="muted">(if winner is correct)</span></li>
         <li>+1 for round <span class="muted">(if winner & method are correct)</span></li>
         <li>Bonus points for underdogs</li>
-        <li>Pick the correct FOTN for 3 points</li>
       </ul>
     `;
   })();
@@ -220,11 +216,9 @@ document.addEventListener("DOMContentLoaded", () => {
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
-          fotnBlock.style.display = "none";
         } else {
           localStorage.removeItem("submitted");
           renderFightList(fightsData);
-          renderFOTN(fightsData, pickData.fotnPick);
           submitBtn.style.display = "block";
         }
 
@@ -252,21 +246,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ---------- Fights ---------- */
-  function renderFOTN(fightsData, existingPick = "") {
-    fotnBlock.innerHTML = `
-      <div class="fotn-title">⭐ Fight of the Night</div>
-      <select id="fotnSelect" class="fotn-select"></select>
-    `;
-    fotnSelect = document.getElementById("fotnSelect");
-
-    const names = (fightsData || []).map(f => f.fight);
-    if (!names.length) { fotnBlock.style.display = "none"; return; }
-    fotnSelect.innerHTML = `<option value="">— Select your FOTN —</option>` +
-      names.map(n => `<option value="${n}">${n}</option>`).join("");
-    if (existingPick) fotnSelect.value = existingPick;
-    fotnBlock.style.display = "flex";
-  }
-
   function renderFightList(data) {
     fightList.innerHTML = "";
     (data || []).forEach(({ fight, fighter1, fighter2 }) => {
@@ -368,17 +347,14 @@ document.addEventListener("DOMContentLoaded", () => {
       picks.push({ fight: fightName, winner, method, round });
     }
 
-    const fotnPick = fotnSelect?.value || "";
-
-    api.submitPicks({ username, picks, fotnPick })
+    api.submitPicks({ username, picks })
       .then(data => {
         if (data.success) {
           alert("Picks submitted!");
           localStorage.setItem("submitted", "true");
           fightList.style.display = "none";
           submitBtn.style.display = "none";
-          fotnBlock.style.display = "none";
-          lbCache = { data: null, ts: 0, promise: null }; // refresh scoreboard immediately
+          lbCache = { data: null, ts: 0, promise: null };
           loadMyPicks();
           loadLeaderboard();
         } else {
@@ -400,7 +376,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadMyPicks() {
     api.getUserPicks(username)
       .then(data => {
-        const myPicksDiv = document.getElementById("myPicks");
         if (!data.success || !data.picks.length) {
           myPicksDiv.style.display = "none";
           myPicksDiv.innerHTML = "";
@@ -414,22 +389,6 @@ document.addEventListener("DOMContentLoaded", () => {
           buildFightMeta(fightsData);
 
           const fightResults = resultData.fightResults || {};
-          const officialFOTN = resultData.officialFOTN || [];
-          const myFOTN = data.fotnPick || "";
-
-          if (myFOTN) {
-            const gotIt = officialFOTN.length && officialFOTN.includes(myFOTN);
-            const badge = gotIt ? `<span class="points">+${FOTN_POINTS} pts</span>` : "";
-            myPicksDiv.innerHTML += `
-              <div class="scored-pick fotn-strip">
-                <div class="fight-name">⭐ Fight of the Night</div>
-                <div class="user-pick ${gotIt ? 'correct' : (officialFOTN.length ? 'wrong' : '')}">
-                  ${myFOTN} ${badge}
-                  ${officialFOTN.length ? `<div class="hint">Official: ${officialFOTN.join(", ")}</div>` : ""}
-                </div>
-              </div>
-            `;
-          }
 
           data.picks.forEach(({ fight, winner, method, round }) => {
             const actual = fightResults[fight] || {};
@@ -457,7 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 score += 2;
                 if (method !== "Decision" && matchRound) score += 1;
               }
-              if (hasResult && actual.underdog === "Y" && chosenIsUnderdog) {
+              if (hasResult && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0) {
                 score += dogTier;
               }
             }
@@ -575,10 +534,10 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
+      const resultsArrComplete = resultsArr.filter(res => res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
       const totalFights = (fightsData || []).length;
-      const completedResults = resultsArr.filter(res => res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
 
-      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
+      if (leaderboardData.champMessage && totalFights > 0 && resultsArrComplete === totalFights) {
         champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
       }
