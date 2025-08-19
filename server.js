@@ -1,4 +1,4 @@
-// ✅ Minimal File polyfill for Node 18 (fixes "File is not defined" from undici)
+// ✅ Polyfill File for Node 18 (fixes "File is not defined" from undici@7)
 if (typeof globalThis.File === "undefined") {
   class File extends Blob {
     constructor(chunks = [], name = "", options = {}) {
