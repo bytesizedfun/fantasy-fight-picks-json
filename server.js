@@ -1,3 +1,9 @@
+// ✅ Polyfill for File/Blob/FormData (needed for node-fetch/undici on Node <20)
+const { File, Blob, FormData } = require("undici");
+globalThis.File ??= File;
+globalThis.Blob ??= Blob;
+globalThis.FormData ??= FormData;
+
 const express = require("express");
 const fetch = require("node-fetch");
 const path = require("path");
