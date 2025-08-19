@@ -88,6 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
+    // NOTE: Your server doesn't expose a /champion path. We keep the old GAS-style query
+    // and swallow errors silently so the UI never breaks.
     getChampionBanner() {
       const sep = BASE.includes("?") ? "&" : "?";
       return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
@@ -226,6 +228,15 @@ document.addEventListener("DOMContentLoaded", () => {
         loadMyPicks();
         loadLeaderboard();
         preloadAllTime();
+
+        // 👉 live refresh: keep scoreboard updating during an event
+        setInterval(() => {
+          // bust the LB cache and reload
+          lbCache = { data: null, ts: 0, promise: null };
+          loadLeaderboard();
+          // refresh "My Picks" scoring chips too
+          loadMyPicks();
+        }, 30000);
       })
       .catch((err) => {
         console.error("Startup error:", err);
@@ -400,7 +411,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const meta = fightMeta.get(fight) || {};
             const dogSide = meta.underdogSide;
-            const dogTier = underdogBonusFromOdds(meta.underdogOdds);
+            const dogTier = (function(oddsRaw){
+              const n = normalizeAmericanOdds(oddsRaw);
+              if (n == null || n < 100) return 0;
+              return 1 + Math.floor((n - 100) / 100);
+            })(meta.underdogOdds);
             const chosenIsUnderdog =
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
