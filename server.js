@@ -1,3 +1,18 @@
+// ✅ Minimal File polyfill for Node 18 (fixes "File is not defined" from undici)
+if (typeof globalThis.File === "undefined") {
+  class File extends Blob {
+    constructor(chunks = [], name = "", options = {}) {
+      super(chunks, options);
+      this.name = String(name);
+      this.lastModified = options?.lastModified ?? Date.now();
+    }
+    get [Symbol.toStringTag]() {
+      return "File";
+    }
+  }
+  globalThis.File = File;
+}
+
 const express = require("express");
 const path = require("path");
 
@@ -5,7 +20,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ✅ Google Apps Script Web App URL (defined BEFORE use)
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
 app.use(express.json());
 app.use(express.static("public"));
@@ -36,7 +52,10 @@ app.get("/api/fights", async (req, res) => {
 app.post("/api/submit", async (req, res) => {
   const now = new Date();
   if (now >= lockoutTime) {
-    return res.json({ success: false, error: "⛔ Picks are locked. The event has started." });
+    return res.json({
+      success: false,
+      error: "⛔ Picks are locked. The event has started."
+    });
   }
 
   try {
