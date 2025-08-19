@@ -1,238 +1,305 @@
-const express = require("express");
-const path = require("path");
-const cheerio = require("cheerio");
+// server.js
+// Express server + Cheerio scraper + GAS bridge (Render-ready)
 
+const express = require("express");
+const cheerio = require("cheerio"); // use cheerio.load(html) -> $
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ---------- Config ----------
+// ======== CONFIG ========
 const GOOGLE_SCRIPT_URL =
+  process.env.GAS_URL ||
   "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-const UFCSTATS_BASE = "http://ufcstats.com"; // site uses http
-const DEFAULT_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Cache-Control": "no-cache"
-};
+const UFC_BASE = "http://www.ufcstats.com"; // UFCStats is served over http
 
-// ---------- Middleware ----------
+// ======== MIDDLEWARE ========
 app.use(express.json());
 app.use(express.static("public"));
-
-// ---------- Health ----------
-app.get("/api/health", (req, res) => res.json({ ok: true }));
-
-// ---------- Lockout ----------
-const lockoutTime = new Date("2025-08-16T18:00:00-04:00"); // ET in Aug = UTC-04
-app.get("/api/lockout", (req, res) => {
-  const locked = new Date() >= lockoutTime;
-  res.json({ locked });
+// tiny request logger so you can see traffic in Render logs
+app.use((req, _res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
 });
 
-// ---------- GAS Proxy Endpoints (unchanged) ----------
-app.get("/api/fights", async (req, res) => {
+// ======== HEALTH ========
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+// ======== GAS PROXY ENDPOINTS FOR YOUR FRONTEND ========
+app.get("/api/fights", async (_req, res) => {
   try {
-    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`, { headers: DEFAULT_HEADERS });
-    const data = await r.json();
-    res.json(data);
-  } catch (err) {
-    console.error("getFights error:", err);
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    res.json(await r.json());
+  } catch (e) {
+    console.error("getFights:", e);
     res.status(500).json({ error: "Failed to fetch fights" });
   }
 });
-
-app.post("/api/submit", async (req, res) => {
-  const now = new Date();
-  if (now >= lockoutTime) {
-    return res.json({ success: false, error: "⛔ Picks are locked. The event has started." });
-  }
+app.post("/api/leaderboard", async (_req, res) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...DEFAULT_HEADERS },
-      body: JSON.stringify({ action: "submitPicks", ...req.body })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getLeaderboard" }),
     });
-    const data = await r.json();
-    res.json(data);
-  } catch (err) {
-    console.error("submitPicks error:", err);
-    res.status(500).json({ error: "Failed to submit picks" });
-  }
-});
-
-app.post("/api/picks", async (req, res) => {
-  try {
-    const r = await fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...DEFAULT_HEADERS },
-      body: JSON.stringify({ action: "getUserPicks", ...req.body })
-    });
-    const data = await r.json();
-    res.json(data);
-  } catch (err) {
-    console.error("getUserPicks error:", err);
-    res.status(500).json({ error: "Failed to fetch picks" });
-  }
-});
-
-app.post("/api/leaderboard", async (req, res) => {
-  try {
-    const r = await fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...DEFAULT_HEADERS },
-      body: JSON.stringify({ action: "getLeaderboard" })
-    });
-    const data = await r.json();
-    res.json(data);
-  } catch (err) {
-    console.error("getLeaderboard error:", err);
+    res.json(await r.json());
+  } catch (e) {
+    console.error("getLeaderboard:", e);
     res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
 });
-
-app.get("/api/hall", async (req, res) => {
+app.get("/api/hall", async (_req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
-      headers: { ...DEFAULT_HEADERS, "Cache-Control": "no-cache" }
+      headers: { "Cache-Control": "no-cache" },
     });
     res.set("Cache-Control", "no-store");
-    const data = await r.json();
-    res.json(data);
+    res.json(await r.json());
   } catch (e) {
-    console.error("getHall error:", e);
+    console.error("getHall:", e);
     res.status(500).json([]);
   }
 });
-
-// ---------- Scraper Utilities ----------
-async function fetchHtml(url) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 15000);
+app.get("/api/champion", async (_req, res) => {
   try {
-    const r = await fetch(url, { headers: DEFAULT_HEADERS, signal: controller.signal });
-    if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
-    return await r.text();
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-function clean(t) {
-  return (t || "").replace(/\s+/g, " ").trim();
-}
-
-// Parse Event page: get event meta + fight-details links
-function parseEventPage(html) {
-  const $ = cheerio.load(html);
-  const title = clean($("h2.b-content__title").text());
-  const meta = {};
-  $("ul.b-list__box-list > li").each((_, li) => {
-    const text = clean($(li).text());
-    if (/Date:/i.test(text)) meta.date = clean(text.replace(/Date:\s*/i, ""));
-    if (/Location:/i.test(text)) meta.location = clean(text.replace(/Location:\s*/i, ""));
-    if (/Venue:/i.test(text)) meta.venue = clean(text.replace(/Venue:\s*/i, ""));
-  });
-
-  // Collect unique fight details links
-  const links = new Set();
-  $('a[href*="/fight-details/"]').each((_, a) => {
-    const href = $(a).attr("href");
-    if (href && href.includes("/fight-details/")) links.add(href.split("?")[0]);
-  });
-
-  return {
-    eventName: title || undefined,
-    ...meta,
-    fights: Array.from(links)
-  };
-}
-
-// Parse Fight page: get red/blue fighters, winner, method, round, time, weight class
-function parseFightPage(html) {
-  const $ = cheerio.load(html);
-
-  const weightClass = clean($('i.b-fight-details__fight-title').parent().text())
-    .replace(/\s*Fight\s*Details\s*$/i, "") || clean($("h2.b-content__title").text());
-
-  const persons = $("div.b-fight-details__persons div.b-fight-details__person");
-  const getPerson = (el) => {
-    const name = clean($(el).find("h3.b-fight-details__person-name a").text()) ||
-                 clean($(el).find("h3.b-fight-details__person-name").text());
-    const status = clean($(el).find(".b-fight-details__person-status").text()); // "W" or "L"
-    return { name, status };
-  };
-
-  const red = getPerson(persons.eq(0));
-  const blue = getPerson(persons.eq(1));
-
-  let winner = null;
-  if (/^W$/i.test(red.status)) winner = red.name || "Red";
-  if (/^W$/i.test(blue.status)) winner = blue.name || "Blue";
-
-  // Method / Round / Time block
-  let method = undefined, round = undefined, time = undefined;
-  $("p.b-fight-details__text").each((_, p) => {
-    const txt = clean($(p).text());
-    if (/Method:/i.test(txt)) method = clean(txt.replace(/Method:\s*/i, ""));
-    if (/Round:/i.test(txt)) round = clean(txt.replace(/Round:\s*/i, ""));
-    if (/Time:/i.test(txt)) time = clean(txt.replace(/Time:\s*/i, ""));
-  });
-
-  return {
-    weightClass: weightClass || undefined,
-    red: red.name || undefined,
-    blue: blue.name || undefined,
-    winner: winner || undefined,
-    method,
-    round,
-    time
-  };
-}
-
-// ---------- Scraper Routes ----------
-app.get("/api/scrape/ufcstats/event/:eventId", async (req, res) => {
-  const { eventId } = req.params;
-  const eventUrl = `${UFCSTATS_BASE}/event-details/${eventId}`;
-  try {
-    // 1) Event page
-    const eventHtml = await fetchHtml(eventUrl);
-    const eventData = parseEventPage(eventHtml);
-
-    // 2) Fetch each fight details (limit to reasonable concurrency)
-    const fights = eventData.fights.slice(0, 50); // safety cap
-    const results = [];
-    for (const href of fights) {
-      try {
-        const fightHtml = await fetchHtml(href);
-        const parsed = parseFightPage(fightHtml);
-        results.push({ fightUrl: href, ...parsed });
-      } catch (e) {
-        console.warn("fight scrape failed:", href, e.message);
-        results.push({ fightUrl: href, error: e.message });
-      }
-      // tiny delay to be polite
-      await new Promise((r) => setTimeout(r, 150));
-    }
-
-    res.json({
-      source: "ufcstats.com",
-      eventId,
-      eventUrl,
-      eventName: eventData.eventName,
-      date: eventData.date,
-      venue: eventData.venue,
-      location: eventData.location,
-      fights: results
-    });
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`);
+    res.json(await r.json());
   } catch (e) {
-    console.error("event scrape failed:", eventUrl, e);
-    res.status(502).json({ error: "Failed to scrape event", details: e.message, eventUrl });
+    console.error("getChampionBanner:", e);
+    res.status(500).json({ message: "" });
   }
 });
 
-// ---------- Start ----------
+// ======== SCRAPER CORE (Cheerio) ========
+async function fetchHTML(url, ms = 15000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    const r = await fetch(url, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: {
+        // be polite, looks like a browser
+        "user-agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari",
+        accept: "text/html,application/xhtml+xml",
+      },
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.text();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function toEventUrl(ref) {
+  if (/^https?:\/\/.+\/event-details\/[a-z0-9]+/i.test(ref))
+    return ref.replace(/^http:/i, "http:");
+  if (/^[a-z0-9]+$/i.test(ref)) return `${UFC_BASE}/event-details/${ref}`;
+  throw new Error("Bad UFCStats ref. Provide full event URL or the event ID.");
+}
+
+function normalizeMethod(txt) {
+  const s = (txt || "").toUpperCase();
+  if (s.includes("DECISION")) return "Decision";
+  if (s.includes("KO") || s.includes("TKO")) return "KO/TKO";
+  if (s.includes("SUB")) return "Submission";
+  return "";
+}
+
+function pickValueAfterLabel($, label) {
+  let val = "";
+  $("i").each((_, el) => {
+    const t = $(el).text().trim();
+    if (t.toLowerCase().startsWith(label.toLowerCase())) {
+      const next = $(el).next("i");
+      if (next.length) val = next.text().trim();
+    }
+  });
+  return val;
+}
+
+async function scrapeFightDetails(fightId) {
+  const html = await fetchHTML(`${UFC_BASE}/fight-details/${fightId}`);
+  const $ = cheerio.load(html);
+
+  const persons = $(".b-fight-details__person");
+  const names = persons
+    .map((_, el) =>
+      $(el)
+        .find(".b-fight-details__person-name a")
+        .first()
+        .text()
+        .trim()
+    )
+    .get();
+
+  let winner = "";
+  persons.each((_, el) => {
+    const status = $(el).find(".b-fight-details__person-status").text().trim();
+    if (/^W\b/i.test(status)) {
+      const n = $(el)
+        .find(".b-fight-details__person-name a")
+        .first()
+        .text()
+        .trim();
+      if (n) winner = n;
+    }
+  });
+
+  const methodRaw = pickValueAfterLabel($, "Method:");
+  const roundRaw = pickValueAfterLabel($, "Round:");
+  const method = normalizeMethod(methodRaw);
+  const round = method === "Decision" ? "N/A" : roundRaw.match(/\d+/)?.[0] || "";
+  const finished = !!(winner && method && (method === "Decision" || round));
+
+  return {
+    fighter1: names[0] || "",
+    fighter2: names[1] || "",
+    result: finished
+      ? { status: "Final", winner, method, round }
+      : { status: "Scheduled" },
+  };
+}
+
+async function firstEventUrl(listPath /* "upcoming" | "completed" */) {
+  const html = await fetchHTML(`${UFC_BASE}/statistics/events/${listPath}`);
+  const $ = cheerio.load(html);
+  const first = $('a[href*="/event-details/"]').first().attr("href");
+  if (!first) throw new Error("No events found");
+  return first.replace(/^http:/i, "http:");
+}
+
+async function scrapeEvent(ref) {
+  // ref: full event URL or eventId
+  const eventUrl = toEventUrl(ref);
+  const html = await fetchHTML(eventUrl);
+  const $ = cheerio.load(html);
+
+  const eventName = $(".b-content__title-highlight").first().text().trim();
+
+  let eventDate = "";
+  $(".b-list__box-list-item").each((_, el) => {
+    const t = $(el).text().trim();
+    if (/^Date:/i.test(t)) eventDate = t.replace(/^Date:\s*/i, "").trim();
+  });
+
+  const idSet = new Set();
+  $('a[href*="/fight-details/"]').each((_, el) => {
+    const href = ($(el).attr("href") || "").trim();
+    const m = href.match(/fight-details\/([a-z0-9]+)/i);
+    if (m) idSet.add(m[1]);
+  });
+  const fightIds = Array.from(idSet);
+
+  // limit concurrency to 5
+  async function mapLimit(items, limit, fn) {
+    let i = 0;
+    const out = new Array(items.length);
+    const workers = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
+      while (true) {
+        const idx = i++;
+        if (idx >= items.length) break;
+        out[idx] = await fn(items[idx], idx);
+      }
+    });
+    await Promise.all(workers);
+    return out;
+  }
+
+  const fights = await mapLimit(fightIds, 5, (id) => scrapeFightDetails(id));
+  const cleaned = fights.filter((f) => f && f.fighter1 && f.fighter2);
+  const eventId = (eventUrl.match(/event-details\/([a-z0-9]+)/i) || [])[1] || "";
+  return { provider: "ufcstats", eventId, eventName, eventDate, fights: cleaned };
+}
+
+// ======== SCRAPER ROUTES (for debugging, optional) ========
+app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
+  try {
+    res.json(await scrapeEvent(req.params.id));
+  } catch (e) {
+    console.error("scrape by id:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+app.get("/api/scrape/ufcstats/event", async (req, res) => {
+  try {
+    const url = String(req.query.url || "").trim();
+    if (!url) return res.status(400).json({ error: "Missing ?url" });
+    res.json(await scrapeEvent(url));
+  } catch (e) {
+    console.error("scrape by url:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+app.get("/api/scrape/ufcstats/latest-upcoming", async (_req, res) => {
+  try {
+    res.json(await scrapeEvent(await firstEventUrl("upcoming")));
+  } catch (e) {
+    console.error("latest-upcoming:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
+  try {
+    res.json(await scrapeEvent(await firstEventUrl("completed")));
+  } catch (e) {
+    console.error("latest-completed:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// ======== ADMIN: SYNC INTO SHEETS (calls your GAS) ========
+function publicBase(req) {
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host;
+  return `${proto}://${host}`;
+}
+
+async function resolveRefToIdOrUrl(ref) {
+  const r = (ref || "").toString().trim().toLowerCase();
+  if (r === "upcoming") return await firstEventUrl("upcoming");
+  if (r === "completed") return await firstEventUrl("completed");
+  return ref; // id or full url
+}
+
+/**
+ * Writes into Sheets:
+ * - replaces "fight_list" with the event card
+ * - upserts finished bouts into "fight_results"
+ *
+ * GAS handler: action=syncFromScraper&ref=...&base=...
+ */
+app.get("/api/admin/syncFromUFCStats", async (req, res) => {
+  try {
+    const refRaw = (req.query.ref || "").toString().trim();
+    if (!refRaw) return res.status(400).json({ error: "Missing ?ref=<eventId|url|upcoming|completed>" });
+
+    const resolved = await resolveRefToIdOrUrl(refRaw);
+    const base = publicBase(req); // your Render base (so GAS can call back to your scraper)
+    const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromScraper&ref=${encodeURIComponent(resolved)}&base=${encodeURIComponent(base)}`;
+
+    const r = await fetch(gasUrl, { headers: { "cache-control": "no-cache" } });
+    const text = await r.text();
+    if (!r.ok) return res.status(r.status).type("text/plain").send(text);
+    res.set("Cache-Control", "no-store").type("application/json").send(text);
+  } catch (e) {
+    console.error("syncFromUFCStats:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// Convenience: one-click latest upcoming/completed -> Sheets
+app.get("/api/admin/syncLatestUpcoming", async (req, res) => {
+  req.query.ref = "upcoming";
+  return app._router.handle(req, res, () => {}, "get", "/api/admin/syncFromUFCStats");
+});
+app.get("/api/admin/syncLatestCompleted", async (req, res) => {
+  req.query.ref = "completed";
+  return app._router.handle(req, res, () => {}, "get", "/api/admin/syncFromUFCStats");
+});
+
+// ======== START ========
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
