@@ -384,7 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (compact, no repeated names) ---------- */
+  /* ---------- My Picks (compact: fight once; details only after results) ---------- */
   function loadMyPicks() {
     api.getUserPicks(username)
       .then(data => {
@@ -404,7 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           data.picks.forEach(({ fight, winner, method, round }) => {
             const actual = fightResults[fight] || {};
-            const hasResult = actual.winner && actual.method;
+            const hasResult = !!(actual.winner && actual.method);
 
             const matchWinner = hasResult && winner === actual.winner;
             const matchMethod = hasResult && method === actual.method;
@@ -425,6 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
 
+            // Score (unchanged logic)
             let score = 0;
             if (matchWinner) {
               score += 3;
@@ -437,26 +438,13 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
 
-            const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+            // Post-result color classes (no red before results)
             const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
             const roundClass  = hasResult && matchWinner && matchMethod && method !== "Decision"
               ? (matchRound ? "correct" : "wrong")
               : "";
 
-            // Keep your existing coloring rules for method/round text
-            let methodHtml, roundHtml;
-            if (!hasResult) {
-              methodHtml = `<span class="method-text pre">${method}</span>`;
-              roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round">${round}</span>`;
-            } else {
-              methodHtml = `<span class="${methodClass}">${method}</span>`;
-              roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round ${roundClass}">${round}</span>`;
-            }
-
-            // Points chip: only visible after results (no "+0 pts" pre-results)
-            const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
-
-            // Header line: show fight once, bold YOUR pick, put 🐶 inline beside your pick
+            // Header: fight once; bold YOUR pick; 🐶 inline beside YOUR pick
             const pickIsF1 = winner === f1;
             const pickIsF2 = winner === f2;
             const dogGlyph = (chosenIsUnderdog && dogTier > 0) ? " 🐶" : "";
@@ -464,26 +452,34 @@ document.addEventListener("DOMContentLoaded", () => {
             const f1Html = `<span class="fighter ${pickIsF1 ? "picked" : ""}">${f1}${pickIsF1 ? dogGlyph : ""}</span>`;
             const f2Html = `<span class="fighter ${pickIsF2 ? "picked" : ""}">${f2}${pickIsF2 ? dogGlyph : ""}</span>`;
 
-            // Details line: show earned dog bonus when applicable, then "by Method (Round)"
-            const dogEarned =
-              (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
-                ? `<span class="dog-earned">🐶 +${dogTier} pts</span> • `
-                : "";
+            // Details line: visible ONLY after results
+            let detailsHtml = "";
+            if (hasResult) {
+              const bits = [];
+              bits.push(`+${score} pts`);
+              if (matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0) {
+                bits.push(`🐶 +${dogTier}`);
+              }
+              bits.push(`by <span class="${methodClass || 'method-text pre'}">${method}</span>`);
+              if (method !== "Decision") {
+                const rSpan = `<span class="chip chip-round ${roundClass}">${round}</span>`;
+                bits.push(`(${rSpan})`);
+              }
+              detailsHtml = bits.join(" • ");
+            }
 
-            const detailsLine = `${dogEarned}by ${methodHtml} ${roundHtml}`;
-
-            // (Optional) keep your existing potential bonus note, muted, pre-results
+            // Optional pre-results potential note (unchanged)
             const earnNote = (!hasResult && chosenIsUnderdog && dogTier > 0)
               ? `<div class="earn-note">🐶 +${dogTier} potential bonus if correct</div>`
               : "";
 
+            // Final markup — NO duplicate fighter names, NO stray "+0 pts" line
             myPicksDiv.innerHTML += `
               <div class="scored-pick compact">
                 <div class="fight-header">
                   <div class="fh-line">${f1Html} <span class="vs">vs</span> ${f2Html}</div>
-                  ${pointsChip}
                 </div>
-                <div class="pick-details">${detailsLine}</div>
+                ${hasResult ? `<div class="pick-details">${detailsHtml}</div>` : ``}
                 ${earnNote}
               </div>`;
           });
