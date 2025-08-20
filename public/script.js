@@ -384,7 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks ---------- */
+  /* ---------- My Picks (compact, no repeated names) ---------- */
   function loadMyPicks() {
     api.getUserPicks(username)
       .then(data => {
@@ -411,19 +411,19 @@ document.addEventListener("DOMContentLoaded", () => {
             const matchRound  = hasResult && round == actual.round;
 
             const meta = fightMeta.get(fight) || {};
+            const f1 = meta.f1 || (String(fight).split(" vs ")[0] || "");
+            const f2 = meta.f2 || (String(fight).split(" vs ")[1] || "");
+
             const dogSide = meta.underdogSide;
             const dogTier = (function(oddsRaw){
               const n = normalizeAmericanOdds(oddsRaw);
               if (n == null || n < 100) return 0;
               return 1 + Math.floor((n - 100) / 100);
             })(meta.underdogOdds);
+
             const chosenIsUnderdog =
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
-
-            const dogChip = (chosenIsUnderdog && dogTier > 0)
-              ? `<span class="dog-tag dog-tag--chip">🐶 +${dogTier} pts</span>`
-              : "";
 
             let score = 0;
             if (matchWinner) {
@@ -443,35 +443,48 @@ document.addEventListener("DOMContentLoaded", () => {
               ? (matchRound ? "correct" : "wrong")
               : "";
 
-            let winnerHtml, methodHtml, roundHtml;
-
+            // Keep your existing coloring rules for method/round text
+            let methodHtml, roundHtml;
             if (!hasResult) {
-              winnerHtml = `<span class="winner-text pre">${winner}</span>`;
               methodHtml = `<span class="method-text pre">${method}</span>`;
               roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round">${round}</span>`;
             } else {
-              winnerHtml = `<span class="winner-text ${winnerClass}">${winner}</span>`;
               methodHtml = `<span class="${methodClass}">${method}</span>`;
               roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round ${roundClass}">${round}</span>`;
             }
 
+            // Points chip: only visible after results (no "+0 pts" pre-results)
             const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
 
-            const earnNote = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
-              ? `<span class="earn-note">🐶 +${dogTier} bonus points</span>`
-              : (!hasResult && chosenIsUnderdog && dogTier > 0)
-                ? `<span class="earn-note">🐶 +${dogTier} potential bonus if correct</span>`
+            // Header line: show fight once, bold YOUR pick, put 🐶 inline beside your pick
+            const pickIsF1 = winner === f1;
+            const pickIsF2 = winner === f2;
+            const dogGlyph = (chosenIsUnderdog && dogTier > 0) ? " 🐶" : "";
+
+            const f1Html = `<span class="fighter ${pickIsF1 ? "picked" : ""}">${f1}${pickIsF1 ? dogGlyph : ""}</span>`;
+            const f2Html = `<span class="fighter ${pickIsF2 ? "picked" : ""}">${f2}${pickIsF2 ? dogGlyph : ""}</span>`;
+
+            // Details line: show earned dog bonus when applicable, then "by Method (Round)"
+            const dogEarned =
+              (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
+                ? `<span class="dog-earned">🐶 +${dogTier} pts</span> • `
                 : "";
 
+            const detailsLine = `${dogEarned}by ${methodHtml} ${roundHtml}`;
+
+            // (Optional) keep your existing potential bonus note, muted, pre-results
+            const earnNote = (!hasResult && chosenIsUnderdog && dogTier > 0)
+              ? `<div class="earn-note">🐶 +${dogTier} potential bonus if correct</div>`
+              : "";
+
             myPicksDiv.innerHTML += `
-              <div class="scored-pick">
-                <div class="fight-name">${fight}</div>
-                <div class="user-pick">
-                  ${winnerHtml} ${dogChip}
-                  &nbsp;by&nbsp; ${methodHtml} ${roundHtml}
-                  ${earnNote}
+              <div class="scored-pick compact">
+                <div class="fight-header">
+                  <div class="fh-line">${f1Html} <span class="vs">vs</span> ${f2Html}</div>
+                  ${pointsChip}
                 </div>
-                ${pointsChip}
+                <div class="pick-details">${detailsLine}</div>
+                ${earnNote}
               </div>`;
           });
         });
