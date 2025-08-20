@@ -73,7 +73,7 @@ app.get("/api/champion", async (_req, res) => {
   }
 });
 
-// NEW: submit picks (proxy to GAS)
+// ✅ NEW: Submit picks -> GAS
 app.post("/api/submit", async (req, res) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
@@ -89,7 +89,7 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// NEW: get a user's picks (proxy to GAS)
+// ✅ NEW: Get user picks -> GAS
 app.post("/api/picks", async (req, res) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
@@ -114,7 +114,6 @@ async function fetchHTML(url, ms = 15000) {
       signal: controller.signal,
       redirect: "follow",
       headers: {
-        // be polite, looks like a browser
         "user-agent":
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari",
         accept: "text/html,application/xhtml+xml",
@@ -161,11 +160,7 @@ async function scrapeFightDetails(fightId) {
   const persons = $(".b-fight-details__person");
   const names = persons
     .map((_, el) =>
-      $(el)
-        .find(".b-fight-details__person-name a")
-        .first()
-        .text()
-        .trim()
+      $(el).find(".b-fight-details__person-name a").first().text().trim()
     )
     .get();
 
@@ -206,7 +201,6 @@ async function firstEventUrl(listPath /* "upcoming" | "completed" */) {
 }
 
 async function scrapeEvent(ref) {
-  // ref: full event URL or eventId
   const eventUrl = toEventUrl(ref);
   const html = await fetchHTML(eventUrl);
   const $ = cheerio.load(html);
@@ -314,7 +308,7 @@ app.get("/api/admin/syncFromUFCStats", async (req, res) => {
     if (!refRaw) return res.status(400).json({ error: "Missing ?ref=<eventId|url|upcoming|completed>" });
 
     const resolved = await resolveRefToIdOrUrl(refRaw);
-    const base = publicBase(req); // your Render base (so GAS can call back to your scraper)
+    const base = publicBase(req);
     const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromScraper&ref=${encodeURIComponent(resolved)}&base=${encodeURIComponent(base)}`;
 
     const r = await fetch(gasUrl, { headers: { "cache-control": "no-cache" } });
