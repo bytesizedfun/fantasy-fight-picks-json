@@ -35,6 +35,7 @@ app.get("/api/fights", async (_req, res) => {
     res.status(500).json({ error: "Failed to fetch fights" });
   }
 });
+
 app.post("/api/leaderboard", async (_req, res) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
@@ -48,6 +49,7 @@ app.post("/api/leaderboard", async (_req, res) => {
     res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
 });
+
 app.get("/api/hall", async (_req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
@@ -60,6 +62,7 @@ app.get("/api/hall", async (_req, res) => {
     res.status(500).json([]);
   }
 });
+
 app.get("/api/champion", async (_req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`);
@@ -67,6 +70,38 @@ app.get("/api/champion", async (_req, res) => {
   } catch (e) {
     console.error("getChampionBanner:", e);
     res.status(500).json({ message: "" });
+  }
+});
+
+// NEW: submit picks (proxy to GAS)
+app.post("/api/submit", async (req, res) => {
+  try {
+    const r = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "submitPicks", ...req.body }),
+    });
+    const j = await r.json();
+    res.json(j);
+  } catch (e) {
+    console.error("submitPicks:", e);
+    res.status(500).json({ success: false, error: "Failed to submit picks" });
+  }
+});
+
+// NEW: get a user's picks (proxy to GAS)
+app.post("/api/picks", async (req, res) => {
+  try {
+    const r = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getUserPicks", ...req.body }),
+    });
+    const j = await r.json();
+    res.json(j);
+  } catch (e) {
+    console.error("getUserPicks:", e);
+    res.status(500).json({ success: false, error: "Failed to fetch picks" });
   }
 });
 
@@ -222,6 +257,7 @@ app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 });
+
 app.get("/api/scrape/ufcstats/event", async (req, res) => {
   try {
     const url = String(req.query.url || "").trim();
@@ -232,6 +268,7 @@ app.get("/api/scrape/ufcstats/event", async (req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 });
+
 app.get("/api/scrape/ufcstats/latest-upcoming", async (_req, res) => {
   try {
     res.json(await scrapeEvent(await firstEventUrl("upcoming")));
@@ -240,6 +277,7 @@ app.get("/api/scrape/ufcstats/latest-upcoming", async (_req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 });
+
 app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
   try {
     res.json(await scrapeEvent(await firstEventUrl("completed")));
@@ -294,6 +332,7 @@ app.get("/api/admin/syncLatestUpcoming", async (req, res) => {
   req.query.ref = "upcoming";
   return app._router.handle(req, res, () => {}, "get", "/api/admin/syncFromUFCStats");
 });
+
 app.get("/api/admin/syncLatestCompleted", async (req, res) => {
   req.query.ref = "completed";
   return app._router.handle(req, res, () => {}, "get", "/api/admin/syncFromUFCStats");
