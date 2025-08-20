@@ -88,11 +88,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // NOTE: Your server doesn't expose a /champion path. We keep the old GAS-style query
-    // and swallow errors silently so the UI never breaks.
+    // ✅ use the server path when in "path" mode
     getChampionBanner() {
-      const sep = BASE.includes("?") ? "&" : "?";
-      return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
+      if (this.mode === "path") {
+        return fetch(`${BASE.replace(/\/$/,"")}/champion`).then(r => r.json());
+      } else {
+        const sep = BASE.includes("?") ? "&" : "?";
+        return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
+      }
     },
 
     getHall() {
@@ -229,12 +232,10 @@ document.addEventListener("DOMContentLoaded", () => {
         loadLeaderboard();
         preloadAllTime();
 
-        // 👉 live refresh: keep scoreboard updating during an event
+        // live refresh during event
         setInterval(() => {
-          // bust the LB cache and reload
           lbCache = { data: null, ts: 0, promise: null };
           loadLeaderboard();
-          // refresh "My Picks" scoring chips too
           loadMyPicks();
         }, 30000);
       })
