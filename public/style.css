@@ -306,7 +306,7 @@ body{
 
 /* NEW — compact header & details (no duplicate names) */
 .scored-pick.compact .fight-header{
-  display:flex; align-items:center; justify-content:space-between; width:100%;
+  display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
 }
 .scored-pick.compact .fh-line{
   display:flex; align-items:baseline; gap:6px;
@@ -319,7 +319,7 @@ body{
   border-bottom:1px solid rgba(var(--accent-rgb),0.45);
 }
 .scored-pick.compact .pick-details{
-  width:100%; font-weight:800; color:var(--muted);
+  width:100%; font-weight:800; color:var(--muted); margin-top:2px;
 }
 
 /* Pre-results */
