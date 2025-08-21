@@ -88,7 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // ✅ use the server path when in "path" mode
     getChampionBanner() {
       if (this.mode === "path") {
         return fetch(`${BASE.replace(/\/$/,"")}/champion`).then(r => r.json());
@@ -107,7 +106,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    resetDetection() { clearApiModeCache(); }
+    // 🔸 Server-provided event window
+    async getEventWindow() {
+      try {
+        const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/event`, { headers: { "Cache-Control": "no-cache" }}), 6000);
+        if (!r.ok) return { start:null, end:null };
+        const j = await r.json();
+        return { start: j.eventStart ? new Date(j.eventStart) : null,
+                 end:   j.eventEnd   ? new Date(j.eventEnd)   : null };
+      } catch (_e) {
+        return { start:null, end:null };
+      }
+    }
   };
 
   /* =========================
@@ -132,7 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ---------- Perf caches ---------- */
   const now = () => Date.now();
   const FIGHTS_TTL = 5 * 60 * 1000;
-  const LB_TTL    = 0;
+  const LB_TTL    = 30 * 1000; // cache leaderboard while polling
 
   let fightsCache = { data: null, ts: 0, promise: null };
   let lbCache     = { data: null, ts: 0, promise: null };
@@ -207,12 +217,51 @@ document.addEventListener("DOMContentLoaded", () => {
     startApp();
   }
 
+  /* ---------- Event Window ---------- */
+  let refreshTimer = null;
+  let appStarted = false;
+  let champFetchedOnce = false;
+  let eventWindow = { start:null, end:null };
+
+  function inEventWindow() {
+    const t = Date.now();
+    const startOk = !eventWindow.start || t >= +eventWindow.start;
+    const endOk   = !eventWindow.end   || t <= +eventWindow.end;
+    return startOk && endOk;
+  }
+
+  function setPolling(on) {
+    if (on) {
+      if (refreshTimer) return;
+      refreshTimer = setInterval(() => {
+        loadLeaderboard().then(() => loadMyPicks());
+      }, 30000);
+    } else {
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+      }
+    }
+  }
+
+  async function hydrateEventWindow() {
+    try {
+      const w = await api.getEventWindow();
+      if (w && (w.start || w.end)) eventWindow = w;
+    } catch (_) {}
+  }
+
+  /* ---------- App ---------- */
   async function startApp() {
+    if (appStarted) return;
+    appStarted = true;
+
     usernamePrompt.style.display = "none";
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
     welcome.style.display = "block";
 
     await api.init();
+    await hydrateEventWindow(); // get /api/event from your server
 
     Promise.all([ getFightsCached(), api.getUserPicks(username) ])
       .then(([fightsData, pickData]) => {
@@ -228,16 +277,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         leaderboardEl.classList.add("board","weekly");
-        loadMyPicks();
-        loadLeaderboard();
-        preloadAllTime();
 
-        // live refresh during event
-        setInterval(() => {
-          lbCache = { data: null, ts: 0, promise: null };
-          loadLeaderboard();
-          loadMyPicks();
-        }, 30000);
+        loadLeaderboard().then(() => loadMyPicks());
+        preloadAllTime();
       })
       .catch((err) => {
         console.error("Startup error:", err);
@@ -289,7 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </span>
           </label>
 
-        <label>
+          <label>
             <input type="radio" name="${fight}-winner" value="${fighter2}">
             <span class="pick-row">
               <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
@@ -367,8 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.style.display = "none";
           submitBtn.style.display = "none";
           lbCache = { data: null, ts: 0, promise: null };
-          loadMyPicks();
-          loadLeaderboard();
+          loadLeaderboard().then(() => loadMyPicks());
         } else {
           alert(data.error || "Something went wrong.");
           submitBtn.disabled = false;
@@ -384,9 +425,9 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (compact: fight once; details only after results) ---------- */
+  /* ---------- My Picks (compact, no duplicate names; no +0 line) ---------- */
   function loadMyPicks() {
-    api.getUserPicks(username)
+    return api.getUserPicks(username)
       .then(data => {
         if (!data.success || !data.picks.length) {
           myPicksDiv.style.display = "none";
@@ -397,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
         myPicksDiv.style.display = "grid";
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
 
-        Promise.all([ getLeaderboardCached(), getFightsCached() ]).then(([resultData, fightsData]) => {
+        return Promise.all([ getLeaderboardCached(), getFightsCached() ]).then(([resultData, fightsData]) => {
           buildFightMeta(fightsData);
 
           const fightResults = resultData.fightResults || {};
@@ -411,12 +452,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const matchRound  = hasResult && round == actual.round;
 
             const meta = fightMeta.get(fight) || {};
-            const f1Full = meta.f1 || (String(fight).split(" vs ")[0] || "");
-            const f2Full = meta.f2 || (String(fight).split(" vs ")[1] || "");
-
-            // ⬅️ DISPLAY CHANGE: use FULL NAMES in the header
-            const f1Disp = f1Full;
-            const f2Disp = f2Full;
+            const f1 = meta.f1 || (String(fight).split(" vs ")[0] || "");
+            const f2 = meta.f2 || (String(fight).split(" vs ")[1] || "");
 
             const dogSide = meta.underdogSide;
             const dogTier = (function(oddsRaw){
@@ -426,10 +463,10 @@ document.addEventListener("DOMContentLoaded", () => {
             })(meta.underdogOdds);
 
             const chosenIsUnderdog =
-              (dogSide === "Fighter 1" && winner === f1Full) ||
-              (dogSide === "Fighter 2" && winner === f2Full);
+              (dogSide === "Fighter 1" && winner === meta.f1) ||
+              (dogSide === "Fighter 2" && winner === meta.f2);
 
-            // Score (unchanged logic)
+            // Score
             let score = 0;
             if (matchWinner) {
               score += 3;
@@ -442,46 +479,47 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
 
-            // Post-result color classes (no red before results)
             const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
             const roundClass  = hasResult && matchWinner && matchMethod && method !== "Decision"
               ? (matchRound ? "correct" : "wrong")
               : "";
 
-            // Header: show fight ONCE with FULL names; bold YOUR pick; 🐶 inline beside YOUR pick
-            const pickIsF1 = winner === f1Full; // compare to FULL names to preserve logic
-            const pickIsF2 = winner === f2Full;
+            const pickIsF1 = winner === f1;
+            const pickIsF2 = winner === f2;
             const dogGlyph = (chosenIsUnderdog && dogTier > 0) ? " 🐶" : "";
 
-            const f1Html = pickIsF1 ? `<strong>${f1Disp}${dogGlyph}</strong>` : `${f1Disp}`;
-            const f2Html = pickIsF2 ? `<strong>${f2Disp}${dogGlyph}</strong>` : `${f2Disp}`;
+            const f1Html = pickIsF1
+              ? `<strong class="fighter">${f1}${dogGlyph}</strong>`
+              : `<span class="fighter">${f1}</span>`;
+            const f2Html = pickIsF2
+              ? `<strong class="fighter">${f2}${dogGlyph}</strong>`
+              : `<span class="fighter">${f2}</span>`;
 
-            // Details line: visible ONLY after results (single line)
             let detailsHtml = "";
             if (hasResult) {
-              const parts = [];
-              parts.push(`+${score} pts`);
+              const bits = [];
+              bits.push(`+${score} pts`);
               if (matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0) {
-                parts.push(`🐶 +${dogTier}`);
+                bits.push(`🐶 +${dogTier}`);
               }
-              let methodBit = `by <span class="${methodClass || 'method-text pre'}">${method}</span>`;
+              bits.push(`by <span class="${methodClass || 'method-text pre'}">${method}</span>`);
               if (method !== "Decision") {
-                methodBit += ` • in Round <span class="chip chip-round ${roundClass}">${round}</span>`;
+                const rSpan = `<span class="chip chip-round ${roundClass}">${round}</span>`;
+                bits.push(`( ${rSpan} )`);
               }
-              parts.push(methodBit);
-              detailsHtml = parts.join(" • ");
+              detailsHtml = bits.join(" • ");
             }
 
-            // Optional pre-results potential note (unchanged)
             const earnNote = (!hasResult && chosenIsUnderdog && dogTier > 0)
               ? `<div class="earn-note">🐶 +${dogTier} potential bonus if correct</div>`
               : "";
 
-            // Final markup — NO duplicate fighter names, NO stray "+0 pts" line
             myPicksDiv.innerHTML += `
-              <div class="scored-pick">
-                <div class="fight-name">${f1Html} <span class="vs">vs</span> ${f2Html}</div>
-                ${hasResult ? `<div class="user-pick">${detailsHtml}</div>` : ``}
+              <div class="scored-pick compact">
+                <div class="fight-header">
+                  <div class="fh-line"><span class="fight-name">${f1Html} <span class="vs">vs</span> ${f2Html}</span></div>
+                </div>
+                ${hasResult ? `<div class="pick-details">${detailsHtml}</div>` : ``}
                 ${earnNote}
               </div>`;
           });
@@ -491,6 +529,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Champion banner + Weekly Leaderboard ---------- */
   function showPreviousChampionBanner() {
+    if (champFetchedOnce) return; // fetch once per page load
+    champFetchedOnce = true;
+
     api.getChampionBanner()
       .then(data => {
         const msg = (data && typeof data.message === "string") ? data.message.trim() : "";
@@ -505,7 +546,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadLeaderboard() {
     showPreviousChampionBanner();
 
-    Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsData, leaderboardData]) => {
+    return Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
       board.classList.add("board","weekly");
       board.innerHTML = "";
@@ -518,53 +559,65 @@ document.addEventListener("DOMContentLoaded", () => {
         hint.className = "board-hint";
         hint.textContent = "Weekly standings will appear once results start.";
         board.appendChild(hint);
-        return;
-      }
+      } else {
+        const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
 
-      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
+        let rank = 1;
+        let prevScore = null;
+        let actualRank = 1;
 
-      let rank = 1;
-      let prevScore = null;
-      let actualRank = 1;
+        scores.forEach(([user, score], index) => {
+          if (score !== prevScore) actualRank = rank;
 
-      scores.forEach(([user, score], index) => {
-        if (score !== prevScore) actualRank = rank;
+          const li = document.createElement("li");
+          let displayName = user;
+          const classes = [];
 
-        const li = document.createElement("li");
-        let displayName = user;
-        const classes = [];
+          if (leaderboardData.champs?.includes(user)) {
+            classes.push("champ-glow");
+            displayName = `<span class="crown">👑</span> ${displayName}`;
+          }
+          if (scores.length >= 3 && index === scores.length - 1) {
+            classes.push("loser");
+            displayName = `💩 ${displayName}`;
+          }
+          if (user === username) classes.push("current-user");
 
-        if (leaderboardData.champs?.includes(user)) {
-          classes.push("champ-glow");
-          displayName = `<span class="crown">👑</span> ${displayName}`;
-        }
-        if (scores.length >= 3 && index === scores.length - 1) {
-          classes.push("loser");
-          displayName = `💩 ${displayName}`;
-        }
-        if (user === username) classes.push("current-user");
+          li.className = classes.join(" ");
+          li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
+          board.appendChild(li);
 
-        li.className = classes.join(" ");
-        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
-        board.appendChild(li);
-
-        prevScore = score;
-        rank++;
-      });
-
-      const lis = board.querySelectorAll("li");
-      if (lis.length > 0) {
-        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
-        lis.forEach(li => {
-          const val = parseInt(li.lastElementChild.textContent, 10);
-          if (val === topScore) li.classList.add("tied-first");
+          prevScore = score;
+          rank++;
         });
+
+        const lis = board.querySelectorAll("li");
+        if (lis.length > 0) {
+          const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
+          lis.forEach(li => {
+            const val = parseInt(li.lastElementChild.textContent, 10);
+            if (val === topScore) li.classList.add("tied-first");
+          });
+        }
       }
 
-      const resultsArrComplete = resultsArr.filter(res => res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
       const totalFights = (fightsData || []).length;
+      const completed = resultsArr.filter(res => res && res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
 
-      if (leaderboardData.champMessage && totalFights > 0 && resultsArrComplete === totalFights) {
+      const eventDone = totalFights > 0 && completed === totalFights;
+
+      // Polling decision:
+      //   - Prefer server-provided window
+      //   - Else fallback to "results underway"
+      const shouldPoll =
+        (!eventDone) && (
+          (eventWindow.start || eventWindow.end ? inEventWindow() : false) ||
+          (resultsStarted && completed < totalFights)
+        );
+
+      setPolling(shouldPoll);
+
+      if (leaderboardData.champMessage && eventDone) {
         champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
       }
