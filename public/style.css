@@ -1,4 +1,4 @@
-/* === Orbitron Neon — centered, compact === */
+/* === Orbitron Neon — clean, sportsbook-y === */
 
 :root{
   --ink:#0b0b0d;
@@ -33,9 +33,6 @@ body{
   letter-spacing:.2px;
   text-align:center;
 }
-
-/* Hide prompt until JS decides (prevents "sign in every refresh" flicker) */
-#usernamePrompt{ display:none; }
 
 /* ===== Header / Shell ===== */
 .banner-container{ display:flex; justify-content:center; align-items:center; padding:12px 12px 0; }
@@ -126,7 +123,7 @@ body{
 .rules-collapsible[open] .rules-caret{ transform:rotate(90deg); }
 .rules-collapsible .rules{ margin-top:8px; content-visibility:auto; contain-intrinsic-size:220px; }
 
-/* ===== Section titles ===== */
+/* ===== Titles ===== */
 .section-title{
   margin:12px 0 8px;
   font-size:18px;
@@ -142,34 +139,16 @@ body{
   text-shadow:0 0 14px rgba(var(--accent-rgb),0.45);
 }
 
-/* ===== Discord CTA (bottom) ===== */
-.cta-discord{ display:flex; justify-content:center; margin:16px 0 26px; }
-.btn-discord{
-  display:inline-flex; align-items:center; gap:10px;
-  padding:10px 16px;
-  border-radius:14px;
-  background:var(--discord);
-  color:#fff; font-weight:900; letter-spacing:.06em; text-decoration:none;
-  border:1px solid rgba(0,0,0,0.25);
-  box-shadow:0 0 16px rgba(88,101,242,0.45);
-  transition:transform .08s ease, box-shadow .2s ease, filter .2s ease;
-}
-.btn-discord:hover{ transform:translateY(-1px); filter:brightness(1.08); box-shadow:0 12px 24px rgba(0,0,0,0.35); }
-.discord-icon{ display:inline-flex; }
-
-/* ===== Fight list — sleek rows (no boxy cards) ===== */
+/* ===== Fight list — sleek rows (no boxes) ===== */
 #fightList{ display:flex; flex-direction:column; gap:0; align-items:center; width:100%; }
 .fight{
   width:100%; max-width:640px;
-  padding:10px 4px;
-  border:none;
+  padding:12px 6px;
   background:transparent;
+  border:none;
   box-shadow:none;
-  position:relative;
 }
-.fight + .fight{
-  border-top:1px solid var(--divider);
-}
+.fight + .fight{ border-top:1px solid var(--divider); }
 .fight h3{
   color:var(--text);
   margin:0 0 6px 0;
@@ -178,28 +157,26 @@ body{
   text-shadow:0 0 6px rgba(0,0,0,0.3);
 }
 
-/* options look like inline pills but without boxes */
-.options{ display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
+.options{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
 .fight label{
   position:relative; display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
-  margin:0; background:transparent; border:none; padding:6px 4px; border-radius:10px;
+  margin:0; background:transparent; border:none; padding:8px 6px; border-radius:10px;
   cursor:pointer; transition:transform .06s ease, text-shadow .2s ease;
-  min-height:34px;
+  min-height:36px;
 }
 .fight label:hover{ transform:translateY(-1px); }
 .fight label input[type="radio"]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
-.fight label .fighter-name{ font-weight:900; opacity:0.75; }
+.fight label .fighter-name{ font-weight:900; opacity:.65; }
 .fight label:has(input:checked) .fighter-name{
   opacity:1;
-  color:var(--text);
+  color:#fff;
   text-shadow:0 0 12px rgba(var(--accent-rgb),0.45);
 }
 
-.fighter-name.is-underdog{ color:var(--text); text-shadow:0 0 6px rgba(0,245,255,0.18); }
+.fighter-name.is-underdog{ text-shadow:0 0 6px rgba(0,245,255,0.18); }
 .dog-tag{ color:#e7faff; font-weight:900; font-variant-numeric:tabular-nums; }
 .dog-tag--plain{ padding:0; border:none; background:none; box-shadow:none; }
 
-/* Method + Round selects */
 .pick-controls{ display:flex; justify-content:center; gap:8px; margin-top:6px; }
 .pick-controls select{
   background:var(--tile);
@@ -244,7 +221,7 @@ body{
 #fotnBlock{
   width:100%;
   background:linear-gradient(180deg, var(--panel), #0f1013);
-  border:1px solid rgba(var(--accent-rgb),0.25);
+  border:1px solid rgba(0,245,255,0.25);
   border-radius:16px; padding:8px; box-shadow:var(--shadow); margin-top:6px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
 }
@@ -263,7 +240,6 @@ body{
 .board{ list-style:none; margin:0; padding:0; }
 #leaderboard, #allTimeBoard{ max-width:640px; margin:0 auto; }
 
-/* Weekly */
 .board.weekly li{
   display:grid; grid-template-columns:auto 1fr auto; align-items:center; justify-items:center; gap:10px;
   background:rgba(255,255,255,0.04); border:1px solid var(--divider); border-radius:12px; padding:10px 12px; margin:8px 0;
@@ -276,7 +252,6 @@ body{
 }
 @keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
 
-/* Placeholder */
 .board-hint{
   display:flex; justify-content:center; align-items:center;
   padding:12px; border-radius:12px; border:1px dashed var(--divider);
@@ -301,20 +276,15 @@ body{
 #myPicks{ margin-top:8px; display:grid; gap:10px; justify-items:center; }
 #myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
 
-/* clean, minimal card */
+/* clean lane with dividers (no cards) */
 .scored-pick{
   display:flex; flex-direction:column; align-items:center; gap:8px;
   width:100%; max-width:640px;
   padding:12px 6px;
-  border-radius:0;
-  border:none;
-  background:transparent;
+  border:none; background:transparent;
 }
-.scored-pick + .scored-pick{
-  border-top:1px solid var(--divider);
-}
+.scored-pick + .scored-pick{ border-top:1px solid var(--divider); }
 
-/* one-line fight, then consistent details lane */
 .scored-pick.compact .fight-header{ width:100%; display:flex; align-items:center; justify-content:center; }
 .scored-pick.compact .fh-line{
   display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
@@ -322,13 +292,13 @@ body{
 }
 .scored-pick.compact .vs{ opacity:.7; font-weight:800; }
 
-/* Fighter emphasis: other = muted gray, picked = white (pre) or green/red (post) */
+/* Fighter emphasis */
 .fighter.other{ opacity:.55; color:#c7ccd6; }
 .fighter.picked.pre{ color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.25); }
 .fighter.picked.correct{ color:var(--ok); text-shadow:0 0 10px rgba(47,255,160,0.55); }
 .fighter.picked.wrong{ color:var(--warn); text-shadow:0 0 10px rgba(255,78,78,0.55); }
 
-/* details: same spot for every pick */
+/* consistent details lane */
 .scored-pick.compact .pick-details{
   width:100%;
   font-weight:800;
@@ -354,55 +324,17 @@ body{
   border:1px solid rgba(255,255,255,0.18);
   background:rgba(255,255,255,0.06);
 }
+.chip-method.neutral{ color:var(--text); border-color:rgba(255,255,255,0.22); background:rgba(255,255,255,0.06); }
+.chip-method.correct{ color:var(--ok); border-color:var(--ok); background:rgba(47,255,160,0.14); text-shadow:0 0 6px rgba(47,255,160,0.55); }
+.chip-method.wrong{ color:var(--warn); border-color:var(--warn); background:rgba(255,78,78,0.14); text-shadow:0 0 6px rgba(255,78,78,0.55); }
 
-/* method chip */
-.chip-method.neutral{
-  color:var(--text);
-  border-color:rgba(255,255,255,0.22);
-  background:rgba(255,255,255,0.06);
-}
-.chip-method.correct{
-  color:var(--ok);
-  border-color:var(--ok);
-  background:rgba(47,255,160,0.14);
-  text-shadow:0 0 6px rgba(47,255,160,0.55);
-}
-.chip-method.wrong{
-  color:var(--warn);
-  border-color:var(--warn);
-  background:rgba(255,78,78,0.14);
-  text-shadow:0 0 6px rgba(255,78,78,0.55);
-}
+.chip-round{ font-variant-numeric:tabular-nums; }
+.chip-round.neutral{ color:var(--text); border-style:dashed; border-color:rgba(255,255,255,0.22); background:transparent; }
+.chip-round.correct{ color:var(--ok); border-color:var(--ok); background:rgba(47,255,160,0.12); }
+.chip-round.wrong{ color:var(--warn); border-color:var(--warn); background:rgba(255,78,78,0.12); }
 
-/* round chip */
-.chip-round{
-  font-variant-numeric:tabular-nums;
-}
-.chip-round.neutral{
-  color:var(--text);
-  border-style:dashed;
-  border-color:rgba(255,255,255,0.22);
-  background:transparent;
-}
-.chip-round.correct{
-  color:var(--ok);
-  border-color:var(--ok);
-  background:rgba(47,255,160,0.12);
-}
-.chip-round.wrong{
-  color:var(--warn);
-  border-color:var(--warn);
-  background:rgba(255,78,78,0.12);
-}
+.chip-dog{ color:#e7faff; border-color:rgba(255,255,255,0.25); background:rgba(255,255,255,0.08); }
 
-/* underdog bonus chip (post-result) */
-.chip-dog{
-  color:#e7faff;
-  border-color:rgba(255,255,255,0.25);
-  background:rgba(255,255,255,0.08);
-}
-
-/* points pill */
 .points{
   display:inline-block; padding:4px 10px; border-radius:999px;
   background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900;
@@ -428,9 +360,7 @@ body{
 }
 
 /* ======== Performance cues ======== */
-#fightList, #leaderboard, #allTimeBoard, #myPicks{
-  content-visibility:auto; contain-intrinsic-size:540px;
-}
+#fightList, #leaderboard, #allTimeBoard, #myPicks{ content-visibility:auto; contain-intrinsic-size:540px; }
 #app{ contain:content; }
 
 @media (prefers-reduced-motion: reduce){
