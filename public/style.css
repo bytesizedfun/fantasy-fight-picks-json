@@ -1,727 +1,442 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const BASE = window.API_BASE || "/api";
-
-  const withTimeout = (p, ms = 10000) =>
-    new Promise((res, rej) => {
-      const t = setTimeout(() => rej(new Error("timeout")), ms);
-      p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
-    });
-
-  async function detectApiMode() {
-    const cached = localStorage.getItem("apiMode");
-    if (cached === "path" || cached === "action") return cached;
-
-    try {
-      const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/fights`, { method: "GET" }), 7000);
-      if (r.ok) {
-        const j = await r.json();
-        if (Array.isArray(j)) { localStorage.setItem("apiMode", "path"); return "path"; }
-      }
-    } catch (_) {}
-
-    try {
-      const sep = BASE.includes("?") ? "&" : "?";
-      const r = await withTimeout(fetch(`${BASE}${sep}action=getFights`, { method: "GET" }), 7000);
-      if (r.ok) {
-        const j = await r.json();
-        if (Array.isArray(j)) { localStorage.setItem("apiMode", "action"); return "action"; }
-      }
-    } catch (_) {}
-
-    localStorage.setItem("apiMode", "path");
-    return "path";
-  }
-  function clearApiModeCache() { localStorage.removeItem("apiMode"); }
-
-  const api = {
-    mode: "path",
-    async init() { this.mode = await detectApiMode(); },
-
-    getFights() {
-      if (this.mode === "path") {
-        return fetch(`${BASE.replace(/\/$/,"")}/fights`).then(r => r.json());
-      } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getFights`).then(r => r.json());
-      }
-    },
-
-    getUserPicks(username) {
-      if (this.mode === "path") {
-        return fetch(`${BASE.replace(/\/$/,"")}/picks`, {
-          method: "POST", headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ username })
-        }).then(r => r.json());
-      } else {
-        return fetch(BASE, {
-          method: "POST", headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ action:"getUserPicks", username })
-        }).then(r => r.json());
-      }
-    },
-
-    submitPicks(payload) {
-      if (this.mode === "path") {
-        return fetch(`${BASE.replace(/\/$/,"")}/submit`, {
-          method: "POST", headers: {"Content-Type":"application/json"},
-          body: JSON.stringify(payload)
-        }).then(r => r.json());
-      } else {
-        return fetch(BASE, {
-          method: "POST", headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ action:"submitPicks", ...payload })
-        }).then(r => r.json());
-      }
-    },
-
-    getLeaderboard() {
-      if (this.mode === "path") {
-        return fetch(`${BASE.replace(/\/$/,"")}/leaderboard`, {
-          method: "POST", headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({})
-        }).then(r => r.json());
-      } else {
-        return fetch(BASE, {
-          method: "POST", headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ action:"getLeaderboard" })
-        }).then(r => r.json());
-      }
-    },
-
-    getChampionBanner() {
-      if (this.mode === "path") {
-        return fetch(`${BASE.replace(/\/$/,"")}/champion`).then(r => r.json());
-      } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
-      }
-    },
-
-    getHall() {
-      if (this.mode === "path") {
-        return fetch(`${BASE.replace(/\/$/,"")}/hall`).then(r => r.json());
-      } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getHall`).then(r => r.json());
-      }
-    },
-
-    // Optional event window (safe if not present on server)
-    async getEventWindow() {
-      try {
-        const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/event`, { headers: { "Cache-Control": "no-cache" }}), 6000);
-        if (!r.ok) return { start:null, end:null };
-        const j = await r.json();
-        return { start: j.eventStart ? new Date(j.eventStart) : null,
-                 end:   j.eventEnd   ? new Date(j.eventEnd)   : null };
-      } catch (_e) {
-        return { start:null, end:null };
-      }
-    }
-  };
-
-  /* =========================
-     DOM refs
-     ========================= */
-  const welcome = document.getElementById("welcome");
-  const fightList = document.getElementById("fightList");
-  const submitBtn = document.getElementById("submitBtn");
-  const usernamePrompt = document.getElementById("usernamePrompt");
-  const usernameInput = document.getElementById("usernameInput");
-  const champBanner = document.getElementById("champBanner");
-  const leaderboardEl = document.getElementById("leaderboard");
-  const allTimeList = document.getElementById("allTimeBoard");
-  const weeklyTabBtn = document.getElementById("tabWeekly");
-  const allTimeTabBtn = document.getElementById("tabAllTime");
-  const myPicksDiv = document.getElementById("myPicks");
-
-  let username = localStorage.getItem("username");
-
-  const fightMeta = new Map();
-
-  /* ---------- Perf caches ---------- */
-  const now = () => Date.now();
-  const FIGHTS_TTL = 5 * 60 * 1000;
-  const LB_TTL    = 30 * 1000;
-
-  let fightsCache = { data: null, ts: 0, promise: null };
-  let lbCache     = { data: null, ts: 0, promise: null };
-
-  function getFightsCached() {
-    const fresh = fightsCache.data && (now() - fightsCache.ts < FIGHTS_TTL);
-    if (fresh) return Promise.resolve(fightsCache.data);
-    if (fightsCache.promise) return fightsCache.promise;
-
-    fightsCache.promise = api.getFights()
-      .then(data => {
-        fightsCache = { data, ts: now(), promise: null };
-        buildFightMeta(data);
-        return data;
-      })
-      .catch(err => { fightsCache.promise = null; throw err; });
-
-    return fightsCache.promise;
-  }
-  function getLeaderboardCached() {
-    const fresh = lbCache.data && (now() - lbCache.ts < LB_TTL);
-    if (fresh) return Promise.resolve(lbCache.data);
-    if (lbCache.promise) return lbCache.promise;
-
-    lbCache.promise = api.getLeaderboard()
-      .then(data => { lbCache = { data, ts: now(), promise: null }; return data; })
-      .catch(err => { lbCache.promise = null; throw err; });
-
-    return lbCache.promise;
-  }
-
-  function normalizeAmericanOdds(raw) {
-    if (raw == null) return null;
-    let s = String(raw).trim();
-    if (s === "") return null;
-    const m = s.match(/[+-]?\d+/);
-    if (!m) return null;
-    const n = parseInt(m[0], 10);
-    return isFinite(n) ? n : null;
-  }
-  function underdogBonusFromOdds(oddsRaw) {
-    const n = normalizeAmericanOdds(oddsRaw);
-    if (n == null || n < 100) return 0;
-    return 1 + Math.floor((n - 100) / 100);
-  }
-
-  function doLogin() {
-    const input = usernameInput.value.trim();
-    if (!input) return alert("Please enter your name.");
-    username = input;
-    localStorage.setItem("username", username);
-    startApp();
-  }
-  document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
-  usernameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-
-  (function renderScoringRules(){
-    const el = document.getElementById("scoringRules");
-    if (!el) return;
-    el.innerHTML = `
-      <ul class="rules-list">
-        <li>+3 for winner</li>
-        <li>+2 for method <span class="muted">(if winner is correct)</span></li>
-        <li>+1 for round <span class="muted">(if winner & method are correct)</span></li>
-        <li>Bonus points for underdogs</li>
-      </ul>
-    `;
-  })();
-
-  if (username) {
-    usernameInput.value = username;
-    startApp();
-  }
-
-  /* ---------- Event Window ---------- */
-  let refreshTimer = null;
-  let appStarted = false;
-  let eventWindow = { start:null, end:null };
-
-  function inEventWindow() {
-    const t = Date.now();
-    const startOk = !eventWindow.start || t >= +eventWindow.start;
-    const endOk   = !eventWindow.end   || t <= +eventWindow.end;
-    return startOk && endOk;
-  }
-
-  function setPolling(on) {
-    if (on) {
-      if (refreshTimer) return;
-      refreshTimer = setInterval(() => {
-        loadLeaderboard().then(() => loadMyPicks());
-      }, 30000);
-    } else {
-      if (refreshTimer) {
-        clearInterval(refreshTimer);
-        refreshTimer = null;
-      }
-    }
-  }
-
-  async function hydrateEventWindow() {
-    try {
-      const w = await api.getEventWindow();
-      if (w && (w.start || w.end)) eventWindow = w;
-    } catch (_) {}
-  }
-
-  /* ---------- App ---------- */
-  async function startApp() {
-    if (appStarted) return;
-    appStarted = true;
-
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
-    welcome.style.display = "block";
-
-    await api.init();
-    await hydrateEventWindow();
-
-    Promise.all([ getFightsCached(), api.getUserPicks(username) ])
-      .then(([fightsData, pickData]) => {
-        const submitted = pickData.success && Array.isArray(pickData.picks) && pickData.picks.length > 0;
-        if (submitted) {
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-        } else {
-          localStorage.removeItem("submitted");
-          renderFightList(fightsData);
-          submitBtn.style.display = "block";
-        }
-
-        leaderboardEl.classList.add("board","weekly");
-
-        loadLeaderboard().then(() => loadMyPicks());
-        preloadAllTime();
-      })
-      .catch((err) => {
-        console.error("Startup error:", err);
-        fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base in index.html (window.API_BASE).</div>`;
-        submitBtn.style.display = "none";
-      });
-  }
-
-  function buildFightMeta(data) {
-    fightMeta.clear();
-    (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
-      fightMeta.set(fight, {
-        f1: fighter1, f2: fighter2,
-        f1Odds: f1Odds || "", f2Odds: f2Odds || "",
-        underdogSide: underdog || "", underdogOdds: underdogOdds || ""
-      });
-    });
-  }
-
-  /* ---------- Fights (pick form) ---------- */
-  function renderFightList(data) {
-    fightList.innerHTML = "";
-    (data || []).forEach(({ fight, fighter1, fighter2 }) => {
-      const meta = fightMeta.get(fight) || {};
-      const dogSide = meta.underdogSide;
-      const dogTier = underdogBonusFromOdds(meta.underdogOdds);
-
-      const isDog1 = dogSide === "Fighter 1";
-      const isDog2 = dogSide === "Fighter 2";
-
-      const dog1 = (isDog1 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
-      const dog2 = (isDog2 && dogTier > 0) ? `🐶 +${dogTier} pts` : "";
-
-      const chip1 = dog1 ? `<span class="dog-tag dog-tag--plain">${dog1}</span>` : "";
-      const chip2 = dog2 ? `<span class="dog-tag dog-tag--plain">${dog2}</span>` : "";
-
-      const div = document.createElement("div");
-      div.className = "fight";
-      div.innerHTML = `
-        <h3>${fight}</h3>
-
-        <div class="options">
-          <label>
-            <input type="radio" name="${fight}-winner" value="${fighter1}">
-            <span class="pick-row">
-              <span class="fighter-name ${isDog1 ? 'is-underdog' : ''}">
-                ${fighter1} ${chip1}
-              </span>
-            </span>
-          </label>
-
-          <label>
-            <input type="radio" name="${fight}-winner" value="${fighter2}">
-            <span class="pick-row">
-              <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
-                ${fighter2} ${chip2}
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <div class="pick-controls">
-          <select name="${fight}-method">
-            <option value="Decision">Decision</option>
-            <option value="KO/TKO">KO/TKO</option>
-            <option value="Submission">Submission</option>
-          </select>
-          <select name="${fight}-round">
-            <option value="1">Round 1</option>
-            <option value="2">Round 2</option>
-            <option value="3">Round 3</option>
-            <option value="4">Round 4</option>
-            <option value="5">Round 5</option>
-          </select>
-        </div>
-      `;
-      fightList.appendChild(div);
-    });
-
-    // Decision disables round
-    document.querySelectorAll(".fight").forEach(fight => {
-      const methodSelect = fight.querySelector(`select[name$="-method"]`);
-      const roundSelect = fight.querySelector(`select[name$="-round"]`);
-      if (!methodSelect || !roundSelect) return;
-      function syncRound() {
-        const isDecision = methodSelect.value === "Decision";
-        roundSelect.disabled = isDecision;
-        roundSelect.value = isDecision ? "" : (roundSelect.value || "1");
-      }
-      methodSelect.addEventListener("change", syncRound);
-      syncRound();
-    });
-
-    fightList.style.display = "flex";
-    submitBtn.style.display = "block";
-  }
-
-  /* ---------- Submit picks ---------- */
-  function submitPicks() {
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting...";
-
-    const picks = [];
-    const fights = document.querySelectorAll(".fight");
-
-    for (const fight of fights) {
-      const fightName = fight.querySelector("h3").innerText;
-      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
-      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
-      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
-      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
-
-      if (!winner || !method) {
-        alert(`Please complete all picks. Missing data for "${fightName}".`);
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit Picks";
-        return;
-      }
-      picks.push({ fight: fightName, winner, method, round });
-    }
-
-    api.submitPicks({ username, picks })
-      .then(data => {
-        if (data.success) {
-          alert("Picks submitted!");
-          localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-          lbCache = { data: null, ts: 0, promise: null };
-          loadLeaderboard().then(() => loadMyPicks());
-        } else {
-          alert(data.error || "Something went wrong.");
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Submit Picks";
-        }
-      })
-      .catch(() => {
-        alert("Network error submitting picks.");
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit Picks";
-      });
-  }
-  submitBtn.addEventListener("click", submitPicks);
-  window.submitPicks = submitPicks;
-
-  /* ---------- My Picks (clean & clear) ---------- */
-  function loadMyPicks() {
-    return api.getUserPicks(username)
-      .then(data => {
-        if (!data.success || !data.picks.length) {
-          myPicksDiv.style.display = "none";
-          myPicksDiv.innerHTML = "";
-          return;
-        }
-
-        myPicksDiv.style.display = "grid";
-        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
-
-        return Promise.all([ getLeaderboardCached(), getFightsCached() ]).then(([resultData, fightsData]) => {
-          buildFightMeta(fightsData);
-
-          const fightResults = resultData.fightResults || {};
-
-          data.picks.forEach(({ fight, winner, method, round }) => {
-            const actual = fightResults[fight] || {};
-            const hasResult = !!(actual.winner && actual.method);
-
-            const matchWinner = hasResult && winner === actual.winner;
-            const matchMethod = hasResult && method === actual.method;
-            const matchRound  = hasResult && round == actual.round;
-
-            const meta = fightMeta.get(fight) || {};
-            const f1 = meta.f1 || (String(fight).split(" vs ")[0] || "");
-            const f2 = meta.f2 || (String(fight).split(" vs ")[1] || "");
-
-            const dogSide = meta.underdogSide;
-            const dogTier = (function(oddsRaw){
-              const n = normalizeAmericanOdds(oddsRaw);
-              if (n == null || n < 100) return 0;
-              return 1 + Math.floor((n - 100) / 100);
-            })(meta.underdogOdds);
-
-            const chosenIsUnderdog =
-              (dogSide === "Fighter 1" && winner === meta.f1) ||
-              (dogSide === "Fighter 2" && winner === meta.f2);
-
-            // Score calc (unchanged)
-            let score = 0;
-            if (matchWinner) {
-              score += 3;
-              if (matchMethod) {
-                score += 2;
-                if (method !== "Decision" && matchRound) score += 1;
-              }
-              if (hasResult && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0) {
-                score += dogTier;
-              }
-            }
-
-            // Fighter pills (no emoji icon; colorize after results)
-            const pickIsF1 = winner === f1;
-            const pickIsF2 = winner === f2;
-            const outcomeClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
-
-            const f1Html = pickIsF1
-              ? `<span class="fighter picked ${outcomeClass}">${f1}${chosenIsUnderdog ? " 🐶" : ""}</span>`
-              : `<span class="fighter">${f1}</span>`;
-            const f2Html = pickIsF2
-              ? `<span class="fighter picked ${outcomeClass}">${f2}${chosenIsUnderdog ? " 🐶" : ""}</span>`
-              : `<span class="fighter">${f2}</span>`;
-
-            // Method & Round chips — always show
-            const methodChipClass = (hasResult && matchWinner)
-              ? (matchMethod ? "chip chip-method correct" : "chip chip-method wrong")
-              : "chip chip-method neutral";
-
-            let roundChipClass = "chip chip-round neutral";
-            if (hasResult && matchWinner && method !== "Decision" && round) {
-              roundChipClass = `chip chip-round ${matchRound ? "correct" : "wrong"}`;
-            }
-
-            const methodChip = `<span class="${methodChipClass}">${method}</span>`;
-            const roundChip = (method !== "Decision" && round)
-              ? `<span class="${roundChipClass}">R${round}</span>`
-              : "";
-
-            // Points/bonus only after results
-            const points = (hasResult && score > 0) ? `<span class="points">+${score} pts</span>` : "";
-            const dogBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
-              ? `<span class="chip chip-dog">🐶 +${dogTier}</span>`
-              : "";
-
-            const earnNote = (!hasResult && chosenIsUnderdog && dogTier > 0)
-              ? `<div class="earn-note">🐶 +${dogTier} potential bonus if correct</div>`
-              : "";
-
-            myPicksDiv.innerHTML += `
-              <div class="scored-pick compact">
-                <div class="fight-header">
-                  <div class="fh-line">
-                    <span class="fight-name">${f1Html} <span class="vs">vs</span> ${f2Html}</span>
-                  </div>
-                </div>
-                <div class="pick-details">
-                  <span class="muted">by</span>
-                  ${methodChip}
-                  ${roundChip}
-                  ${points}
-                  ${dogBonus}
-                </div>
-                ${earnNote}
-              </div>`;
-          });
-        });
-      });
-  }
-
-  /* ---------- Champion banner + Weekly Leaderboard ---------- */
-  function showPreviousChampionBanner() {
-    if (typeof showPreviousChampionBanner.fetched !== "undefined") return;
-    showPreviousChampionBanner.fetched = true;
-
-    api.getChampionBanner()
-      .then(data => {
-        const msg = (data && typeof data.message === "string") ? data.message.trim() : "";
-        if (msg) {
-          champBanner.textContent = `🏆 ${msg.replace(/^🏆\s*/,"")}`;
-          champBanner.style.display = "block";
-        }
-      })
-      .catch(() => { /* silent */ });
-  }
-
-  function loadLeaderboard() {
-    showPreviousChampionBanner();
-
-    return Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsData, leaderboardData]) => {
-      const board = leaderboardEl;
-      board.classList.add("board","weekly");
-      board.innerHTML = "";
-
-      const resultsArr = Object.values(leaderboardData.fightResults || {});
-      const resultsStarted = resultsArr.some(r => r && r.winner && r.method);
-
-      if (!resultsStarted) {
-        const hint = document.createElement("li");
-        hint.className = "board-hint";
-        hint.textContent = "Weekly standings will appear once results start.";
-        board.appendChild(hint);
-      } else {
-        const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
-
-        let rank = 1;
-        let prevScore = null;
-        let actualRank = 1;
-
-        scores.forEach(([user, score], index) => {
-          if (score !== prevScore) actualRank = rank;
-
-          const li = document.createElement("li");
-          let displayName = user;
-          const classes = [];
-
-          if (leaderboardData.champs?.includes(user)) {
-            classes.push("champ-glow");
-            displayName = `<span class="crown">👑</span> ${displayName}`;
-          }
-          if (scores.length >= 3 && index === scores.length - 1) {
-            classes.push("loser");
-            displayName = `💩 ${displayName}`;
-          }
-          if (user === username) classes.push("current-user");
-
-          li.className = classes.join(" ");
-          li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
-          board.appendChild(li);
-
-          prevScore = score;
-          rank++;
-        });
-
-        const lis = board.querySelectorAll("li");
-        if (lis.length > 0) {
-          const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
-          lis.forEach(li => {
-            const val = parseInt(li.lastElementChild.textContent, 10);
-            if (val === topScore) li.classList.add("tied-first");
-          });
-        }
-      }
-
-      const totalFights = (fightsData || []).length;
-      const completed = resultsArr.filter(res => res && res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
-
-      const eventDone = totalFights > 0 && completed === totalFights;
-
-      // Polling decision (only during window or while results are rolling in)
-      const shouldPoll =
-        (!eventDone) && (
-          (eventWindow.start || eventWindow.end ? inEventWindow() : false) ||
-          (resultsStarted && completed < totalFights)
-        );
-
-      setPolling(shouldPoll);
-
-      if (leaderboardData.champMessage && eventDone) {
-        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
-        champBanner.style.display = "block";
-      }
-    });
-  }
-
-  /* ---------- All-Time Leaderboard ---------- */
-  let allTimeLoaded = false;
-  let allTimeData = [];
-
-  function sortAllTime(rows) {
-    const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
-    return cleaned
-      .map(r => ({ user: r.username, crowns: +r.crowns || 0, events: +r.events_played || 0, rate: +r.crown_rate || 0 }))
-      .sort((a,b) => (b.rate - a.rate) || (b.crowns - a.crowns) || (b.events - a.events) || (a.user || "").localeCompare(b.user || ""));
-  }
-  function rowsEqual(a, b) { return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events; }
-
-  function renderAllTimeHeader() {
-    const li = document.createElement("li");
-    li.className = "board-header at-five";
-    li.innerHTML = `
-      <span>Rank</span>
-      <span>Player</span>
-      <span>%</span>
-      <span>👑</span>
-      <span>Events</span>
-    `;
-    allTimeList.appendChild(li);
-  }
-
-  function drawAllTime(data) {
-    allTimeList.innerHTML = "";
-    if (!data.length) { allTimeList.innerHTML = "<li>No All-Time data yet.</li>"; return; }
-
-    renderAllTimeHeader();
-
-    let rank = 0;
-    let prev = null;
-
-    data.forEach((row, idx) => {
-      rank = (idx === 0 || !rowsEqual(row, prev)) ? (idx + 1) : rank;
-      const isTop = rank === 1;
-
-      const li = document.createElement("li");
-      const classes = [];
-      if (row.user === username) classes.push("current-user");
-      if (isTop) classes.push("tied-first");
-      li.className = classes.join(" ") + " at-five";
-
-      const rankLabel = isTop ? "🥇" : `#${rank}`;
-      const pct = (row.rate * 100).toFixed(1) + "%";
-
-      li.innerHTML = `
-        <span class="rank">${rankLabel}</span>
-        <span class="user" title="${row.user}">${row.user}</span>
-        <span class="num rate">${pct}</span>
-        <span class="num crowns">${row.crowns}</span>
-        <span class="num events">${row.events}</span>
-        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events • ${pct}</span>
-      `;
-      allTimeList.appendChild(li);
-      prev = row;
-    });
-  }
-
-  function preloadAllTime() {
-    api.getHall().then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; }).catch(() => {});
-  }
-
-  function loadAllTimeInteractive() {
-    if (allTimeLoaded) { drawAllTime(allTimeData); return; }
-    const keepHeight = leaderboardEl?.offsetHeight || 260;
-    allTimeList.style.minHeight = `${keepHeight}px`;
-    allTimeList.innerHTML = "";
-
-    api.getHall()
-      .then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); })
-      .catch(() => { allTimeList.innerHTML = `<li>All-Time unavailable.</li>`; })
-      .finally(() => { allTimeList.style.minHeight = ""; });
-  }
-
-  /* ---------- Tabs ---------- */
-  weeklyTabBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    leaderboardEl.style.display = "block";
-    allTimeList.style.display = "none";
-    weeklyTabBtn.setAttribute("aria-pressed","true");
-    allTimeTabBtn.setAttribute("aria-pressed","false");
-  });
-
-  allTimeTabBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    loadAllTimeInteractive();
-    leaderboardEl.style.display = "none";
-    allTimeList.style.display = "block";
-    weeklyTabBtn.setAttribute("aria-pressed","false");
-    allTimeTabBtn.setAttribute("aria-pressed","true");
-  });
-});
+/* === Orbitron Neon — centered, compact === */
+
+:root{
+  --ink:#0b0b0d;
+  --panel:#131417;
+  --tile:#191a1e;
+
+  --text:#e7e9ee;
+  --muted:#aeb2bb;
+
+  --accent:#00f5ff;
+  --accent-rgb:0,245,255;
+  --neon-red:#ff003c;
+
+  --ok:#2fffa0;
+  --warn:#ff4e4e;
+
+  --divider:rgba(255,255,255,0.10);
+  --shadow:0 12px 40px rgba(0,0,0,0.55);
+
+  --discord:#5865F2;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:
+    radial-gradient(1000px 520px at 50% -180px, rgba(var(--accent-rgb),0.10), transparent 60%),
+    var(--ink);
+  color:var(--text);
+  font-family:'Orbitron',sans-serif;
+  letter-spacing:.2px;
+  text-align:center;
+}
+
+/* ===== Header / Shell ===== */
+.banner-container{ display:flex; justify-content:center; align-items:center; padding:12px 12px 0; }
+.logo-banner{
+  max-width:320px; width:92%; height:auto;
+  filter:drop-shadow(0 12px 28px rgba(0,0,0,0.55));
+}
+
+/* Champion banner — edge-to-edge */
+.champ-banner{
+  display:none;
+  width:100vw; max-width:100vw;
+  margin:12px 0;
+  margin-left:calc(50% - 50vw);
+  margin-right:calc(50% - 50vw);
+  padding:18px 0;
+  font-weight:900;
+  font-size:clamp(24px, 3.2vw, 42px);
+  line-height:1.1;
+  letter-spacing:.06em;
+  color:var(--accent);
+  border-top:2px solid var(--accent);
+  border-bottom:2px solid var(--accent);
+  background:linear-gradient(120deg, rgba(0,245,255,0.22), rgba(255,0,60,0.18), rgba(0,245,255,0.22));
+  background-size:300% 300%;
+  animation:bannerGlow 6s ease infinite;
+  text-shadow:0 0 14px var(--accent), 0 0 26px var(--neon-red);
+}
+@keyframes bannerGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+#app{
+  max-width:640px;
+  margin:12px auto 40px;
+  padding:16px;
+  background:var(--panel);
+  border-radius:16px;
+  border:2px solid rgba(255,255,255,0.08);
+  box-shadow:0 0 40px rgba(0, 245, 255, 0.08), var(--shadow);
+}
+
+#welcome{ margin:8px 0 10px; font-weight:900; font-size:26px; text-shadow:0 0 12px rgba(var(--accent-rgb),0.35); }
+
+/* ===== Username prompt ===== */
+#usernamePrompt.center{ display:flex; flex-direction:column; gap:8px; align-items:center; }
+.prompt-title{ font-weight:900; margin-bottom:4px; }
+#usernamePrompt input{
+  width:100%; max-width:320px;
+  background:var(--tile);
+  border:1px solid var(--divider);
+  border-radius:12px;
+  padding:10px 12px;
+  color:var(--text);
+  outline:none;
+}
+#usernamePrompt button{
+  background:var(--accent); color:#001214;
+  border:1px solid rgba(var(--accent-rgb),0.55);
+  border-radius:12px; padding:10px 16px; font-weight:900; letter-spacing:.5px;
+  cursor:pointer; box-shadow:0 0 14px rgba(0,245,255,0.35);
+  transition:transform .08s ease, box-shadow .2s ease, background .2s ease;
+}
+#usernamePrompt button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
+
+/* ===== Scoring (collapsible only) ===== */
+.rules{
+  margin:8px auto 6px;
+  padding:8px 10px;
+  border-radius:14px;
+  border:1px solid var(--divider);
+  background:linear-gradient(180deg, #101116, #0e0f12);
+}
+.rules-list{ list-style:none; padding:0; margin:0; }
+.rules-list li{ font-size:15px; margin:4px 0; font-weight:900; letter-spacing:.3px; }
+.rules .muted{ color:var(--muted); font-weight:600; }
+
+.rules-collapsible{ max-width:640px; margin:6px auto 10px; }
+.rules-collapsible summary{
+  list-style:none; display:inline-flex; align-items:center; gap:8px;
+  padding:6px 10px; border:none; border-radius:12px;
+  background:transparent; color:var(--muted); font-weight:800; cursor:pointer;
+  user-select:none; transition:transform .06s ease, background .15s ease, color .15s ease;
+}
+.rules-collapsible summary::-webkit-details-marker{ display:none; }
+.rules-toggle-label{ letter-spacing:.06em; }
+.rules-caret{ transition:transform .2s ease, opacity .2s ease; opacity:.7; }
+.rules-collapsible summary:hover{ color:var(--text); background:rgba(255,255,255,0.03); }
+.rules-collapsible[open] summary{ background:rgba(255,255,255,0.05); }
+.rules-collapsible[open] .rules-caret{ transform:rotate(90deg); }
+.rules-collapsible .rules{ margin-top:8px; content-visibility:auto; contain-intrinsic-size:220px; }
+
+/* ===== Section titles ===== */
+.section-title{
+  margin:12px 0 8px;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:.18em;
+  color:var(--accent);
+  text-shadow:0 0 10px rgba(var(--accent-rgb),0.35);
+}
+.section-title--leader{
+  margin-top:14px;
+  font-size:28px;
+  letter-spacing:.24em;
+  text-shadow:0 0 14px rgba(var(--accent-rgb),0.45);
+}
+
+/* ===== Discord CTA (bottom) ===== */
+.cta-discord{ display:flex; justify-content:center; margin:16px 0 26px; }
+.btn-discord{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:10px 16px;
+  border-radius:14px;
+  background:var(--discord);
+  color:#fff; font-weight:900; letter-spacing:.06em; text-decoration:none;
+  border:1px solid rgba(0,0,0,0.25);
+  box-shadow:0 0 16px rgba(88,101,242,0.45);
+  transition:transform .08s ease, box-shadow .2s ease, filter .2s ease;
+}
+.btn-discord:hover{ transform:translateY(-1px); filter:brightness(1.08); box-shadow:0 12px 24px rgba(0,0,0,0.35); }
+.discord-icon{ display:inline-flex; }
+
+/* ===== Fight list (form) ===== */
+#fightList{ display:flex; flex-direction:column; gap:6px; align-items:center; }
+.fight{
+  width:100%; max-width:600px;
+  background:rgba(255,255,255,0.02);
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.04);
+  box-shadow:inset 0 0 6px rgba(0,245,255,0.04);
+}
+.fight h3{
+  color:var(--accent);
+  margin:0 0 6px 0;
+  font-weight:900;
+  letter-spacing:.6px;
+}
+.options{ display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
+.fight label{
+  position:relative; display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+  margin:0; background:var(--tile); border:1px solid transparent; padding:8px 10px; border-radius:12px;
+  cursor:pointer; transition:border-color .15s ease, transform .06s ease, box-shadow .15s ease; min-height:36px;
+}
+.fight label:hover{ border-color:rgba(var(--accent-rgb),0.35); transform:translateY(-1px); }
+.fight label:has(input:checked){ border-color:rgba(var(--accent-rgb),0.70); box-shadow:0 0 0 2px rgba(0,245,255,0.14) inset, 0 8px 18px rgba(0,0,0,0.35); }
+.fight label input[type="radio"]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+.pick-row{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
+.fighter-name{ display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:900; }
+.fighter-name.is-underdog{ color:var(--text); text-shadow:0 0 6px rgba(0,245,255,0.18); }
+
+.dog-tag{ color:#e7faff; font-weight:900; font-variant-numeric:tabular-nums; }
+.dog-tag--plain{ padding:0; border:none; background:none; box-shadow:none; }
+
+/* Method + Round selects */
+.pick-controls{ display:flex; justify-content:center; gap:8px; margin-top:6px; }
+.pick-controls select{
+  background:var(--tile);
+  border:1px solid var(--divider);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:12px;
+  outline:none;
+  min-width:132px;
+  font-size:15px;
+}
+
+/* Submit + Tabs */
+#submitBtn,
+.segmented button{
+  background:var(--accent);
+  color:#001214;
+  border:1px solid rgba(var(--accent-rgb),0.55);
+  border-radius:14px;
+  padding:10px 16px;
+  font-weight:900;
+  letter-spacing:.6px;
+  cursor:pointer;
+  transition:transform .08s ease, box-shadow .2s ease, opacity .2s ease, background .2s ease, filter .2s ease;
+  box-shadow:0 0 14px rgba(0,245,255,0.35);
+}
+#submitBtn:hover,
+.segmented button:hover{
+  transform:translateY(-1px);
+  background:var(--neon-red);
+  color:#fff;
+  box-shadow:0 12px 22px rgba(0,0,0,0.35);
+}
+#submitBtn:disabled{ opacity:.6; cursor:not-allowed; }
+#submitBtn{ display:inline-block; width:auto; margin:10px auto 0; }
+
+.segmented{ display:flex; justify-content:center; align-items:center; gap:8px; margin:8px 0 10px; }
+.segmented button[aria-pressed="false"]{ filter:saturate(0.8) brightness(0.95); opacity:.95; }
+.segmented button[aria-pressed="true"]{ filter:none; }
+
+/* ===== FOTN ===== */
+#fotnBlock{
+  width:100%;
+  background:linear-gradient(180deg, var(--panel), #0f1013);
+  border:1px solid rgba(var(--accent-rgb),0.25);
+  border-radius:16px; padding:8px; box-shadow:var(--shadow); margin-top:6px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+}
+.fotn-title{ font-weight:900; letter-spacing:.4px; }
+.fotn-select{
+  width:100%; max-width:420px;
+  background:var(--tile);
+  border:1px solid var(--divider);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:12px;
+  text-align:center; text-align-last:center;
+}
+
+/* ===== Leaderboards ===== */
+.board{ list-style:none; margin:0; padding:0; }
+#leaderboard, #allTimeBoard{ max-width:640px; margin:0 auto; }
+
+/* Weekly */
+.board.weekly li{
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; justify-items:center; gap:10px;
+  background:rgba(255,255,255,0.04); border:1px solid var(--divider); border-radius:12px; padding:10px 12px; margin:8px 0;
+  transition:border-color .25s ease, transform .2s ease, box-shadow .25s ease;
+}
+.board.weekly li:hover{ box-shadow:0 0 12px rgba(0,245,255,0.40); transform:translateY(-2px); }
+.board.weekly li .crown{ filter:drop-shadow(0 0 6px rgba(0,245,255,0.35)); font-size:20px; }
+.board.weekly li:first-child, .board.weekly li.tied-first, .board.weekly li.champ-glow{
+  background:rgba(0,245,255,0.10); box-shadow:0 0 14px rgba(0,245,255,0.50); animation:pulseChampion 1.8s infinite;
+}
+@keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
+
+/* Placeholder */
+.board-hint{
+  display:flex; justify-content:center; align-items:center;
+  padding:12px; border-radius:12px; border:1px dashed var(--divider);
+  color:var(--muted); background:rgba(255,255,255,0.03); margin:8px 0;
+  text-align:center; width:100%;
+}
+
+/* All-Time */
+.board-header.at-five, .board.at-five li{
+  display:grid; grid-template-columns:70px 1fr 80px 60px 80px; align-items:center; justify-items:center; gap:10px;
+  background:rgba(255,255,255,0.04); border:1px solid var(--divider); border-radius:12px; padding:10px 12px; margin:8px 0;
+}
+.board-header.at-five{ background:linear-gradient(180deg, var(--panel), #101116); color:var(--muted); font-weight:900; text-transform:uppercase; letter-spacing:.6px; }
+.board.at-five li{ transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.board.at-five li:hover{ transform:translateY(-2px); box-shadow:0 0 12px rgba(0,245,255,0.28); }
+.board.at-five .rank{ width:64px; font-weight:900; }
+.board.at-five .user{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; }
+.board.at-five .num{ font-weight:900; color:var(--text); opacity:.95; }
+.board.at-five .mobile-meta{ display:none; color:var(--muted); }
+
+/* ===== Your Picks ===== */
+#myPicks{ margin-top:8px; display:grid; gap:10px; justify-items:center; }
+#myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
+
+/* Clean card */
+.scored-pick{
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  width:100%; max-width:620px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border:1px solid rgba(255,255,255,0.06);
+  box-shadow:0 6px 18px rgba(0,0,0,0.25);
+}
+
+/* one-line fight, then details */
+.scored-pick.compact .fight-header{ width:100%; display:flex; align-items:center; justify-content:center; }
+.scored-pick.compact .fh-line{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
+  font-weight:900; letter-spacing:.06em;
+}
+.scored-pick.compact .vs{ opacity:.7; font-weight:800; }
+
+/* fighters: picked gets a soft glowing pill; others muted */
+.fighter{ opacity:.6; }
+.fighter.picked{
+  opacity:1;
+  padding:4px 12px;
+  border-radius:999px;
+  border:1px solid rgba(var(--accent-rgb),0.35);
+  background:radial-gradient(80% 120% at 50% -20%, rgba(var(--accent-rgb),0.16), transparent 60%);
+  text-shadow:0 0 8px rgba(0,0,0,0.35);
+}
+.fighter.picked.correct{
+  color:var(--ok);
+  border-color:var(--ok);
+  background:radial-gradient(90% 130% at 50% -20%, rgba(47,255,160,0.22), transparent 60%);
+  text-shadow:0 0 10px rgba(47,255,160,0.55);
+}
+.fighter.picked.wrong{
+  color:var(--warn);
+  border-color:var(--warn);
+  background:radial-gradient(90% 130% at 50% -20%, rgba(255,78,78,0.20), transparent 60%);
+  text-shadow:0 0 10px rgba(255,78,78,0.55);
+}
+
+/* details row: always visible */
+.scored-pick.compact .pick-details{
+  width:100%;
+  font-weight:800;
+  color:var(--muted);
+  margin-top:2px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.scored-pick .muted{ color:var(--muted); }
+
+/* chips */
+.chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px;
+  border-radius:999px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  border:1px solid rgba(255,255,255,0.18);
+  background:rgba(255,255,255,0.06);
+}
+
+/* method chip */
+.chip-method.neutral{
+  color:var(--text);
+  border-color:rgba(255,255,255,0.20);
+  background:rgba(255,255,255,0.06);
+}
+.chip-method.correct{
+  color:var(--ok);
+  border-color:var(--ok);
+  background:rgba(47,255,160,0.14);
+  text-shadow:0 0 6px rgba(47,255,160,0.55);
+}
+.chip-method.wrong{
+  color:var(--warn);
+  border-color:var(--warn);
+  background:rgba(255,78,78,0.14);
+  text-shadow:0 0 6px rgba(255,78,78,0.55);
+}
+
+/* round chip */
+.chip-round{
+  font-variant-numeric:tabular-nums;
+}
+.chip-round.neutral{
+  color:var(--text);
+  border-style:dashed;
+  border-color:rgba(255,255,255,0.22);
+  background:transparent;
+}
+.chip-round.correct{
+  color:var(--ok);
+  border-color:var(--ok);
+  background:rgba(47,255,160,0.12);
+}
+.chip-round.wrong{
+  color:var(--warn);
+  border-color:var(--warn);
+  background:rgba(255,78,78,0.12);
+}
+
+/* underdog bonus chip (post-result) */
+.chip-dog{
+  color:#e7faff;
+  border-color:rgba(255,255,255,0.25);
+  background:rgba(255,255,255,0.08);
+}
+
+/* points pill (only when >0) */
+.points{
+  display:inline-block; padding:4px 10px; border-radius:999px;
+  background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900;
+}
+
+.earn-note{ font-size:12.5px; margin:2px 0 0 0; opacity:.95; width:100%; text-align:center; color:var(--muted); }
+
+.fotn-strip .fight-name{ color:var(--muted); }
+.fotn-strip .hint{ color:var(--muted); font-size:14px; display:block; margin-top:2px; }
+
+/* ===== Responsive ===== */
+@media (max-width:600px){
+  .logo-banner{ max-width:260px; }
+  #app{ margin:8px auto 36px; padding:14px; }
+
+  .champ-banner{ padding:16px 0; font-size:clamp(22px, 5.0vw, 36px); }
+
+  .board-header.at-five{ display:none; }
+  .board.at-five li{ grid-template-columns:60px 1fr 90px; }
+  .board.at-five .rank{ width:auto; }
+  .board.at-five .num.crowns, .board.at-five .num.events{ display:none; }
+  .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; }
+}
+
+/* ======== Performance cues ======== */
+#fightList, #leaderboard, #allTimeBoard, #myPicks{
+  content-visibility:auto; contain-intrinsic-size:540px;
+}
+#app{ contain:content; }
+
+@media (prefers-reduced-motion: reduce){
+  .champ-banner{ animation:none; }
+  .segmented button, .fight label{ transition:none; }
+}
