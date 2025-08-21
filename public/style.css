@@ -154,7 +154,7 @@ body{
 .btn-discord:hover{ transform:translateY(-1px); filter:brightness(1.08); box-shadow:0 12px 24px rgba(0,0,0,0.35); }
 .discord-icon{ display:inline-flex; }
 
-/* ===== Fight list ===== */
+/* ===== Fight list (form) ===== */
 #fightList{ display:flex; flex-direction:column; gap:6px; align-items:center; }
 .fight{
   width:100%; max-width:600px;
@@ -170,7 +170,6 @@ body{
   font-weight:900;
   letter-spacing:.6px;
 }
-
 .options{ display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
 .fight label{
   position:relative; display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
@@ -223,11 +222,7 @@ body{
   box-shadow:0 12px 22px rgba(0,0,0,0.35);
 }
 #submitBtn:disabled{ opacity:.6; cursor:not-allowed; }
-#submitBtn{
-  display:inline-block;
-  width:auto;
-  margin:10px auto 0;
-}
+#submitBtn{ display:inline-block; width:auto; margin:10px auto 0; }
 
 .segmented{ display:flex; justify-content:center; align-items:center; gap:8px; margin:8px 0 10px; }
 .segmented button[aria-pressed="false"]{ filter:saturate(0.8) brightness(0.95); opacity:.95; }
@@ -294,7 +289,7 @@ body{
 #myPicks{ margin-top:8px; display:grid; gap:10px; justify-items:center; }
 #myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
 
-/* base card without heavy borders */
+/* Clean card */
 .scored-pick{
   display:flex; flex-direction:column; align-items:center; gap:8px;
   width:100%; max-width:620px;
@@ -305,7 +300,7 @@ body{
   box-shadow:0 6px 18px rgba(0,0,0,0.25);
 }
 
-/* compact layout: one fight line, then details */
+/* one-line fight, then details */
 .scored-pick.compact .fight-header{ width:100%; display:flex; align-items:center; justify-content:center; }
 .scored-pick.compact .fh-line{
   display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
@@ -313,10 +308,8 @@ body{
 }
 .scored-pick.compact .vs{ opacity:.7; font-weight:800; }
 
-/* fighters — make the pick obvious */
-.fighter{
-  opacity:.6;
-}
+/* fighters: picked gets a pill, others muted */
+.fighter{ opacity:.6; }
 .fighter.picked{
   opacity:1;
   padding:4px 12px;
@@ -337,15 +330,9 @@ body{
   background:radial-gradient(90% 130% at 50% -20%, rgba(255,78,78,0.20), transparent 60%);
   text-shadow:0 0 10px rgba(255,78,78,0.65);
 }
+.pick-mark{ font-weight:900; margin-left:6px; filter:drop-shadow(0 0 4px rgba(0,0,0,0.35)); }
 
-/* tiny mark next to your pick */
-.pick-mark{
-  font-weight:900;
-  margin-left:6px;
-  filter:drop-shadow(0 0 4px rgba(0,0,0,0.35));
-}
-
-/* results / notes row */
+/* details row: always visible */
 .scored-pick.compact .pick-details{
   width:100%;
   font-weight:800;
@@ -358,11 +345,11 @@ body{
   flex-wrap:wrap;
 }
 
-/* Pre-results method style */
+/* neutral before results */
 .winner-text.pre{ color:var(--accent); text-shadow:0 0 8px rgba(0,245,255,0.35); font-weight:900; }
 .method-text.pre{ color:var(--text); opacity:.95; font-weight:900; }
 
-/* Dog chip */
+/* dog chip */
 .dog-tag--chip{
   display:inline-flex; align-items:center; gap:6px;
   padding:4px 8px; border-radius:999px;
@@ -371,15 +358,15 @@ body{
   box-shadow:0 0 8px rgba(0,0,0,0.25) inset;
 }
 
-/* Round chip */
+/* round chip */
 .chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; line-height:1; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
 .chip-round{ background:transparent; border:1px dashed rgba(255,255,255,0.22); }
 
-/* Result colors for method/round */
+/* result colors for method/round */
 .correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); }
 .wrong{ color:var(--warn); text-shadow:0 0 6px var(--warn); }
 
-/* points pill (reuse globally) */
+/* points pill (only when >0) */
 .points{
   display:inline-block; padding:4px 10px; border-radius:999px;
   background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900;
