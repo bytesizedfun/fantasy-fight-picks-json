@@ -289,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </span>
           </label>
 
-          <label>
+        <label>
             <input type="radio" name="${fight}-winner" value="${fighter2}">
             <span class="pick-row">
               <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
@@ -414,10 +414,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const f1Full = meta.f1 || (String(fight).split(" vs ")[0] || "");
             const f2Full = meta.f2 || (String(fight).split(" vs ")[1] || "");
 
-            // First names for display only
-            const firstOf = n => String(n).trim().split(/\s+/)[0] || String(n).trim();
-            const f1Name = firstOf(f1Full);
-            const f2Name = firstOf(f2Full);
+            // ⬅️ DISPLAY CHANGE: use FULL NAMES in the header
+            const f1Disp = f1Full;
+            const f2Disp = f2Full;
 
             const dogSide = meta.underdogSide;
             const dogTier = (function(oddsRaw){
@@ -449,13 +448,13 @@ document.addEventListener("DOMContentLoaded", () => {
               ? (matchRound ? "correct" : "wrong")
               : "";
 
-            // Header: fight once; bold YOUR pick; 🐶 inline beside YOUR pick
+            // Header: show fight ONCE with FULL names; bold YOUR pick; 🐶 inline beside YOUR pick
             const pickIsF1 = winner === f1Full; // compare to FULL names to preserve logic
             const pickIsF2 = winner === f2Full;
             const dogGlyph = (chosenIsUnderdog && dogTier > 0) ? " 🐶" : "";
 
-            const f1Html = pickIsF1 ? `<strong>${f1Name}${dogGlyph}</strong>` : `${f1Name}`;
-            const f2Html = pickIsF2 ? `<strong>${f2Name}${dogGlyph}</strong>` : `${f2Name}`;
+            const f1Html = pickIsF1 ? `<strong>${f1Disp}${dogGlyph}</strong>` : `${f1Disp}`;
+            const f2Html = pickIsF2 ? `<strong>${f2Disp}${dogGlyph}</strong>` : `${f2Disp}`;
 
             // Details line: visible ONLY after results (single line)
             let detailsHtml = "";
