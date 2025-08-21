@@ -106,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // Optional: event window for smarter polling (if your server exposes it)
+    // Optional event window (safe if not present on server)
     async getEventWindow() {
       try {
         const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/event`, { headers: { "Cache-Control": "no-cache" }}), 6000);
@@ -330,7 +330,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </span>
           </label>
 
-        <label>
+          <label>
             <input type="radio" name="${fight}-winner" value="${fighter2}">
             <span class="pick-row">
               <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
@@ -424,7 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (shows method/round BEFORE results) ---------- */
+  /* ---------- My Picks (clean & clear) ---------- */
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -478,45 +478,39 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
 
-            // classes for your pick
+            // Fighter pills (no emoji icon; colorize after results)
             const pickIsF1 = winner === f1;
             const pickIsF2 = winner === f2;
             const outcomeClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
-            const resultIcon = hasResult ? (matchWinner ? "✅" : "❌") : "🎯";
-            const dogGlyph = (chosenIsUnderdog && dogTier > 0) ? " 🐶" : "";
 
             const f1Html = pickIsF1
-              ? `<span class="fighter picked ${outcomeClass}">${f1}${dogGlyph}<span class="pick-mark">${resultIcon}</span></span>`
+              ? `<span class="fighter picked ${outcomeClass}">${f1}${chosenIsUnderdog ? " 🐶" : ""}</span>`
               : `<span class="fighter">${f1}</span>`;
             const f2Html = pickIsF2
-              ? `<span class="fighter picked ${outcomeClass}">${f2}${dogGlyph}<span class="pick-mark">${resultIcon}</span></span>`
+              ? `<span class="fighter picked ${outcomeClass}">${f2}${chosenIsUnderdog ? " 🐶" : ""}</span>`
               : `<span class="fighter">${f2}</span>`;
 
-            // DETAILS: show method/round ALWAYS (neutral before results), points ONLY after results
-            let detailsHtml = "";
-            if (hasResult) {
-              const bits = [];
-              if (score > 0) bits.push(`<span class="points">+${score} pts</span>`);
-              if (matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0) {
-                bits.push(`🐶 +${dogTier}`);
-              }
-              bits.push(`by <span class="${(matchWinner ? (matchMethod ? "correct" : "wrong") : "") || 'method-text pre'}">${method}</span>`);
-              if (method !== "Decision" && round) {
-                const rSpan = `<span class="chip chip-round ${(matchWinner && matchMethod) ? (matchRound ? "correct" : "wrong") : ""}">${round}</span>`;
-                bits.push(`(${rSpan})`);
-              }
-              detailsHtml = bits.join(" • ");
-            } else {
-              // Pre-results: neutral presentation of your chosen method/round
-              const bits = [];
-              bits.push(`by <span class="method-text pre">${method}</span>`);
-              if (method !== "Decision" && round) {
-                bits.push(`(<span class="chip chip-round">${round}</span>)`);
-              }
-              detailsHtml = bits.join(" ");
+            // Method & Round chips — always show
+            const methodChipClass = (hasResult && matchWinner)
+              ? (matchMethod ? "chip chip-method correct" : "chip chip-method wrong")
+              : "chip chip-method neutral";
+
+            let roundChipClass = "chip chip-round neutral";
+            if (hasResult && matchWinner && method !== "Decision" && round) {
+              roundChipClass = `chip chip-round ${matchRound ? "correct" : "wrong"}`;
             }
 
-            // Pre-results underdog note
+            const methodChip = `<span class="${methodChipClass}">${method}</span>`;
+            const roundChip = (method !== "Decision" && round)
+              ? `<span class="${roundChipClass}">R${round}</span>`
+              : "";
+
+            // Points/bonus only after results
+            const points = (hasResult && score > 0) ? `<span class="points">+${score} pts</span>` : "";
+            const dogBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
+              ? `<span class="chip chip-dog">🐶 +${dogTier}</span>`
+              : "";
+
             const earnNote = (!hasResult && chosenIsUnderdog && dogTier > 0)
               ? `<div class="earn-note">🐶 +${dogTier} potential bonus if correct</div>`
               : "";
@@ -528,7 +522,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="fight-name">${f1Html} <span class="vs">vs</span> ${f2Html}</span>
                   </div>
                 </div>
-                <div class="pick-details">${detailsHtml}</div>
+                <div class="pick-details">
+                  <span class="muted">by</span>
+                  ${methodChip}
+                  ${roundChip}
+                  ${points}
+                  ${dogBonus}
+                </div>
                 ${earnNote}
               </div>`;
           });
