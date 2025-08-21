@@ -1,10 +1,10 @@
 // Fantasy Fight Picks — Service Worker (PWA)
-const CACHE_NAME = 'ffp-cache-v1';
+const CACHE_NAME = 'ffp-cache-v2'; // ⬅️ bump this
 const ASSETS = [
   '/',                 // if your server serves index.html at /
   '/index.html',
   '/style.css',
-  '/script.js',
+  // '/script.js',     // ⬅️ removed: don't pre-cache JS so we can fetch it fresh
   // Icons (root filenames)
   '/favicon.ico',
   '/favicon-16.png',
@@ -42,15 +42,15 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
-  // HTML navigations: network first, fallback to cache, else offline page
+  // ✅ HTML navigations: network-first, fallback to cache/offline
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
-        const net = await fetch(req);
+        const net = await fetch(req, { cache: 'no-store' });
         const cache = await caches.open(CACHE_NAME);
         cache.put(req, net.clone());
         return net;
-      } catch (e) {
+      } catch {
         const cached = await caches.match(req);
         return cached || caches.match('/offline.html');
       }
@@ -58,7 +58,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for our ASSETS
+  // ✅ JS: network-first so updated script.js is used immediately
+  if (req.destination === 'script') {
+    event.respondWith((async () => {
+      try {
+        const net = await fetch(req, { cache: 'no-store' });
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(req, net.clone());
+        return net;
+      } catch {
+        const cached = await caches.match(req);
+        return cached || new Response('Offline', { status: 503, statusText: 'Offline' });
+      }
+    })());
+    return;
+  }
+
+  // Cache-first for our ASSETS (CSS, icons, etc.)
   const url = new URL(req.url);
   if (ASSETS.includes(url.pathname)) {
     event.respondWith((async () => {
@@ -76,7 +92,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     try {
       return await fetch(req);
-    } catch (e) {
+    } catch {
       const cached = await caches.match(req);
       if (cached) return cached;
       if (req.destination === 'image') {
