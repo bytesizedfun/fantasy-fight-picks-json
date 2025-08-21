@@ -104,19 +104,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const sep = BASE.includes("?") ? "&" : "?";
         return fetch(`${BASE}${sep}action=getHall`).then(r => r.json());
       }
-    },
-
-    // Optional: event window if your server exposes it (safe no-op otherwise)
-    async getEventWindow() {
-      try {
-        const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/event`, { headers: { "Cache-Control": "no-cache" }}), 6000);
-        if (!r.ok) return { start:null, end:null };
-        const j = await r.json();
-        return { start: j.eventStart ? new Date(j.eventStart) : null,
-                 end:   j.eventEnd   ? new Date(j.eventEnd)   : null };
-      } catch (_e) {
-        return { start:null, end:null };
-      }
     }
   };
 
@@ -213,16 +200,21 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   })();
 
-  // Prevent sign-in flicker: hide prompt by default; reveal only if needed
-  if (username) {
-    usernameInput.value = username;
-    usernamePrompt.style.display = "none";
-    startApp();
-  } else {
+  // Show prompt immediately if no username (prevents blank app if anything fails)
+  try {
+    if (username) {
+      usernameInput.value = username;
+      usernamePrompt.style.display = "none";
+      startApp();
+    } else {
+      usernamePrompt.style.display = "flex";
+    }
+  } catch (e) {
+    console.error(e);
     usernamePrompt.style.display = "flex";
   }
 
-  /* ---------- Event Window ---------- */
+  /* ---------- Event window (from leaderboard payload, if provided) ---------- */
   let refreshTimer = null;
   let appStarted = false;
   let eventWindow = { start:null, end:null };
@@ -248,13 +240,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function hydrateEventWindow() {
-    try {
-      const w = await api.getEventWindow();
-      if (w && (w.start || w.end)) eventWindow = w;
-    } catch (_) {}
-  }
-
   /* ---------- App ---------- */
   async function startApp() {
     if (appStarted) return;
@@ -264,7 +249,6 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.style.display = "block";
 
     await api.init();
-    await hydrateEventWindow();
 
     Promise.all([ getFightsCached(), api.getUserPicks(username) ])
       .then(([fightsData, pickData]) => {
@@ -320,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const chip2 = dog2 ? `<span class="dog-tag dog-tag--plain">${dog2}</span>` : "";
 
       const div = document.createElement("div");
-      div.className = "fight"; // styled as divider row (no box)
+      div.className = "fight";
       div.innerHTML = `
         <h3>${fight}</h3>
 
@@ -334,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </span>
           </label>
 
-        <label>
+          <label>
             <input type="radio" name="${fight}-winner" value="${fighter2}">
             <span class="pick-row">
               <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
@@ -428,7 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (compact, consistent lane) ---------- */
+  /* ---------- My Picks (compact & consistent lane) ---------- */
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -445,6 +429,14 @@ document.addEventListener("DOMContentLoaded", () => {
           buildFightMeta(fightsData);
 
           const fightResults = resultData.fightResults || {};
+
+          // ingest event window from leaderboard if provided
+          if (resultData.eventStart || resultData.eventEnd) {
+            eventWindow = {
+              start: resultData.eventStart ? new Date(resultData.eventStart) : null,
+              end:   resultData.eventEnd   ? new Date(resultData.eventEnd)   : null
+            };
+          }
 
           data.picks.forEach(({ fight, winner, method, round }) => {
             const actual = fightResults[fight] || {};
@@ -482,7 +474,6 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
 
-            // Fighter name emphasis: white when it's your pick (pre), green/red after results
             const pickIsF1 = winner === f1;
             const pickIsF2 = winner === f2;
             const outcomeClass = hasResult ? (matchWinner ? "correct" : "wrong") : "pre";
@@ -490,7 +481,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const f1Html = `<span class="fighter ${pickIsF1 ? `picked ${outcomeClass}` : "other"}">${f1}${pickIsF1 && chosenIsUnderdog ? " 🐶" : ""}</span>`;
             const f2Html = `<span class="fighter ${pickIsF2 ? `picked ${outcomeClass}` : "other"}">${f2}${pickIsF2 && chosenIsUnderdog ? " 🐶" : ""}</span>`;
 
-            // Method & Round chips — always shown (neutral before results)
             const methodChipClass = (hasResult && matchWinner)
               ? (matchMethod ? "chip chip-method correct" : "chip chip-method wrong")
               : "chip chip-method neutral";
@@ -558,6 +548,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const board = leaderboardEl;
       board.classList.add("board","weekly");
       board.innerHTML = "";
+
+      // pick up event window if backend includes it
+      if (leaderboardData.eventStart || leaderboardData.eventEnd) {
+        eventWindow = {
+          start: leaderboardData.eventStart ? new Date(leaderboardData.eventStart) : null,
+          end:   leaderboardData.eventEnd   ? new Date(leaderboardData.eventEnd)   : null
+        };
+      }
 
       const resultsArr = Object.values(leaderboardData.fightResults || {});
       const resultsStarted = resultsArr.some(r => r && r.winner && r.method);
