@@ -1,10 +1,11 @@
 // Fantasy Fight Picks — Service Worker (PWA)
-const CACHE_NAME = 'ffp-cache-v2'; // ⬅️ bump this
+// ⬆️ cache bump so old assets are discarded
+const CACHE_NAME = 'ffp-cache-v3';
+
 const ASSETS = [
   '/',                 // if your server serves index.html at /
   '/index.html',
-  '/style.css',
-  // '/script.js',     // ⬅️ removed: don't pre-cache JS so we can fetch it fresh
+  // NOTE: remove style.css and script.js from the precache so they can update instantly
   // Icons (root filenames)
   '/favicon.ico',
   '/favicon-16.png',
@@ -42,15 +43,15 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
-  // ✅ HTML navigations: network-first, fallback to cache/offline
+  // Always try network first for HTML navigations
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
-        const net = await fetch(req, { cache: 'no-store' });
+        const net = await fetch(req);
         const cache = await caches.open(CACHE_NAME);
         cache.put(req, net.clone());
         return net;
-      } catch {
+      } catch (e) {
         const cached = await caches.match(req);
         return cached || caches.match('/offline.html');
       }
@@ -58,23 +59,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ✅ JS: network-first so updated script.js is used immediately
-  if (req.destination === 'script') {
+  // 🔥 NEW: network-first for CSS and JS so updates apply immediately
+  if (req.destination === 'style' || req.destination === 'script') {
     event.respondWith((async () => {
       try {
         const net = await fetch(req, { cache: 'no-store' });
         const cache = await caches.open(CACHE_NAME);
         cache.put(req, net.clone());
         return net;
-      } catch {
+      } catch (e) {
         const cached = await caches.match(req);
-        return cached || new Response('Offline', { status: 503, statusText: 'Offline' });
+        return cached || new Response('', { status: 503, statusText: 'Offline' });
       }
     })());
     return;
   }
 
-  // Cache-first for our ASSETS (CSS, icons, etc.)
+  // Cache-first for our pre-cached ASSETS
   const url = new URL(req.url);
   if (ASSETS.includes(url.pathname)) {
     event.respondWith((async () => {
@@ -92,7 +93,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     try {
       return await fetch(req);
-    } catch {
+    } catch (e) {
       const cached = await caches.match(req);
       if (cached) return cached;
       if (req.destination === 'image') {
