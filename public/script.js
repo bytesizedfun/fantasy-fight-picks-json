@@ -106,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // Optional event window (safe if not present on server)
+    // Optional: event window if your server exposes it (safe no-op otherwise)
     async getEventWindow() {
       try {
         const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/event`, { headers: { "Cache-Control": "no-cache" }}), 6000);
@@ -194,6 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!input) return alert("Please enter your name.");
     username = input;
     localStorage.setItem("username", username);
+    usernamePrompt.style.display = "none";
     startApp();
   }
   document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
@@ -212,9 +213,13 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   })();
 
+  // Prevent sign-in flicker: hide prompt by default; reveal only if needed
   if (username) {
     usernameInput.value = username;
+    usernamePrompt.style.display = "none";
     startApp();
+  } else {
+    usernamePrompt.style.display = "flex";
   }
 
   /* ---------- Event Window ---------- */
@@ -255,7 +260,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (appStarted) return;
     appStarted = true;
 
-    usernamePrompt.style.display = "none";
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
     welcome.style.display = "block";
 
@@ -316,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const chip2 = dog2 ? `<span class="dog-tag dog-tag--plain">${dog2}</span>` : "";
 
       const div = document.createElement("div");
-      div.className = "fight";
+      div.className = "fight"; // styled as divider row (no box)
       div.innerHTML = `
         <h3>${fight}</h3>
 
@@ -330,7 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </span>
           </label>
 
-          <label>
+        <label>
             <input type="radio" name="${fight}-winner" value="${fighter2}">
             <span class="pick-row">
               <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
@@ -424,7 +428,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (clean & clear) ---------- */
+  /* ---------- My Picks (compact, consistent lane) ---------- */
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -465,7 +469,7 @@ document.addEventListener("DOMContentLoaded", () => {
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
 
-            // Score calc (unchanged)
+            // Score calc
             let score = 0;
             if (matchWinner) {
               score += 3;
@@ -478,19 +482,15 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
 
-            // Fighter pills (no emoji icon; colorize after results)
+            // Fighter name emphasis: white when it's your pick (pre), green/red after results
             const pickIsF1 = winner === f1;
             const pickIsF2 = winner === f2;
-            const outcomeClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+            const outcomeClass = hasResult ? (matchWinner ? "correct" : "wrong") : "pre";
 
-            const f1Html = pickIsF1
-              ? `<span class="fighter picked ${outcomeClass}">${f1}${chosenIsUnderdog ? " 🐶" : ""}</span>`
-              : `<span class="fighter">${f1}</span>`;
-            const f2Html = pickIsF2
-              ? `<span class="fighter picked ${outcomeClass}">${f2}${chosenIsUnderdog ? " 🐶" : ""}</span>`
-              : `<span class="fighter">${f2}</span>`;
+            const f1Html = `<span class="fighter ${pickIsF1 ? `picked ${outcomeClass}` : "other"}">${f1}${pickIsF1 && chosenIsUnderdog ? " 🐶" : ""}</span>`;
+            const f2Html = `<span class="fighter ${pickIsF2 ? `picked ${outcomeClass}` : "other"}">${f2}${pickIsF2 && chosenIsUnderdog ? " 🐶" : ""}</span>`;
 
-            // Method & Round chips — always show
+            // Method & Round chips — always shown (neutral before results)
             const methodChipClass = (hasResult && matchWinner)
               ? (matchMethod ? "chip chip-method correct" : "chip chip-method wrong")
               : "chip chip-method neutral";
@@ -505,7 +505,6 @@ document.addEventListener("DOMContentLoaded", () => {
               ? `<span class="${roundChipClass}">R${round}</span>`
               : "";
 
-            // Points/bonus only after results
             const points = (hasResult && score > 0) ? `<span class="points">+${score} pts</span>` : "";
             const dogBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
               ? `<span class="chip chip-dog">🐶 +${dogTier}</span>`
@@ -615,7 +614,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const eventDone = totalFights > 0 && completed === totalFights;
 
-      // Polling decision (only during window or while results are rolling in)
       const shouldPoll =
         (!eventDone) && (
           (eventWindow.start || eventWindow.end ? inEventWindow() : false) ||
