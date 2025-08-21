@@ -30,7 +30,8 @@
   <meta name="msapplication-TileImage" content="/mstile-150x150.png?v=19">
   <meta name="msapplication-config" content="/browserconfig.xml?v=19">
 
-  <link rel="stylesheet" href="style.css" />
+  <!-- ⬅️ version bump so new CSS is fetched -->
+  <link rel="stylesheet" href="style.css?v=21" />
   <script>
     window.API_BASE = window.API_BASE || "/api";
     // Register service worker for install + offline
