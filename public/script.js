@@ -106,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // 🔸 Server-provided event window
+    // 🔸 Optional event window endpoint on your server
     async getEventWindow() {
       try {
         const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/event`, { headers: { "Cache-Control": "no-cache" }}), 6000);
@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.style.display = "block";
 
     await api.init();
-    await hydrateEventWindow(); // get /api/event from your server
+    await hydrateEventWindow();
 
     Promise.all([ getFightsCached(), api.getUserPicks(username) ])
       .then(([fightsData, pickData]) => {
@@ -425,7 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (compact, no duplicate names; no +0 line) ---------- */
+  /* ---------- My Picks (compact & color-coded outcome) ---------- */
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -466,7 +466,7 @@ document.addEventListener("DOMContentLoaded", () => {
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
 
-            // Score
+            // Score calc
             let score = 0;
             if (matchWinner) {
               score += 3;
@@ -479,37 +479,37 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
 
-            const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-            const roundClass  = hasResult && matchWinner && matchMethod && method !== "Decision"
-              ? (matchRound ? "correct" : "wrong")
-              : "";
-
+            // classes for your pick
             const pickIsF1 = winner === f1;
             const pickIsF2 = winner === f2;
+            const outcomeClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+            const resultIcon = hasResult ? (matchWinner ? "✅" : "❌") : "🎯";
             const dogGlyph = (chosenIsUnderdog && dogTier > 0) ? " 🐶" : "";
 
             const f1Html = pickIsF1
-              ? `<strong class="fighter">${f1}${dogGlyph}</strong>`
+              ? `<span class="fighter picked ${outcomeClass}">${f1}${dogGlyph}<span class="pick-mark">${resultIcon}</span></span>`
               : `<span class="fighter">${f1}</span>`;
             const f2Html = pickIsF2
-              ? `<strong class="fighter">${f2}${dogGlyph}</strong>`
+              ? `<span class="fighter picked ${outcomeClass}">${f2}${dogGlyph}<span class="pick-mark">${resultIcon}</span></span>`
               : `<span class="fighter">${f2}</span>`;
 
+            // details only after results
             let detailsHtml = "";
             if (hasResult) {
               const bits = [];
-              bits.push(`+${score} pts`);
+              if (score > 0) bits.push(`<span class="points">+${score} pts</span>`);
               if (matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0) {
                 bits.push(`🐶 +${dogTier}`);
               }
-              bits.push(`by <span class="${methodClass || 'method-text pre'}">${method}</span>`);
+              bits.push(`by <span class="${(matchWinner ? (matchMethod ? "correct" : "wrong") : "") || 'method-text pre'}">${method}</span>`);
               if (method !== "Decision") {
-                const rSpan = `<span class="chip chip-round ${roundClass}">${round}</span>`;
-                bits.push(`( ${rSpan} )`);
+                const rSpan = `<span class="chip chip-round ${(matchWinner && matchMethod) ? (matchRound ? "correct" : "wrong") : ""}">${round}</span>`;
+                bits.push(`(${rSpan})`);
               }
               detailsHtml = bits.join(" • ");
             }
 
+            // potential note pre-results
             const earnNote = (!hasResult && chosenIsUnderdog && dogTier > 0)
               ? `<div class="earn-note">🐶 +${dogTier} potential bonus if correct</div>`
               : "";
@@ -517,7 +517,9 @@ document.addEventListener("DOMContentLoaded", () => {
             myPicksDiv.innerHTML += `
               <div class="scored-pick compact">
                 <div class="fight-header">
-                  <div class="fh-line"><span class="fight-name">${f1Html} <span class="vs">vs</span> ${f2Html}</span></div>
+                  <div class="fh-line">
+                    <span class="fight-name">${f1Html} <span class="vs">vs</span> ${f2Html}</span>
+                  </div>
                 </div>
                 ${hasResult ? `<div class="pick-details">${detailsHtml}</div>` : ``}
                 ${earnNote}
@@ -529,8 +531,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Champion banner + Weekly Leaderboard ---------- */
   function showPreviousChampionBanner() {
-    if (champFetchedOnce) return; // fetch once per page load
-    champFetchedOnce = true;
+    if (typeof showPreviousChampionBanner.fetched !== "undefined") return;
+    showPreviousChampionBanner.fetched = true;
 
     api.getChampionBanner()
       .then(data => {
@@ -606,9 +608,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const eventDone = totalFights > 0 && completed === totalFights;
 
-      // Polling decision:
-      //   - Prefer server-provided window
-      //   - Else fallback to "results underway"
+      // Polling decision
       const shouldPoll =
         (!eventDone) && (
           (eventWindow.start || eventWindow.end ? inEventWindow() : false) ||
