@@ -96,7 +96,7 @@ body{
 }
 #usernamePrompt button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
 
-/* ===== Scoring (collapsible only) ===== */
+/* ===== Scoring ===== */
 .rules{
   margin:8px auto 6px;
   padding:8px 10px;
@@ -298,7 +298,7 @@ body{
 .fighter.picked.correct{ color:var(--ok); text-shadow:0 0 10px rgba(47,255,160,0.55); }
 .fighter.picked.wrong{ color:var(--warn); text-shadow:0 0 10px rgba(255,78,78,0.55); }
 
-/* consistent details lane */
+/* consistent details lane (text only; no pills) */
 .scored-pick.compact .pick-details{
   width:100%;
   font-weight:800;
@@ -310,40 +310,16 @@ body{
   gap:10px;
   flex-wrap:wrap;
 }
-.scored-pick .muted{ color:var(--muted); }
+.detail{ opacity:.95; }
+.detail.method.neutral{ color:var(--text); }
+.detail.method.correct{ color:var(--ok); text-shadow:0 0 6px rgba(47,255,160,0.55); }
+.detail.method.wrong{ color:var(--warn); text-shadow:0 0 6px rgba(255,78,78,0.55); }
+.detail.round.neutral{ color:var(--text); }
+.detail.round.correct{ color:var(--ok); }
+.detail.round.wrong{ color:var(--warn); }
 
-/* chips */
-.chip{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:6px 12px;
-  border-radius:999px;
-  line-height:1;
-  font-weight:900;
-  letter-spacing:.06em;
-  text-transform:uppercase;
-  border:1px solid rgba(255,255,255,0.18);
-  background:rgba(255,255,255,0.06);
-}
-.chip-method.neutral{ color:var(--text); border-color:rgba(255,255,255,0.22); background:rgba(255,255,255,0.06); }
-.chip-method.correct{ color:var(--ok); border-color:var(--ok); background:rgba(47,255,160,0.14); text-shadow:0 0 6px rgba(47,255,160,0.55); }
-.chip-method.wrong{ color:var(--warn); border-color:var(--warn); background:rgba(255,78,78,0.14); text-shadow:0 0 6px rgba(255,78,78,0.55); }
-
-.chip-round{ font-variant-numeric:tabular-nums; }
-.chip-round.neutral{ color:var(--text); border-style:dashed; border-color:rgba(255,255,255,0.22); background:transparent; }
-.chip-round.correct{ color:var(--ok); border-color:var(--ok); background:rgba(47,255,160,0.12); }
-.chip-round.wrong{ color:var(--warn); border-color:var(--warn); background:rgba(255,78,78,0.12); }
-
-.chip-dog{ color:#e7faff; border-color:rgba(255,255,255,0.25); background:rgba(255,255,255,0.08); }
-
-.points{
-  display:inline-block; padding:4px 10px; border-radius:999px;
-  background:rgba(0,245,255,0.12); border:1px solid var(--accent); color:var(--accent); font-weight:900;
-}
-
-.earn-note{ font-size:12.5px; margin:2px 0 0 0; opacity:.95; width:100%; text-align:center; color:var(--muted); }
-
-.fotn-strip .fight-name{ color:var(--muted); }
-.fotn-strip .hint{ color:var(--muted); font-size:14px; display:block; margin-top:2px; }
+.points{ font-weight:900; color:var(--accent); }
+.dog{ font-weight:900; }
 
 /* ===== Responsive ===== */
 @media (max-width:600px){
