@@ -1,8 +1,9 @@
-/* === Orbitron Neon — cleaner, borderless === */
+/* === Orbitron Neon — clean, borderless, premium === */
 
 :root{
   --ink:#0b0b0d;
   --panel:#131417;
+  --tile:#111217;
 
   --text:#e7e9ee;
   --muted:#aeb2bb;
@@ -41,7 +42,7 @@ body{
 #app{
   max-width:680px;
   margin:12px auto 40px;
-  padding:16px 16px 6px;
+  padding:16px 16px 10px;
   background:var(--panel);
   border-radius:18px;
   border:1px solid rgba(255,255,255,0.06);
@@ -67,7 +68,7 @@ body{
 #usernamePrompt.center{ display:flex; flex-direction:column; gap:8px; align-items:center; }
 .prompt-title{ font-weight:900; margin-bottom:4px; }
 #usernamePrompt input{
-  width:100%; max-width:320px; background:#111217; border:1px solid var(--divider);
+  width:100%; max-width:320px; background:var(--tile); border:1px solid var(--divider);
   border-radius:12px; padding:10px 12px; color:var(--text); outline:none;
 }
 #usernamePrompt button{
@@ -105,10 +106,10 @@ body{
 }
 .section-title--leader{ margin-top:14px; font-size:28px; letter-spacing:.24em; text-shadow:0 0 14px rgba(var(--accent-rgb),0.45); }
 
-/* ===== Fight list — BORDERLESS STACK ===== */
+/* ===== Fight list — BORDERLESS ===== */
 #fightList{ display:flex; flex-direction:column; gap:0; align-items:stretch; text-align:left; }
 .fight{
-  position:relative; padding:10px 2px 12px; /* no border, no background */
+  position:relative; padding:10px 2px 12px; background:transparent; border:none;
 }
 .fight:not(:first-child)::before{
   content:""; position:absolute; left:-10px; right:-10px; top:-1px; height:1px;
@@ -118,12 +119,12 @@ body{
   color:var(--text); opacity:.85; margin:0 0 8px 0; font-weight:900; letter-spacing:.04em; font-size:16px;
 }
 
-/* Pick options — clean chips, bold highlight on select */
+/* Options — clean chips; clear selected state without boxes */
 .options{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
 .fight label{
   position:relative; display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
-  margin:0; background:rgba(255,255,255,0.03); border:1px solid transparent; padding:10px 12px; border-radius:12px;
-  cursor:pointer; min-height:40px;
+  margin:0; background:rgba(255,255,255,0.03); border:1px solid transparent; padding:10px 12px;
+  border-radius:12px; cursor:pointer; min-height:40px;
   transition:transform .06s ease, box-shadow .2s ease, background .15s ease, border-color .2s ease;
 }
 .fight label:hover{ transform:translateY(-1px); background:rgba(255,255,255,0.06); }
@@ -131,8 +132,8 @@ body{
 
 .fight label:has(input:checked){
   background:linear-gradient(180deg, rgba(0,245,255,0.16), rgba(0,245,255,0.08));
-  border-color:rgba(var(--accent-rgb),0.50);
-  box-shadow:0 4px 24px rgba(0,245,255,0.18);
+  border-color:rgba(var(--accent-rgb),0.45);
+  box-shadow:0 4px 22px rgba(0,245,255,0.18);
 }
 .fight label:has(input:checked)::after{
   content:"✓"; position:absolute; right:10px; top:50%; transform:translateY(-50%);
@@ -152,7 +153,7 @@ body{
 /* Method + Round */
 .pick-controls{ display:flex; justify-content:center; gap:8px; margin:8px 0 0; }
 .pick-controls select{
-  background:#111217; border:1px solid var(--divider); color:var(--text);
+  background:var(--tile); border:1px solid var(--divider); color:var(--text);
   padding:10px 12px; border-radius:12px; outline:none; min-width:132px; font-size:15px;
 }
 
@@ -178,11 +179,10 @@ body{
 .segmented button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
 .segmented button[aria-pressed="false"]{ filter:saturate(0.8) brightness(0.95); opacity:.95; }
 
-/* ===== Leaderboards ===== */
+/* ===== Leaderboards (unchanged look) ===== */
 .board{ list-style:none; margin:0; padding:0; }
 #leaderboard, #allTimeBoard{ max-width:680px; margin:0 auto; }
 
-/* Weekly rows (kept, but softened) */
 .board.weekly li{
   display:grid; grid-template-columns:auto 1fr auto; align-items:center; justify-items:center; gap:10px;
   background:rgba(255,255,255,0.04); border:1px solid var(--divider); border-radius:12px; padding:10px 12px; margin:8px 0;
@@ -195,42 +195,46 @@ body{
 }
 @keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
 
-/* ===== Your Picks — BORDERLESS & CLEAR PICK PILL ===== */
+/* ===== Your Picks — BORDERLESS STACK (no boxes) ===== */
 #myPicks{ margin-top:8px; display:grid; gap:0; justify-items:stretch; text-align:left; }
 #myPicks h3{ margin:0 0 6px; color:var(--accent); font-weight:900; text-align:center; }
 
 .scored-pick{
-  padding:10px 2px; background:transparent; border:none;
+  padding:12px 2px; background:transparent; border:none;
   display:flex; flex-direction:column; gap:6px;
 }
-.scored-pick + .scored-pick{
-  border-top:1px solid var(--divider-soft);
-}
+.scored-pick + .scored-pick{ border-top:1px solid var(--divider-soft); }
 
+/* fight title line (full names) */
 .fight-name{
   font-weight:900; letter-spacing:.04em; color:var(--text); opacity:.95;
   display:flex; align-items:center; gap:10px; justify-content:center;
 }
 .fight-name .vs{ color:var(--muted); opacity:.8; }
 
+/* your pick pops as an accent pill */
 .fight-name strong{
   display:inline-flex; align-items:center;
-  padding:4px 10px; border-radius:999px;
+  padding:4px 12px; border-radius:999px;
   background:var(--accent); color:#001214; text-shadow:none;
   box-shadow:0 0 14px rgba(0,245,255,0.35);
 }
 
+/* below the title: one compact details line (only after results) */
 .user-pick{
   text-align:center; color:var(--text); opacity:.92; font-weight:800;
 }
-.user-pick .method-text.pre{ color:var(--text); opacity:.95; font-weight:900; }
+.method-text.pre{ color:var(--text); opacity:.95; font-weight:900; }
+
+/* round chip */
 .chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; line-height:1; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
 .chip-round{ background:transparent; border:1px dashed rgba(255,255,255,0.22); }
 
-/* Result colors */
+/* correctness colors */
 .correct{ color:var(--ok); text-shadow:0 0 6px var(--ok); }
 .wrong{ color:var(--warn); text-shadow:0 0 6px var(--warn); }
 
+/* note about potential dog bonus (pre-results) */
 .earn-note{ font-size:12.5px; margin:2px 0 0 0; opacity:.95; width:100%; text-align:center; color:var(--muted); }
 
 /* ===== All-Time ===== */
@@ -257,7 +261,7 @@ body{
   .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; }
 }
 
-/* ===== Performance hints ===== */
+/* ===== Perf ===== */
 #fightList, #leaderboard, #allTimeBoard, #myPicks{ content-visibility:auto; contain-intrinsic-size:540px; }
 #app{ contain:content; }
 
