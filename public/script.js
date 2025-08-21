@@ -411,8 +411,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const matchRound  = hasResult && round == actual.round;
 
             const meta = fightMeta.get(fight) || {};
-            const f1 = meta.f1 || (String(fight).split(" vs ")[0] || "");
-            const f2 = meta.f2 || (String(fight).split(" vs ")[1] || "");
+            const f1Full = meta.f1 || (String(fight).split(" vs ")[0] || "");
+            const f2Full = meta.f2 || (String(fight).split(" vs ")[1] || "");
+
+            // First names for display only
+            const firstOf = n => String(n).trim().split(/\s+/)[0] || String(n).trim();
+            const f1Name = firstOf(f1Full);
+            const f2Name = firstOf(f2Full);
 
             const dogSide = meta.underdogSide;
             const dogTier = (function(oddsRaw){
@@ -422,8 +427,8 @@ document.addEventListener("DOMContentLoaded", () => {
             })(meta.underdogOdds);
 
             const chosenIsUnderdog =
-              (dogSide === "Fighter 1" && winner === meta.f1) ||
-              (dogSide === "Fighter 2" && winner === meta.f2);
+              (dogSide === "Fighter 1" && winner === f1Full) ||
+              (dogSide === "Fighter 2" && winner === f2Full);
 
             // Score (unchanged logic)
             let score = 0;
@@ -445,27 +450,27 @@ document.addEventListener("DOMContentLoaded", () => {
               : "";
 
             // Header: fight once; bold YOUR pick; 🐶 inline beside YOUR pick
-            const pickIsF1 = winner === f1;
-            const pickIsF2 = winner === f2;
+            const pickIsF1 = winner === f1Full; // compare to FULL names to preserve logic
+            const pickIsF2 = winner === f2Full;
             const dogGlyph = (chosenIsUnderdog && dogTier > 0) ? " 🐶" : "";
 
-            const f1Html = `<span class="fighter ${pickIsF1 ? "picked" : ""}">${f1}${pickIsF1 ? dogGlyph : ""}</span>`;
-            const f2Html = `<span class="fighter ${pickIsF2 ? "picked" : ""}">${f2}${pickIsF2 ? dogGlyph : ""}</span>`;
+            const f1Html = pickIsF1 ? `<strong>${f1Name}${dogGlyph}</strong>` : `${f1Name}`;
+            const f2Html = pickIsF2 ? `<strong>${f2Name}${dogGlyph}</strong>` : `${f2Name}`;
 
-            // Details line: visible ONLY after results
+            // Details line: visible ONLY after results (single line)
             let detailsHtml = "";
             if (hasResult) {
-              const bits = [];
-              bits.push(`+${score} pts`);
+              const parts = [];
+              parts.push(`+${score} pts`);
               if (matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0) {
-                bits.push(`🐶 +${dogTier}`);
+                parts.push(`🐶 +${dogTier}`);
               }
-              bits.push(`by <span class="${methodClass || 'method-text pre'}">${method}</span>`);
+              let methodBit = `by <span class="${methodClass || 'method-text pre'}">${method}</span>`;
               if (method !== "Decision") {
-                const rSpan = `<span class="chip chip-round ${roundClass}">${round}</span>`;
-                bits.push(`(${rSpan})`);
+                methodBit += ` • in Round <span class="chip chip-round ${roundClass}">${round}</span>`;
               }
-              detailsHtml = bits.join(" • ");
+              parts.push(methodBit);
+              detailsHtml = parts.join(" • ");
             }
 
             // Optional pre-results potential note (unchanged)
@@ -475,11 +480,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Final markup — NO duplicate fighter names, NO stray "+0 pts" line
             myPicksDiv.innerHTML += `
-              <div class="scored-pick compact">
-                <div class="fight-header">
-                  <div class="fh-line">${f1Html} <span class="vs">vs</span> ${f2Html}</div>
-                </div>
-                ${hasResult ? `<div class="pick-details">${detailsHtml}</div>` : ``}
+              <div class="scored-pick">
+                <div class="fight-name">${f1Html} <span class="vs">vs</span> ${f2Html}</div>
+                ${hasResult ? `<div class="user-pick">${detailsHtml}</div>` : ``}
                 ${earnNote}
               </div>`;
           });
