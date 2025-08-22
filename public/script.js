@@ -299,7 +299,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </span>
           </label>
 
-          <label>
+        <label>
             <input type="radio" name="${fight}-winner" value="${fighter2}">
             <span class="pick-row">
               <span class="fighter-name ${isDog2 ? 'is-underdog' : ''}">
@@ -393,7 +393,17 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (betslip, centered, consistent) ---------- */
+  /* ---------- Helpers for "Your Picks" ---------- */
+  function shortMethod(m) {
+    if (!m) return "";
+    const s = String(m).toUpperCase();
+    if (s.includes("DECISION")) return "Dec";
+    if (s.includes("SUB")) return "Sub";
+    if (s.includes("KO") || s.includes("TKO")) return "KO/TKO";
+    return m;
+  }
+
+  /* ---------- My Picks (betslip, consistent ✓/✗) ---------- */
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -453,67 +463,88 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
 
-            // Icons per requirement:
-            // - Before results: neutral bullet "•"
-            // - After results: ✓ or ✗
-            // - If winner wrong, method & round are auto-✗ (even if coincidentally match)
-            const iconWinnerChar = hasResult ? (matchWinner ? "✓" : "✗") : "•";
-            const iconWinnerCls  = hasResult ? (matchWinner ? "ok" : "x") : "dot";
+            // Icons logic — consistent:
+            // before results: • for all
+            // after results: ✓ or ✗
+            // if winner wrong => method & round auto-✗
+            const pre = !hasResult;
 
-            let methodChar, methodCls, roundChar, roundCls;
-            if (!hasResult) {
-              methodChar = roundChar = "•";
-              methodCls  = roundCls  = "dot";
+            const icoWinnerChar = pre ? "•" : (matchWinner ? "✓" : "✗");
+            const icoWinnerCls  = pre ? "dot" : (matchWinner ? "ok" : "x");
+
+            let icoMethodChar, icoMethodCls, methodVal;
+            if (pre) {
+              icoMethodChar = "•"; icoMethodCls = "dot"; methodVal = shortMethod(method);
             } else if (!matchWinner) {
-              methodChar = roundChar = "✗";
-              methodCls  = roundCls  = "x";
+              icoMethodChar = "✗"; icoMethodCls = "x"; methodVal = shortMethod(method);
             } else {
-              methodChar = matchMethod ? "✓" : "✗";
-              methodCls  = matchMethod ? "ok" : "x";
-              if (method === "Decision" || !round) {
-                roundChar = "";
-                roundCls  = "";
+              icoMethodChar = matchMethod ? "✓" : "✗";
+              icoMethodCls = matchMethod ? "ok" : "x";
+              methodVal = shortMethod(method);
+            }
+
+            let icoRoundChar = "", icoRoundCls = "", roundVal = "";
+            if (method && method.toUpperCase().includes("DECISION")) {
+              // N/A for Decision — keep neutral even after results
+              if (pre) { icoRoundChar = "•"; icoRoundCls = "dot"; }
+              else { icoRoundChar = "•"; icoRoundCls = "dot"; }
+              roundVal = "—";
+            } else {
+              const label = round ? `RD ${round}` : "";
+              if (pre) {
+                icoRoundChar = "•"; icoRoundCls = "dot"; roundVal = label || "—";
+              } else if (!matchWinner) {
+                icoRoundChar = "✗"; icoRoundCls = "x"; roundVal = label || "—";
               } else {
-                roundChar = matchRound ? "✓" : "✗";
-                roundCls  = matchRound ? "ok" : "x";
+                icoRoundChar = matchRound ? "✓" : "✗";
+                icoRoundCls = matchRound ? "ok" : "x";
+                roundVal = label || "—";
               }
             }
 
-            const pointsStr = hasResult ? `+${score}` : "—";
+            const pointsBadge = hasResult
+              ? `<span class="points-badge">${score}</span>`
+              : `<span class="points-badge points-muted">—</span>`;
+
             const dogBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
               ? `<span class="dog">🐶 +${dogTier}</span>`
               : "";
 
-            // Markup: betslip-like, centered, single place for everything
+            const f1Picked = winner === f1;
+            const f2Picked = winner === f2;
+
             myPicksDiv.innerHTML += `
               <div class="scored-pick">
-                <div class="ticket-fight">${f1} <span class="vs">vs</span> ${f2}</div>
-
-                <div class="ticket-pick">
-                  <span class="ico ${iconWinnerCls}">${iconWinnerChar}</span>
-                  <span class="pick-main">${winner}</span>
+                <div class="ticket-fight">
+                  <span class="fighter ${f1Picked ? 'picked' : ''}">${f1}</span>
+                  <span class="vs">vs</span>
+                  <span class="fighter ${f2Picked ? 'picked' : ''}">${f2}</span>
                 </div>
 
-                <div class="ticket-details">
-                  <span class="detail-group">
-                    <span class="ico ${methodCls}">${methodChar}</span>
-                    <span class="detail-label">Method</span>
-                    <span class="detail-value">${method}</span>
-                  </span>
+                <div class="ticket-grid">
+                  <div class="cell cell-pick">
+                    <span class="ico ${icoWinnerCls}">${icoWinnerChar}</span>
+                    <span class="label">PICK</span>
+                    <span class="value">${winner}</span>
+                  </div>
 
-                  ${method !== "Decision" && round ? `
-                  <span class="detail-group">
-                    <span class="ico ${roundCls}">${roundChar}</span>
-                    <span class="detail-label">Round</span>
-                    <span class="detail-value">R${round}</span>
-                  </span>` : ""}
+                  <div class="cell cell-method">
+                    <span class="ico ${icoMethodCls}">${icoMethodChar}</span>
+                    <span class="label">METHOD</span>
+                    <span class="value">${methodVal}</span>
+                  </div>
 
-                  <span class="detail-group">
-                    <span class="detail-label">Pts</span>
-                    <span class="detail-value points">${pointsStr}</span>
-                  </span>
+                  <div class="cell cell-round">
+                    <span class="ico ${icoRoundCls}">${icoRoundChar}</span>
+                    <span class="label">ROUND</span>
+                    <span class="value">${roundVal}</span>
+                  </div>
 
-                  ${dogBonus}
+                  <div class="cell cell-points">
+                    <span class="label">PTS</span>
+                    ${pointsBadge}
+                    ${dogBonus}
+                  </div>
                 </div>
               </div>`;
           });
