@@ -403,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return m;
   }
 
-  /* ---------- My Picks (betslip, consistent ✓/✗, no labels) ---------- */
+  /* ---------- My Picks (betslip, consistent ✓/✗, neutral header) ---------- */
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -485,7 +485,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             let icoRoundChar = "", icoRoundCls = "", roundVal = "";
             if (method && method.toUpperCase().includes("DECISION")) {
-              // N/A for Decision
               icoRoundChar = "•"; icoRoundCls = "dot"; roundVal = "—";
             } else {
               const label = round ? `RD ${round}` : "—";
@@ -502,15 +501,13 @@ document.addEventListener("DOMContentLoaded", () => {
               ? `<span class="dog">🐶 +${dogTier}</span>`
               : "";
 
-            const f1Picked = winner === f1;
-            const f2Picked = winner === f2;
-
+            // NEUTRAL header (no picked class to avoid double-highlight)
             myPicksDiv.innerHTML += `
               <div class="scored-pick">
                 <div class="ticket-fight">
-                  <span class="fighter ${f1Picked ? 'picked' : ''}">${f1}</span>
+                  <span class="fighter">${f1}</span>
                   <span class="vs">vs</span>
-                  <span class="fighter ${f2Picked ? 'picked' : ''}">${f2}</span>
+                  <span class="fighter">${f2}</span>
                 </div>
 
                 <div class="ticket-grid">
