@@ -198,7 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   })();
 
-  // If no username yet, show prompt (prevents blank screen)
   if (username) {
     usernameInput.value = username;
     usernamePrompt.style.display = "none";
@@ -227,7 +226,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     await api.init();
 
-    // Always draw leaderboard even if picks fail — user should still see something
     Promise.allSettled([ getFightsCached(), api.getUserPicks(username) ])
       .then(async (results) => {
         const fightsData = results[0].status === "fulfilled" ? results[0].value : [];
@@ -254,7 +252,6 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Startup error:", err);
         fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base in index.html (window.API_BASE).</div>`;
         submitBtn.style.display = "none";
-        // Still try leaderboard so the page isn’t empty
         loadLeaderboard().catch(()=>{});
       });
   }
@@ -396,7 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  /* ---------- My Picks (compact & consistent) ---------- */
+  /* ---------- My Picks (betslip, centered, consistent) ---------- */
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -443,7 +440,7 @@ document.addEventListener("DOMContentLoaded", () => {
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
 
-            // Score calc
+            // Score calc (unchanged)
             let score = 0;
             if (matchWinner) {
               score += 3;
@@ -456,46 +453,68 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
 
-            const pickIsF1 = winner === f1;
-            const pickIsF2 = winner === f2;
-            const outcomeClass = hasResult ? (matchWinner ? "correct" : "wrong") : "pre";
+            // Icons per requirement:
+            // - Before results: neutral bullet "•"
+            // - After results: ✓ or ✗
+            // - If winner wrong, method & round are auto-✗ (even if coincidentally match)
+            const iconWinnerChar = hasResult ? (matchWinner ? "✓" : "✗") : "•";
+            const iconWinnerCls  = hasResult ? (matchWinner ? "ok" : "x") : "dot";
 
-            const f1Html = `<span class="fighter ${pickIsF1 ? `picked ${outcomeClass}` : "other"}">${f1}${pickIsF1 && chosenIsUnderdog ? " 🐶" : ""}</span>`;
-            const f2Html = `<span class="fighter ${pickIsF2 ? `picked ${outcomeClass}` : "other"}">${f2}${pickIsF2 && chosenIsUnderdog ? " 🐶" : ""}</span>`;
-
-            const methodClass = (hasResult && matchWinner)
-              ? (matchMethod ? "detail method correct" : "detail method wrong")
-              : "detail method neutral";
-
-            let roundClass = "detail round neutral";
-            if (hasResult && matchWinner && method !== "Decision" && round) {
-              roundClass = `detail round ${matchRound ? "correct" : "wrong"}`;
+            let methodChar, methodCls, roundChar, roundCls;
+            if (!hasResult) {
+              methodChar = roundChar = "•";
+              methodCls  = roundCls  = "dot";
+            } else if (!matchWinner) {
+              methodChar = roundChar = "✗";
+              methodCls  = roundCls  = "x";
+            } else {
+              methodChar = matchMethod ? "✓" : "✗";
+              methodCls  = matchMethod ? "ok" : "x";
+              if (method === "Decision" || !round) {
+                roundChar = "";
+                roundCls  = "";
+              } else {
+                roundChar = matchRound ? "✓" : "✗";
+                roundCls  = matchRound ? "ok" : "x";
+              }
             }
 
-            const points = (hasResult && score > 0) ? `<span class="points">+${score} pts</span>` : "";
+            const pointsStr = hasResult ? `+${score}` : "—";
             const dogBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
               ? `<span class="dog">🐶 +${dogTier}</span>`
               : "";
 
-            const earnNote = (!hasResult && chosenIsUnderdog && dogTier > 0)
-              ? `<div class="earn-note">🐶 +${dogTier} potential bonus if correct</div>`
-              : "";
-
+            // Markup: betslip-like, centered, single place for everything
             myPicksDiv.innerHTML += `
-              <div class="scored-pick compact">
-                <div class="fight-header">
-                  <div class="fh-line">
-                    ${f1Html} <span class="vs">vs</span> ${f2Html}
-                  </div>
+              <div class="scored-pick">
+                <div class="ticket-fight">${f1} <span class="vs">vs</span> ${f2}</div>
+
+                <div class="ticket-pick">
+                  <span class="ico ${iconWinnerCls}">${iconWinnerChar}</span>
+                  <span class="pick-main">${winner}</span>
                 </div>
-                <div class="pick-details">
-                  <span class="detail">by</span>
-                  <span class="${methodClass}">${method}</span>
-                  ${method !== "Decision" && round ? `<span class="${roundClass}">R${round}</span>` : ""}
-                  ${points}
+
+                <div class="ticket-details">
+                  <span class="detail-group">
+                    <span class="ico ${methodCls}">${methodChar}</span>
+                    <span class="detail-label">Method</span>
+                    <span class="detail-value">${method}</span>
+                  </span>
+
+                  ${method !== "Decision" && round ? `
+                  <span class="detail-group">
+                    <span class="ico ${roundCls}">${roundChar}</span>
+                    <span class="detail-label">Round</span>
+                    <span class="detail-value">R${round}</span>
+                  </span>` : ""}
+
+                  <span class="detail-group">
+                    <span class="detail-label">Pts</span>
+                    <span class="detail-value points">${pointsStr}</span>
+                  </span>
+
                   ${dogBonus}
                 </div>
-                ${earnNote}
               </div>`;
           });
         });
