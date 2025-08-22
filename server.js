@@ -73,7 +73,7 @@ app.get("/api/champion", async (_req, res) => {
   }
 });
 
-// ✅ NEW: Submit picks -> GAS
+// ✅ Submit picks -> GAS
 app.post("/api/submit", async (req, res) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
@@ -89,7 +89,7 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// ✅ NEW: Get user picks -> GAS
+// ✅ Get user picks -> GAS
 app.post("/api/picks", async (req, res) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
@@ -121,6 +121,22 @@ async function fetchHTML(url, ms = 15000) {
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return await r.text();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function fetchJSON(url, ms = 15000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    const r = await fetch(url, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: { "user-agent": "Mozilla/5.0", accept: "application/json" },
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
   } finally {
     clearTimeout(t);
   }
@@ -216,7 +232,6 @@ async function scrapeEvent(ref) {
   const idSet = new Set();
   $('a[href*="/fight-details/"]').each((_, el) => {
     const href = ($(el).attr("href") || "").trim();
-    a = href.match(/fight-details\/([a-z0-9]+)/i);
     const m = href.match(/fight-details\/([a-z0-9]+)/i);
     if (m) idSet.add(m[1]);
   });
@@ -243,73 +258,36 @@ async function scrapeEvent(ref) {
   return { provider: "ufcstats", eventId, eventName, eventDate, fights: cleaned };
 }
 
-// ======== ESPN (core API) ========
-const ESPN_CORE = "https://sports.core.api.espn.com";
+// ======== ESPN SCRAPER (Card + Moneylines) ========
 
-// generic JSON fetch with timeout (sibling to fetchHTML)
-async function fetchJSON(url, ms = 15000) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), ms);
-  try {
-    const r = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari",
-        accept: "application/json,text/javascript;q=0.9,*/*;q=0.8",
-      },
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return await r.json();
-  } finally {
-    clearTimeout(t);
+function toEspnIdAndUrl(refRaw) {
+  const ref = String(refRaw || "").trim();
+  if (!ref) throw new Error("Missing ESPN ref");
+  if (/^\d+$/.test(ref)) {
+    return {
+      id: ref,
+      url: `https://www.espn.com/mma/fightcenter/_/id/${ref}`,
+    };
   }
+  if (/^https?:\/\/.+espn\.com/i.test(ref)) {
+    // Try to pull /id/<digits> from URL
+    const m = ref.match(/\/id\/(\d+)/);
+    const id = m ? m[1] : "";
+    return { id, url: ref };
+  }
+  throw new Error("Provide an ESPN FightCenter URL or numeric event ID.");
 }
 
-function espnEventIdFromRef(ref) {
-  const s = String(ref || "").trim();
-  const idMatch =
-    s.match(/\/id\/(\d+)/) ||
-    s.match(/[?&](?:event|id)=(\d+)/) ||
-    s.match(/events\/(\d+)/) ||
-    (/^\d{5,}$/.test(s) ? [null, s] : null);
-  if (!idMatch) throw new Error("Provide an ESPN event URL containing /id/<number> or the numeric event id.");
-  return idMatch[1];
+function fmtMoneyline(n) {
+  if (n == null || n === "" || isNaN(Number(n))) return "";
+  const v = Number(n);
+  return v > 0 ? `+${v}` : `${v}`;
 }
 
-// Scrape ESPN via sports.core.api.espn.com (stable JSON structure)
 async function scrapeEspnEvent(ref) {
-  const eventId = espnEventIdFromRef(ref);
-  const eventUrl = `${ESPN_CORE}/v2/sports/mma/ufc/events/${eventId}?lang=en&region=us`;
-  const ev = await fetchJSON(eventUrl);
+  const { id, url } = toEspnIdAndUrl(ref);
 
-  const eventName =
-    ev.name || ev.shortName || ev.seoName || (ev.$ref && ev.$ref.split("/").pop()) || "";
-  const eventDate = ev.date || ev.startDate || "";
-
-  const compRefs =
-    (Array.isArray(ev.competitions) && ev.competitions.map((c) => c.$ref || c.href || c)) ||
-    (ev.competitions && ev.competitions.$ref ? [ev.competitions.$ref] : []) ||
-    [];
-
-  async function readNameFromCompetitor(c) {
-    if (c.athlete && c.athlete.$ref) {
-      const a = await fetchJSON(c.athlete.$ref);
-      return a.displayName || a.fullName || a.name || "";
-    }
-    if (c.team && c.team.$ref) {
-      const t = await fetchJSON(c.team.$ref);
-      return t.displayName || t.name || t.shortDisplayName || "";
-    }
-    return c.displayName || c.shortDisplayName || c.name || "";
-  }
-
-  function fmtAmerican(n) {
-    if (n == null || !isFinite(n)) return "";
-    n = Math.trunc(Number(n));
-    return n > 0 ? `+${n}` : `${n}`;
-  }
-
+  // Helper: limit concurrency
   async function mapLimit(items, limit, fn) {
     let i = 0;
     const out = new Array(items.length);
@@ -324,92 +302,253 @@ async function scrapeEspnEvent(ref) {
     return out;
   }
 
-  const fights = await mapLimit(compRefs, 5, async (href) => {
-    const comp = typeof href === "string" ? await fetchJSON(href) : href;
-
-    const competitors = Array.isArray(comp.competitors) ? comp.competitors : [];
-    if (competitors.length < 2) return null;
-
-    const name1 = await readNameFromCompetitor(competitors[0]);
-    const name2 = await readNameFromCompetitor(competitors[1]);
-
-    let f1Odds = "", f2Odds = "";
+  // First, try ESPN Core API (most reliable)
+  if (id) {
     try {
-      if (comp.odds && comp.odds.$ref) {
-        const oddsRoot = await fetchJSON(comp.odds.$ref);
-        const first =
-          (Array.isArray(oddsRoot.items) && oddsRoot.items[0]) ||
-          (Array.isArray(oddsRoot) && oddsRoot[0]) ||
-          oddsRoot;
-        const details = first && (first.details || first);
+      const ev = await fetchJSON(
+        `https://sports.core.api.espn.com/v2/sports/mma/ufc/events/${id}?lang=en&region=us`
+      );
 
-        const home = details && (details.homeTeamOdds || details.home || {});
-        const away = details && (details.awayTeamOdds || details.away || {});
+      const eventName =
+        ev?.name || ev?.shortName || ev?.slug || `ESPN Event ${id}`;
+      const eventDate = ev?.date || "";
 
-        const idxHome = competitors.findIndex(
-          (c) => String(c.homeAway || "").toLowerCase() === "home"
-        );
-        const idxAway = competitors.findIndex(
-          (c) => String(c.homeAway || "").toLowerCase() === "away"
-        );
+      // competitions is an array of $ref URLs
+      let compRefs = [];
+      if (Array.isArray(ev?.competitions)) {
+        compRefs = ev.competitions
+          .map((c) => (typeof c === "string" ? c : c?.$ref || c?.href))
+          .filter(Boolean);
+      } else if (ev?.competitions?.$ref) {
+        const list = await fetchJSON(ev.competitions.$ref);
+        if (Array.isArray(list?.items)) {
+          compRefs = list.items
+            .map((x) => x?.$ref || x?.href)
+            .filter(Boolean);
+        }
+      }
 
+      const comps = await mapLimit(compRefs, 6, (href) => fetchJSON(href));
+
+      const fights = [];
+      await mapLimit(comps, 6, async (comp) => {
+        try {
+          let f1 = "";
+          let f2 = "";
+
+          // Prefer comp.name like "A vs B"
+          const label = comp?.name || comp?.shortName || "";
+          if (/\bvs\.?\b/i.test(label)) {
+            const parts = label.split(/\s+vs\.?\s+/i);
+            if (parts.length >= 2) {
+              f1 = parts[0].trim();
+              f2 = parts.slice(1).join(" vs ").trim();
+            }
+          }
+
+          // If names not parsed, try loaded competitor list
+          if ((!f1 || !f2) && comp?.competitors?.$ref) {
+            const compList = await fetchJSON(comp.competitors.$ref);
+            const items = Array.isArray(compList?.items)
+              ? compList.items
+              : [];
+            const names = items
+              .map((it) => it?.displayName || it?.name || "")
+              .filter(Boolean);
+            if (names.length >= 2) {
+              f1 = names[0];
+              f2 = names[1];
+            }
+          }
+
+          // Odds: fetch odds collection if available
+          let o1 = "";
+          let o2 = "";
+          let competitorSide = {}; // key: displayName -> 'home'/'away'
+          try {
+            if (comp?.competitors?.$ref) {
+              const compList = await fetchJSON(comp.competitors.$ref);
+              const items = Array.isArray(compList?.items)
+                ? compList.items
+                : [];
+              items.forEach((it, idx) => {
+                const name =
+                  it?.displayName || it?.name || (idx === 0 ? f1 : f2);
+                if (name) competitorSide[name] = it?.homeAway || "";
+              });
+            }
+
+            if (comp?.odds?.$ref) {
+              const oddsList = await fetchJSON(comp.odds.$ref);
+              const first =
+                (Array.isArray(oddsList?.items) && oddsList.items[0]) || null;
+
+              const homeML =
+                first?.homeTeamOdds?.moneyLine ??
+                first?.home?.moneyLine ??
+                first?.moneyLineHome ??
+                null;
+              const awayML =
+                first?.awayTeamOdds?.moneyLine ??
+                first?.away?.moneyLine ??
+                first?.moneyLineAway ??
+                null;
+
+              if (homeML != null || awayML != null) {
+                // If we know which fighter is home/away, map properly
+                if (competitorSide[f1] && competitorSide[f2]) {
+                  o1 =
+                    competitorSide[f1] === "home"
+                      ? fmtMoneyline(homeML)
+                      : fmtMoneyline(awayML);
+                  o2 =
+                    competitorSide[f2] === "home"
+                      ? fmtMoneyline(homeML)
+                      : fmtMoneyline(awayML);
+                } else {
+                  // Fallback: assume listing order == away vs home (common in APIs)
+                  o1 = fmtMoneyline(awayML);
+                  o2 = fmtMoneyline(homeML);
+                }
+              }
+            }
+          } catch (_) {
+            // ignore odds failures
+          }
+
+          if (f1 && f2) {
+            fights.push({
+              fighter1: f1,
+              fighter2: f2,
+              f1Odds: o1 || "",
+              f2Odds: o2 || "",
+            });
+          }
+        } catch (_) {}
+      });
+
+      if (fights.length) {
+        return {
+          provider: "espn",
+          eventId: id,
+          eventName,
+          eventDate,
+          fights,
+        };
+      }
+      // Fall through to HTML scrape if API didn't yield fights
+    } catch (e) {
+      // API path failed, attempt HTML next
+    }
+  }
+
+  // Fallback: HTML scrape ESPN FightCenter (best-effort)
+  try {
+    const html = await fetchHTML(url);
+    const $ = cheerio.load(html);
+
+    // Try __NEXT_DATA__ first (Next.js data blob)
+    let nextData = null;
+    try {
+      const txt = $('script#__NEXT_DATA__').first().text();
+      if (txt) nextData = JSON.parse(txt);
+    } catch (_) {}
+
+    const fights = [];
+    function maybePush(f1, f2, o1 = "", o2 = "") {
+      const a = (f1 || "").trim();
+      const b = (f2 || "").trim();
+      if (!a || !b) return;
+      fights.push({ fighter1: a, fighter2: b, f1Odds: o1 || "", f2Odds: o2 || "" });
+    }
+
+    // Walk the JSON looking for "vs" labels or competitors arrays
+    function deepCollect(obj) {
+      if (!obj) return;
+      if (typeof obj === "string") {
+        if (/\bvs\.?\b/i.test(obj)) {
+          const parts = obj.split(/\s+vs\.?\s+/i);
+          if (parts.length >= 2) {
+            const f1 = parts[0].trim();
+            const f2 = parts.slice(1).join(" vs ").trim();
+            maybePush(f1, f2);
+          }
+        }
+        return;
+      }
+      if (Array.isArray(obj)) {
+        obj.forEach(deepCollect);
+        return;
+      }
+      if (typeof obj === "object") {
+        // ESPN nodes often have 'competitors' with displayName fields
+        if (Array.isArray(obj.competitors)) {
+          const names = obj.competitors
+            .map((c) => c?.displayName || c?.name || c?.shortName || "")
+            .filter(Boolean);
+          if (names.length >= 2) maybePush(names[0], names[1]);
+        }
+        // Odds-style keys
         const mlHome =
-          (home && (home.moneyLine ?? home.moneyline ?? (home.price && home.price.american))) || null;
+          obj?.homeTeamOdds?.moneyLine ??
+          obj?.home?.moneyLine ??
+          obj?.moneyLineHome ??
+          null;
         const mlAway =
-          (away && (away.moneyLine ?? away.moneyline ?? (away.price && away.price.american))) || null;
-
-        if (idxHome !== -1 && idxAway !== -1) {
-          const ml = [];
-          ml[idxHome] = fmtAmerican(mlHome);
-          ml[idxAway] = fmtAmerican(mlAway);
-          f1Odds = ml[0] || "";
-          f2Odds = ml[1] || "";
-        } else {
-          f1Odds = fmtAmerican(mlAway);
-          f2Odds = fmtAmerican(mlHome);
+          obj?.awayTeamOdds?.moneyLine ??
+          obj?.away?.moneyLine ??
+          obj?.moneyLineAway ??
+          null;
+        if (
+          typeof obj.name === "string" &&
+          /\bvs\.?\b/i.test(obj.name) &&
+          (mlHome != null || mlAway != null)
+        ) {
+          const parts = obj.name.split(/\s+vs\.?\s+/i);
+          if (parts.length >= 2) {
+            const f1 = parts[0].trim();
+            const f2 = parts.slice(1).join(" vs ").trim();
+            // Assume listing order == away vs home if no explicit mapping
+            maybePush(f1, f2, fmtMoneyline(mlAway), fmtMoneyline(mlHome));
+          }
         }
+        Object.values(obj).forEach(deepCollect);
       }
-      if (!f1Odds && Array.isArray(comp.odds)) {
-        const first = comp.odds[0] || {};
-        const aw = first.awayTeamOdds || {};
-        const ho = first.homeTeamOdds || {};
-        const idxHome = competitors.findIndex(
-          (c) => String(c.homeAway || "").toLowerCase() === "home"
-        );
-        const idxAway = competitors.findIndex(
-          (c) => String(c.homeAway || "").toLowerCase() === "away"
-        );
-        const mlHome = ho.moneyLine ?? ho.moneyline;
-        const mlAway = aw.moneyLine ?? aw.moneyline;
+    }
 
-        if (idxHome !== -1 && idxAway !== -1) {
-          const ml = [];
-          ml[idxHome] = fmtAmerican(mlHome);
-          ml[idxAway] = fmtAmerican(mlAway);
-          f1Odds = ml[0] || "";
-          f2Odds = ml[1] || "";
+    if (nextData) deepCollect(nextData);
+
+    // As a last resort, parse visible "A vs B" headings
+    if (fights.length === 0) {
+      const text = $.root().text();
+      const lines = text.split(/\n+/).map((s) => s.trim()).filter(Boolean);
+      const seen = new Set();
+      lines.forEach((ln) => {
+        if (/\bvs\.?\b/i.test(ln) && ln.length < 100) {
+          const parts = ln.split(/\s+vs\.?\s+/i);
+          if (parts.length >= 2) {
+            const f1 = parts[0].trim();
+            const f2 = parts.slice(1).join(" vs ").trim();
+            const key = `${f1}__${f2}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              fights.push({ fighter1: f1, fighter2: f2, f1Odds: "", f2Odds: "" });
+            }
+          }
         }
-      }
-    } catch (_) {
-      // odds optional; ignore failures
+      });
     }
 
     return {
-      fighter1: name1 || "",
-      fighter2: name2 || "",
-      f1Odds,
-      f2Odds,
+      provider: "espn",
+      eventId: id || "",
+      eventName: $("title").text().trim() || "ESPN Event",
+      eventDate: "",
+      fights,
     };
-  });
-
-  const cleaned = fights.filter((f) => f && f.fighter1 && f.fighter2);
-  return {
-    provider: "espn",
-    eventId,
-    eventName,
-    eventDate,
-    fights: cleaned,
-  };
+  } catch (e) {
+    throw new Error(`Failed to scrape ESPN: ${e.message || e}`);
+  }
 }
 
 // ======== SCRAPER ROUTES (for debugging, optional) ========
@@ -451,7 +590,7 @@ app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
   }
 });
 
-// ======== SCRAPER ROUTES: ESPN (card + odds) ========
+// ======== ESPN: SCRAPER ROUTES (card + odds) ========
 app.get("/api/scrape/espn/event/:id", async (req, res) => {
   try {
     res.json(await scrapeEspnEvent(req.params.id));
@@ -487,7 +626,7 @@ async function resolveRefToIdOrUrl(ref) {
 }
 
 /**
- * Writes into Sheets:
+ * Writes into Sheets via GAS:
  * - replaces "fight_list" with the event card
  * - upserts finished bouts into "fight_results"
  *
@@ -512,30 +651,15 @@ app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   }
 });
 
-// Convenience: one-click latest upcoming/completed -> Sheets
-app.get("/api/admin/syncLatestUpcoming", async (req, res) => {
-  req.query.ref = "upcoming";
-  return app._router.handle(req, res, () => {}, "get", "/api/admin/syncFromUFCStats");
-});
-
-app.get("/api/admin/syncLatestCompleted", async (req, res) => {
-  req.query.ref = "completed";
-  return app._router.handle(req, res, () => {}, "get", "/api/admin/syncFromUFCStats");
-});
-
-// ======== ADMIN: SYNC ESPN (card + odds only) ========
+// ESPN: Convenience admin endpoint to push ESPN card+odds into Sheets
+// GAS handler: action=syncFromESPN&ref=...&base=...
 app.get("/api/admin/syncFromESPN", async (req, res) => {
   try {
     const refRaw = (req.query.ref || "").toString().trim();
-    if (!refRaw) {
-      return res
-        .status(400)
-        .json({ error: "Missing ?ref=<espnEventId|espn URL containing /id/>" });
-    }
+    if (!refRaw) return res.status(400).json({ error: "Missing ?ref=<espnEventId|espnUrl>" });
+
     const base = publicBase(req);
-    const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromESPN&ref=${encodeURIComponent(
-      refRaw
-    )}&base=${encodeURIComponent(base)}`;
+    const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromESPN&ref=${encodeURIComponent(refRaw)}&base=${encodeURIComponent(base)}`;
 
     const r = await fetch(gasUrl, { headers: { "cache-control": "no-cache" } });
     const text = await r.text();
