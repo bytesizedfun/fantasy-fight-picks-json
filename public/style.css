@@ -166,11 +166,12 @@ body{
 }
 .fight label:hover{ transform:translateY(-1px); }
 .fight label input[type="radio"]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
-.fight label .fighter-name{ font-weight:900; opacity:.65; }
-.fight label:has(input:checked) .fighter-name{
-  opacity:1;
-  color:#fff;
-  text-shadow:0 0 12px rgba(var(--accent-rgb),0.45);
+.fight label .fighter-name{ font-weight:900; opacity:.8; color:var(--text); text-shadow:none; }
+
+/* Subtle selection ring without boxiness */
+.fight label:has(input:checked){
+  outline:1px dashed rgba(var(--accent-rgb),0.35);
+  outline-offset:2px;
 }
 
 .fighter-name.is-underdog{ text-shadow:0 0 6px rgba(0,245,255,0.18); }
@@ -286,14 +287,23 @@ body{
 }
 .scored-pick + .scored-pick{ border-top:1px solid var(--divider); }
 
-/* Header: Fight line */
+/* Header: Fight line — NEUTRAL (no picked highlight) */
 .ticket-fight{
   font-weight:900;
   color:var(--muted);
   letter-spacing:.08em;
 }
-.ticket-fight .fighter{ opacity:.65; }
-.ticket-fight .fighter.picked{ opacity:1; color:#fff; text-shadow:0 0 10px rgba(var(--accent-rgb),0.45); }
+.ticket-fight .fighter{
+  opacity:.9;
+  color:var(--text);
+  text-shadow:none;
+}
+/* keep .picked neutral to avoid accidental emphasis */
+.ticket-fight .fighter.picked{
+  opacity:.9;
+  color:var(--text);
+  text-shadow:none;
+}
 .vs{ opacity:.75; font-weight:800; margin:0 6px; }
 
 /* GRID: Pick | Method | Round | Points */
@@ -304,7 +314,6 @@ body{
   gap:10px; width:100%;
 }
 
-/* Each cell */
 .cell{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap; min-height:28px; }
 .value{ font-weight:900; }
 
@@ -332,7 +341,6 @@ body{
   #app{ margin:8px auto 36px; padding:14px; }
   .champ-banner{ padding:16px 0; font-size:clamp(22px, 5.0vw, 36px); }
 
-  /* grid wraps into two rows on mobile */
   .ticket-grid{
     grid-template-columns: repeat(2, minmax(0,1fr));
     row-gap:8px;
