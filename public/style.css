@@ -273,7 +273,7 @@ body{
 .board.at-five .mobile-meta{ display:none; color:var(--muted); }
 
 /* ===== Your Picks (Betslip) ===== */
-#myPicks{ margin-top:10px; display:grid; gap:12px; justify-items:center; }
+#myPicks{ margin-top:14px; display:grid; gap:12px; justify-items:center; }
 #myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
 
 /* clean lane with dividers (no cards) */
@@ -292,44 +292,51 @@ body{
   color:var(--muted);
   letter-spacing:.08em;
 }
-.vs{ opacity:.75; font-weight:800; }
+.ticket-fight .fighter{ opacity:.65; }
+.ticket-fight .fighter.picked{ opacity:1; color:#fff; text-shadow:0 0 10px rgba(var(--accent-rgb),0.45); }
+.vs{ opacity:.75; font-weight:800; margin:0 6px; }
 
-/* Pick line */
-.ticket-pick{
-  display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
-  font-size:18px; font-weight:900;
+/* GRID: Pick | Method | Round | Points */
+.ticket-grid{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  align-items:center; justify-items:center;
+  gap:10px; width:100%;
 }
-.pick-main{ font-weight:900; }
 
-/* Details lane */
-.ticket-details{
-  display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
-  color:var(--text); font-weight:800;
-}
-.detail-group{ display:inline-flex; align-items:center; gap:6px; }
-.detail-label{ opacity:.75; font-weight:800; }
-.detail-value{ font-weight:900; }
+/* Each cell */
+.cell{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap; min-height:28px; }
+.cell .label{ font-size:12px; opacity:.7; letter-spacing:.06em; font-weight:800; }
+.cell .value{ font-weight:900; }
 
-/* Icons */
-.ico{ display:inline-block; width:18px; text-align:center; font-weight:900; }
+/* Icons: ✓ ✗ • */
+.ico{ display:inline-block; width:18px; text-align:center; font-weight:900; font-size:16px; }
 .ico.ok{ color:var(--ok); }
 .ico.x{ color:var(--warn); }
 .ico.dot{ color:var(--muted); }
 
-/* Points & dog */
-.points{ font-weight:900; color:var(--accent); }
-.dog{ font-weight:900; }
+/* Points: big, clean number (no pill) */
+.points-badge{
+  font-weight:900; font-size:18px; line-height:1;
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
+}
+.points-muted{ color:var(--muted); text-shadow:none; }
+
+/* Dog bonus chip (simple) */
+.dog{ font-weight:900; margin-left:4px; }
 
 /* ===== Responsive ===== */
 @media (max-width:600px){
   .logo-banner{ max-width:260px; }
   #app{ margin:8px auto 36px; padding:14px; }
   .champ-banner{ padding:16px 0; font-size:clamp(22px, 5.0vw, 36px); }
-  .board-header.at-five{ display:none; }
-  .board.at-five li{ grid-template-columns:60px 1fr 90px; }
-  .board.at-five .rank{ width:auto; }
-  .board.at-five .num.crowns, .board.at-five .num.events{ display:none; }
-  .board.at-five .mobile-meta{ display:block; grid-column:1 / -1; }
+
+  /* grid wraps into two rows on mobile */
+  .ticket-grid{
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    row-gap:8px;
+  }
 }
 
 /* ======== Performance cues ======== */
