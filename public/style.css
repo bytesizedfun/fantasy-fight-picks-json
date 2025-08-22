@@ -306,8 +306,7 @@ body{
 
 /* Each cell */
 .cell{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap; min-height:28px; }
-.cell .label{ font-size:12px; opacity:.7; letter-spacing:.06em; font-weight:800; }
-.cell .value{ font-weight:900; }
+.value{ font-weight:900; }
 
 /* Icons: ✓ ✗ • */
 .ico{ display:inline-block; width:18px; text-align:center; font-weight:900; font-size:16px; }
@@ -315,10 +314,11 @@ body{
 .ico.x{ color:var(--warn); }
 .ico.dot{ color:var(--muted); }
 
-/* Points: big, clean number (no pill) */
+/* Points: big, clean number in neon blue */
 .points-badge{
   font-weight:900; font-size:18px; line-height:1;
   font-variant-numeric:tabular-nums;
+  color:var(--accent);
   text-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
 }
 .points-muted{ color:var(--muted); text-shadow:none; }
