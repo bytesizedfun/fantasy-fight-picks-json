@@ -272,52 +272,51 @@ body{
 .board.at-five .num{ font-weight:900; color:var(--text); opacity:.95; }
 .board.at-five .mobile-meta{ display:none; color:var(--muted); }
 
-/* ===== Your Picks ===== */
-#myPicks{ margin-top:8px; display:grid; gap:10px; justify-items:center; }
+/* ===== Your Picks (Betslip) ===== */
+#myPicks{ margin-top:10px; display:grid; gap:12px; justify-items:center; }
 #myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
 
 /* clean lane with dividers (no cards) */
 .scored-pick{
-  display:flex; flex-direction:column; align-items:center; gap:8px;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
   width:100%; max-width:640px;
   padding:12px 6px;
   border:none; background:transparent;
+  text-align:center;
 }
 .scored-pick + .scored-pick{ border-top:1px solid var(--divider); }
 
-.scored-pick.compact .fight-header{ width:100%; display:flex; align-items:center; justify-content:center; }
-.scored-pick.compact .fh-line{
-  display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
-  font-weight:900; letter-spacing:.06em;
-}
-.scored-pick.compact .vs{ opacity:.7; font-weight:800; }
-
-/* Fighter emphasis */
-.fighter.other{ opacity:.55; color:#c7ccd6; }
-.fighter.picked.pre{ color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.25); }
-.fighter.picked.correct{ color:var(--ok); text-shadow:0 0 10px rgba(47,255,160,0.55); }
-.fighter.picked.wrong{ color:var(--warn); text-shadow:0 0 10px rgba(255,78,78,0.55); }
-
-/* consistent details lane (text only; no pills) */
-.scored-pick.compact .pick-details{
-  width:100%;
-  font-weight:800;
+/* Header: Fight line */
+.ticket-fight{
+  font-weight:900;
   color:var(--muted);
-  margin-top:2px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  flex-wrap:wrap;
+  letter-spacing:.08em;
 }
-.detail{ opacity:.95; }
-.detail.method.neutral{ color:var(--text); }
-.detail.method.correct{ color:var(--ok); text-shadow:0 0 6px rgba(47,255,160,0.55); }
-.detail.method.wrong{ color:var(--warn); text-shadow:0 0 6px rgba(255,78,78,0.55); }
-.detail.round.neutral{ color:var(--text); }
-.detail.round.correct{ color:var(--ok); }
-.detail.round.wrong{ color:var(--warn); }
+.vs{ opacity:.75; font-weight:800; }
 
+/* Pick line */
+.ticket-pick{
+  display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
+  font-size:18px; font-weight:900;
+}
+.pick-main{ font-weight:900; }
+
+/* Details lane */
+.ticket-details{
+  display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+  color:var(--text); font-weight:800;
+}
+.detail-group{ display:inline-flex; align-items:center; gap:6px; }
+.detail-label{ opacity:.75; font-weight:800; }
+.detail-value{ font-weight:900; }
+
+/* Icons */
+.ico{ display:inline-block; width:18px; text-align:center; font-weight:900; }
+.ico.ok{ color:var(--ok); }
+.ico.x{ color:var(--warn); }
+.ico.dot{ color:var(--muted); }
+
+/* Points & dog */
 .points{ font-weight:900; color:var(--accent); }
 .dog{ font-weight:900; }
 
@@ -325,9 +324,7 @@ body{
 @media (max-width:600px){
   .logo-banner{ max-width:260px; }
   #app{ margin:8px auto 36px; padding:14px; }
-
   .champ-banner{ padding:16px 0; font-size:clamp(22px, 5.0vw, 36px); }
-
   .board-header.at-five{ display:none; }
   .board.at-five li{ grid-template-columns:60px 1fr 90px; }
   .board.at-five .rank{ width:auto; }
