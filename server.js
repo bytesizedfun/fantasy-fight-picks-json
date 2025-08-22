@@ -216,6 +216,7 @@ async function scrapeEvent(ref) {
   const idSet = new Set();
   $('a[href*="/fight-details/"]').each((_, el) => {
     const href = ($(el).attr("href") || "").trim();
+    a = href.match(/fight-details\/([a-z0-9]+)/i);
     const m = href.match(/fight-details\/([a-z0-9]+)/i);
     if (m) idSet.add(m[1]);
   });
@@ -240,6 +241,175 @@ async function scrapeEvent(ref) {
   const cleaned = fights.filter((f) => f && f.fighter1 && f.fighter2);
   const eventId = (eventUrl.match(/event-details\/([a-z0-9]+)/i) || [])[1] || "";
   return { provider: "ufcstats", eventId, eventName, eventDate, fights: cleaned };
+}
+
+// ======== ESPN (core API) ========
+const ESPN_CORE = "https://sports.core.api.espn.com";
+
+// generic JSON fetch with timeout (sibling to fetchHTML)
+async function fetchJSON(url, ms = 15000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    const r = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari",
+        accept: "application/json,text/javascript;q=0.9,*/*;q=0.8",
+      },
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function espnEventIdFromRef(ref) {
+  const s = String(ref || "").trim();
+  const idMatch =
+    s.match(/\/id\/(\d+)/) ||
+    s.match(/[?&](?:event|id)=(\d+)/) ||
+    s.match(/events\/(\d+)/) ||
+    (/^\d{5,}$/.test(s) ? [null, s] : null);
+  if (!idMatch) throw new Error("Provide an ESPN event URL containing /id/<number> or the numeric event id.");
+  return idMatch[1];
+}
+
+// Scrape ESPN via sports.core.api.espn.com (stable JSON structure)
+async function scrapeEspnEvent(ref) {
+  const eventId = espnEventIdFromRef(ref);
+  const eventUrl = `${ESPN_CORE}/v2/sports/mma/ufc/events/${eventId}?lang=en&region=us`;
+  const ev = await fetchJSON(eventUrl);
+
+  const eventName =
+    ev.name || ev.shortName || ev.seoName || (ev.$ref && ev.$ref.split("/").pop()) || "";
+  const eventDate = ev.date || ev.startDate || "";
+
+  const compRefs =
+    (Array.isArray(ev.competitions) && ev.competitions.map((c) => c.$ref || c.href || c)) ||
+    (ev.competitions && ev.competitions.$ref ? [ev.competitions.$ref] : []) ||
+    [];
+
+  async function readNameFromCompetitor(c) {
+    if (c.athlete && c.athlete.$ref) {
+      const a = await fetchJSON(c.athlete.$ref);
+      return a.displayName || a.fullName || a.name || "";
+    }
+    if (c.team && c.team.$ref) {
+      const t = await fetchJSON(c.team.$ref);
+      return t.displayName || t.name || t.shortDisplayName || "";
+    }
+    return c.displayName || c.shortDisplayName || c.name || "";
+  }
+
+  function fmtAmerican(n) {
+    if (n == null || !isFinite(n)) return "";
+    n = Math.trunc(Number(n));
+    return n > 0 ? `+${n}` : `${n}`;
+  }
+
+  async function mapLimit(items, limit, fn) {
+    let i = 0;
+    const out = new Array(items.length);
+    const workers = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
+      while (true) {
+        const idx = i++;
+        if (idx >= items.length) break;
+        out[idx] = await fn(items[idx], idx);
+      }
+    });
+    await Promise.all(workers);
+    return out;
+  }
+
+  const fights = await mapLimit(compRefs, 5, async (href) => {
+    const comp = typeof href === "string" ? await fetchJSON(href) : href;
+
+    const competitors = Array.isArray(comp.competitors) ? comp.competitors : [];
+    if (competitors.length < 2) return null;
+
+    const name1 = await readNameFromCompetitor(competitors[0]);
+    const name2 = await readNameFromCompetitor(competitors[1]);
+
+    let f1Odds = "", f2Odds = "";
+    try {
+      if (comp.odds && comp.odds.$ref) {
+        const oddsRoot = await fetchJSON(comp.odds.$ref);
+        const first =
+          (Array.isArray(oddsRoot.items) && oddsRoot.items[0]) ||
+          (Array.isArray(oddsRoot) && oddsRoot[0]) ||
+          oddsRoot;
+        const details = first && (first.details || first);
+
+        const home = details && (details.homeTeamOdds || details.home || {});
+        const away = details && (details.awayTeamOdds || details.away || {});
+
+        const idxHome = competitors.findIndex(
+          (c) => String(c.homeAway || "").toLowerCase() === "home"
+        );
+        const idxAway = competitors.findIndex(
+          (c) => String(c.homeAway || "").toLowerCase() === "away"
+        );
+
+        const mlHome =
+          (home && (home.moneyLine ?? home.moneyline ?? (home.price && home.price.american))) || null;
+        const mlAway =
+          (away && (away.moneyLine ?? away.moneyline ?? (away.price && away.price.american))) || null;
+
+        if (idxHome !== -1 && idxAway !== -1) {
+          const ml = [];
+          ml[idxHome] = fmtAmerican(mlHome);
+          ml[idxAway] = fmtAmerican(mlAway);
+          f1Odds = ml[0] || "";
+          f2Odds = ml[1] || "";
+        } else {
+          f1Odds = fmtAmerican(mlAway);
+          f2Odds = fmtAmerican(mlHome);
+        }
+      }
+      if (!f1Odds && Array.isArray(comp.odds)) {
+        const first = comp.odds[0] || {};
+        const aw = first.awayTeamOdds || {};
+        const ho = first.homeTeamOdds || {};
+        const idxHome = competitors.findIndex(
+          (c) => String(c.homeAway || "").toLowerCase() === "home"
+        );
+        const idxAway = competitors.findIndex(
+          (c) => String(c.homeAway || "").toLowerCase() === "away"
+        );
+        const mlHome = ho.moneyLine ?? ho.moneyline;
+        const mlAway = aw.moneyLine ?? aw.moneyline;
+
+        if (idxHome !== -1 && idxAway !== -1) {
+          const ml = [];
+          ml[idxHome] = fmtAmerican(mlHome);
+          ml[idxAway] = fmtAmerican(mlAway);
+          f1Odds = ml[0] || "";
+          f2Odds = ml[1] || "";
+        }
+      }
+    } catch (_) {
+      // odds optional; ignore failures
+    }
+
+    return {
+      fighter1: name1 || "",
+      fighter2: name2 || "",
+      f1Odds,
+      f2Odds,
+    };
+  });
+
+  const cleaned = fights.filter((f) => f && f.fighter1 && f.fighter2);
+  return {
+    provider: "espn",
+    eventId,
+    eventName,
+    eventDate,
+    fights: cleaned,
+  };
 }
 
 // ======== SCRAPER ROUTES (for debugging, optional) ========
@@ -277,6 +447,27 @@ app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
     res.json(await scrapeEvent(await firstEventUrl("completed")));
   } catch (e) {
     console.error("latest-completed:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// ======== SCRAPER ROUTES: ESPN (card + odds) ========
+app.get("/api/scrape/espn/event/:id", async (req, res) => {
+  try {
+    res.json(await scrapeEspnEvent(req.params.id));
+  } catch (e) {
+    console.error("espn scrape by id:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+app.get("/api/scrape/espn/event", async (req, res) => {
+  try {
+    const url = String(req.query.url || "").trim();
+    if (!url) return res.status(400).json({ error: "Missing ?url" });
+    res.json(await scrapeEspnEvent(url));
+  } catch (e) {
+    console.error("espn scrape by url:", e);
     res.status(500).json({ error: String(e.message || e) });
   }
 });
@@ -330,6 +521,30 @@ app.get("/api/admin/syncLatestUpcoming", async (req, res) => {
 app.get("/api/admin/syncLatestCompleted", async (req, res) => {
   req.query.ref = "completed";
   return app._router.handle(req, res, () => {}, "get", "/api/admin/syncFromUFCStats");
+});
+
+// ======== ADMIN: SYNC ESPN (card + odds only) ========
+app.get("/api/admin/syncFromESPN", async (req, res) => {
+  try {
+    const refRaw = (req.query.ref || "").toString().trim();
+    if (!refRaw) {
+      return res
+        .status(400)
+        .json({ error: "Missing ?ref=<espnEventId|espn URL containing /id/>" });
+    }
+    const base = publicBase(req);
+    const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromESPN&ref=${encodeURIComponent(
+      refRaw
+    )}&base=${encodeURIComponent(base)}`;
+
+    const r = await fetch(gasUrl, { headers: { "cache-control": "no-cache" } });
+    const text = await r.text();
+    if (!r.ok) return res.status(r.status).type("text/plain").send(text);
+    res.set("Cache-Control", "no-store").type("application/json").send(text);
+  } catch (e) {
+    console.error("syncFromESPN:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
 });
 
 // ======== START ========
