@@ -403,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return m;
   }
 
-  /* ---------- My Picks (betslip, consistent ✓/✗, neutral header) ---------- */
+  /* ---------- My Picks (betslip) ---------- */
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -450,7 +450,7 @@ document.addEventListener("DOMContentLoaded", () => {
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
 
-            // Score calc (unchanged)
+            // Score calc
             let score = 0;
             if (matchWinner) {
               score += 3;
@@ -464,9 +464,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Icons logic:
-            // before results: • for all
-            // after results: ✓ or ✗
-            // if winner wrong => method & round auto-✗
             const pre = !hasResult;
 
             const icoWinnerChar = pre ? "•" : (matchWinner ? "✓" : "✗");
@@ -497,11 +494,12 @@ document.addEventListener("DOMContentLoaded", () => {
               ? `<span class="points-badge">${score}</span>`
               : `<span class="points-badge points-muted">—</span>`;
 
+            // 🐶 BONUS: show next to fighter (only when actually earned)
             const dogBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
               ? `<span class="dog">🐶 +${dogTier}</span>`
               : "";
 
-            // NEUTRAL header (no picked class to avoid double-highlight)
+            // NEUTRAL header; grid with aligned points
             myPicksDiv.innerHTML += `
               <div class="scored-pick">
                 <div class="ticket-fight">
@@ -514,6 +512,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   <div class="cell cell-pick">
                     <span class="ico ${icoWinnerCls}">${icoWinnerChar}</span>
                     <span class="value">${winner}</span>
+                    ${dogBonus}
                   </div>
 
                   <div class="cell cell-method">
@@ -528,7 +527,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
                   <div class="cell cell-points">
                     ${pointsBadge}
-                    ${dogBonus}
                   </div>
                 </div>
               </div>`;
