@@ -648,6 +648,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function drawAllTime(data) {
     allTimeList.innerHTML = "";
+
+    // ✅ ensure the container has the classes CSS expects
+    allTimeList.classList.add("board","at-five");
+
     if (!data.length) { allTimeList.innerHTML = "<li>No All-Time data yet.</li>"; return; }
 
     renderAllTimeHeader();
@@ -663,7 +667,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const classes = [];
       if (row.user === username) classes.push("current-user");
       if (isTop) classes.push("tied-first");
-      li.className = classes.join(" ") + " at-five";
+      li.className = classes.join(" ");
 
       const rankLabel = isTop ? "🥇" : `#${rank}`;
       const pct = (row.rate * 100).toFixed(1) + "%";
@@ -679,6 +683,9 @@ document.addEventListener("DOMContentLoaded", () => {
       allTimeList.appendChild(li);
       prev = row;
     });
+
+    // 🔧 After rendering, normalize any stray plain-text rows (defensive)
+    normalizeAllTimeIfNeeded();
   }
 
   function preloadAllTime() {
@@ -714,4 +721,35 @@ document.addEventListener("DOMContentLoaded", () => {
     weeklyTabBtn.setAttribute("aria-pressed","false");
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
+
+  /* === All-Time Board Normalizer: convert tabbed/plain rows into structured cells (defensive) === */
+  function normalizeAllTimeIfNeeded() {
+    const list = allTimeList;
+    if (!list) return;
+    [...list.querySelectorAll("li")].forEach((li, idx) => {
+      if (li.classList.contains("board-header")) return;       // skip header
+      if (li.querySelector(".user,.crowns,.rate,.events")) return; // already structured
+
+      const raw = (li.textContent || "").replace(/\s+/g, " ").trim();
+      if (!raw) return;
+
+      // Expect shape: "username crowns crown_rate events_played"
+      const parts = raw.split(" ");
+      if (parts.length < 4) return;
+
+      const events = parts.pop();
+      const rate   = parts.pop();
+      const crowns = parts.pop();
+      const user   = parts.join(" ");
+
+      li.innerHTML = `
+        <span class="rank">#${idx}</span>
+        <span class="user">${user}</span>
+        <span class="num rate">${rate}</span>
+        <span class="num crowns">${crowns}</span>
+        <span class="num events">${events}</span>
+        <span class="mobile-meta" aria-hidden="true">👑 ${crowns}/${events} events • ${rate}</span>
+      `;
+    });
+  }
 });
