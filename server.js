@@ -1,5 +1,5 @@
 // server.js
-// Express server + Cheerio scraper + GAS bridge (Render-ready)
+// Express server + ESPN Fightcenter scraper + GAS bridge
 
 const express = require("express");
 const cheerio = require("cheerio"); // use cheerio.load(html) -> $
@@ -11,7 +11,8 @@ const GOOGLE_SCRIPT_URL =
   process.env.GAS_URL ||
   "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-const UFC_BASE = "http://www.ufcstats.com"; // UFCStats is served over http
+const UFC_BASE = "http://www.ufcstats.com"; // Legacy: results-only via UFCStats
+const ESPN_FIGHTCENTER = "https://www.espn.com/mma/fightcenter";
 
 // ======== MIDDLEWARE ========
 app.use(express.json());
@@ -105,7 +106,7 @@ app.post("/api/picks", async (req, res) => {
   }
 });
 
-// ======== SCRAPER CORE (Cheerio) ========
+// ======== HTTP HELPERS ========
 async function fetchHTML(url, ms = 15000) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
@@ -142,6 +143,7 @@ async function fetchJSON(url, ms = 15000) {
   }
 }
 
+// ======== UFCSTATS (LEGACY RESULTS-ONLY SUPPORT) ========
 function toEventUrl(ref) {
   if (/^https?:\/\/.+\/event-details\/[a-z0-9]+/i.test(ref))
     return ref.replace(/^http:/i, "http:");
@@ -258,11 +260,29 @@ async function scrapeEvent(ref) {
   return { provider: "ufcstats", eventId, eventName, eventDate, fights: cleaned };
 }
 
-// ======== ESPN SCRAPER (Card + Moneylines) ========
+// ======== ESPN SCRAPER (Fightcenter + Core API for odds) ========
+function fmtMoneyline(n) {
+  if (n == null || n === "" || isNaN(Number(n))) return "";
+  const v = Number(n);
+  return v > 0 ? `+${v}` : `${v}`;
+}
+
+async function getEspnLatestEventId() {
+  const html = await fetchHTML(ESPN_FIGHTCENTER);
+  const $ = cheerio.load(html);
+  let id = "";
+  $('a[href*="/mma/fightcenter/_/id/"]').each((_, el) => {
+    if (id) return;
+    const href = $(el).attr("href") || "";
+    const m = href.match(/\/id\/(\d+)/);
+    if (m) id = m[1];
+  });
+  if (!id) throw new Error("Couldn't find ESPN event ID on Fightcenter");
+  return id;
+}
 
 function toEspnIdAndUrl(refRaw) {
   const ref = String(refRaw || "").trim();
-  if (!ref) throw new Error("Missing ESPN ref");
   if (/^\d+$/.test(ref)) {
     return {
       id: ref,
@@ -270,7 +290,6 @@ function toEspnIdAndUrl(refRaw) {
     };
   }
   if (/^https?:\/\/.+espn\.com/i.test(ref)) {
-    // Try to pull /id/<digits> from URL
     const m = ref.match(/\/id\/(\d+)/);
     const id = m ? m[1] : "";
     return { id, url: ref };
@@ -278,14 +297,14 @@ function toEspnIdAndUrl(refRaw) {
   throw new Error("Provide an ESPN FightCenter URL or numeric event ID.");
 }
 
-function fmtMoneyline(n) {
-  if (n == null || n === "" || isNaN(Number(n))) return "";
-  const v = Number(n);
-  return v > 0 ? `+${v}` : `${v}`;
-}
-
 async function scrapeEspnEvent(ref) {
-  const { id, url } = toEspnIdAndUrl(ref);
+  // Support "latest" or Fightcenter landing
+  let refResolved = String(ref || "").trim();
+  if (!refResolved || refResolved.toLowerCase() === "latest" || /espn\.com\/mma\/fightcenter\/?$/i.test(refResolved)) {
+    refResolved = await getEspnLatestEventId();
+  }
+
+  const { id, url } = toEspnIdAndUrl(refResolved);
 
   // Helper: limit concurrency
   async function mapLimit(items, limit, fn) {
@@ -302,7 +321,7 @@ async function scrapeEspnEvent(ref) {
     return out;
   }
 
-  // First, try ESPN Core API (most reliable)
+  // Try ESPN Core API first
   if (id) {
     try {
       const ev = await fetchJSON(
@@ -313,7 +332,7 @@ async function scrapeEspnEvent(ref) {
         ev?.name || ev?.shortName || ev?.slug || `ESPN Event ${id}`;
       const eventDate = ev?.date || "";
 
-      // competitions is an array of $ref URLs
+      // competitions refs
       let compRefs = [];
       if (Array.isArray(ev?.competitions)) {
         compRefs = ev.competitions
@@ -322,9 +341,7 @@ async function scrapeEspnEvent(ref) {
       } else if (ev?.competitions?.$ref) {
         const list = await fetchJSON(ev.competitions.$ref);
         if (Array.isArray(list?.items)) {
-          compRefs = list.items
-            .map((x) => x?.$ref || x?.href)
-            .filter(Boolean);
+          compRefs = list.items.map((x) => x?.$ref || x?.href).filter(Boolean);
         }
       }
 
@@ -361,16 +378,14 @@ async function scrapeEspnEvent(ref) {
             }
           }
 
-          // Odds: fetch odds collection if available
+          // Odds
           let o1 = "";
           let o2 = "";
-          let competitorSide = {}; // key: displayName -> 'home'/'away'
+          let competitorSide = {};
           try {
             if (comp?.competitors?.$ref) {
               const compList = await fetchJSON(comp.competitors.$ref);
-              const items = Array.isArray(compList?.items)
-                ? compList.items
-                : [];
+              const items = Array.isArray(compList?.items) ? compList.items : [];
               items.forEach((it, idx) => {
                 const name =
                   it?.displayName || it?.name || (idx === 0 ? f1 : f2);
@@ -395,7 +410,6 @@ async function scrapeEspnEvent(ref) {
                 null;
 
               if (homeML != null || awayML != null) {
-                // If we know which fighter is home/away, map properly
                 if (competitorSide[f1] && competitorSide[f2]) {
                   o1 =
                     competitorSide[f1] === "home"
@@ -406,7 +420,7 @@ async function scrapeEspnEvent(ref) {
                       ? fmtMoneyline(homeML)
                       : fmtMoneyline(awayML);
                 } else {
-                  // Fallback: assume listing order == away vs home (common in APIs)
+                  // Fallback: assume listing order == away vs home
                   o1 = fmtMoneyline(awayML);
                   o2 = fmtMoneyline(homeML);
                 }
@@ -442,12 +456,12 @@ async function scrapeEspnEvent(ref) {
     }
   }
 
-  // Fallback: HTML scrape ESPN FightCenter (best-effort)
+  // Fallback: HTML scrape event page (Next.js data)
   try {
     const html = await fetchHTML(url);
     const $ = cheerio.load(html);
 
-    // Try __NEXT_DATA__ first (Next.js data blob)
+    // Try __NEXT_DATA__
     let nextData = null;
     try {
       const txt = $('script#__NEXT_DATA__').first().text();
@@ -462,7 +476,6 @@ async function scrapeEspnEvent(ref) {
       fights.push({ fighter1: a, fighter2: b, f1Odds: o1 || "", f2Odds: o2 || "" });
     }
 
-    // Walk the JSON looking for "vs" labels or competitors arrays
     function deepCollect(obj) {
       if (!obj) return;
       if (typeof obj === "string") {
@@ -481,14 +494,12 @@ async function scrapeEspnEvent(ref) {
         return;
       }
       if (typeof obj === "object") {
-        // ESPN nodes often have 'competitors' with displayName fields
         if (Array.isArray(obj.competitors)) {
           const names = obj.competitors
             .map((c) => c?.displayName || c?.name || c?.shortName || "")
             .filter(Boolean);
           if (names.length >= 2) maybePush(names[0], names[1]);
         }
-        // Odds-style keys
         const mlHome =
           obj?.homeTeamOdds?.moneyLine ??
           obj?.home?.moneyLine ??
@@ -508,7 +519,6 @@ async function scrapeEspnEvent(ref) {
           if (parts.length >= 2) {
             const f1 = parts[0].trim();
             const f2 = parts.slice(1).join(" vs ").trim();
-            // Assume listing order == away vs home if no explicit mapping
             maybePush(f1, f2, fmtMoneyline(mlAway), fmtMoneyline(mlHome));
           }
         }
@@ -518,7 +528,6 @@ async function scrapeEspnEvent(ref) {
 
     if (nextData) deepCollect(nextData);
 
-    // As a last resort, parse visible "A vs B" headings
     if (fights.length === 0) {
       const text = $.root().text();
       const lines = text.split(/\n+/).map((s) => s.trim()).filter(Boolean);
@@ -551,7 +560,7 @@ async function scrapeEspnEvent(ref) {
   }
 }
 
-// ======== SCRAPER ROUTES (for debugging, optional) ========
+// ======== SCRAPER ROUTES (LEGACY UFCStats — keep for results) ========
 app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
   try {
     res.json(await scrapeEvent(req.params.id));
@@ -590,7 +599,7 @@ app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
   }
 });
 
-// ======== ESPN: SCRAPER ROUTES (card + odds) ========
+// ======== ESPN: ROUTES (card + odds) ========
 app.get("/api/scrape/espn/event/:id", async (req, res) => {
   try {
     res.json(await scrapeEspnEvent(req.params.id));
@@ -611,6 +620,17 @@ app.get("/api/scrape/espn/event", async (req, res) => {
   }
 });
 
+// NEW: Latest from Fightcenter landing (no ID needed)
+app.get("/api/scrape/espn/latest", async (_req, res) => {
+  try {
+    const latest = await scrapeEspnEvent("latest");
+    res.json(latest);
+  } catch (e) {
+    console.error("espn latest:", e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
 // ======== ADMIN: SYNC INTO SHEETS (calls your GAS) ========
 function publicBase(req) {
   const proto = req.headers["x-forwarded-proto"] || "https";
@@ -620,18 +640,12 @@ function publicBase(req) {
 
 async function resolveRefToIdOrUrl(ref) {
   const r = (ref || "").toString().trim().toLowerCase();
-  if (r === "upcoming") return await firstEventUrl("upcoming");
-  if (r === "completed") return await firstEventUrl("completed");
+  if (r === "upcoming") return await firstEventUrl("upcoming"); // legacy
+  if (r === "completed") return await firstEventUrl("completed"); // legacy
   return ref; // id or full url
 }
 
-/**
- * Writes into Sheets via GAS:
- * - replaces "fight_list" with the event card
- * - upserts finished bouts into "fight_results"
- *
- * GAS handler: action=syncFromScraper&ref=...&base=...
- */
+// UFCStats -> Sheets (legacy RESULTS path kept)
 app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   try {
     const refRaw = (req.query.ref || "").toString().trim();
@@ -651,12 +665,15 @@ app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   }
 });
 
-// ESPN: Convenience admin endpoint to push ESPN card+odds into Sheets
-// GAS handler: action=syncFromESPN&ref=...&base=...
+// ESPN -> Sheets (cards + odds ONLY)
 app.get("/api/admin/syncFromESPN", async (req, res) => {
   try {
-    const refRaw = (req.query.ref || "").toString().trim();
-    if (!refRaw) return res.status(400).json({ error: "Missing ?ref=<espnEventId|espnUrl>" });
+    let refRaw = (req.query.ref || "").toString().trim();
+
+    // Accept "latest" or the Fightcenter landing URL
+    if (!refRaw || refRaw.toLowerCase() === "latest" || /espn\.com\/mma\/fightcenter\/?$/i.test(refRaw)) {
+      refRaw = await getEspnLatestEventId();
+    }
 
     const base = publicBase(req);
     const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromESPN&ref=${encodeURIComponent(refRaw)}&base=${encodeURIComponent(base)}`;
