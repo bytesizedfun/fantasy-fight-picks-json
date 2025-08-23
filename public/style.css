@@ -1,22 +1,276 @@
-/* ================================
-   ALL-TIME LEADERBOARD (desktop)
-   Structure expected by JS:
-   .board#allTimeBoard.at-five > li
-   with children: .rank .user .num.rate .num.crowns .num.events
-   ================================= */
-#allTimeBoard.board.at-five { max-width:640px; margin:0 auto; padding:0; list-style:none; }
+/* === Orbitron Neon — clean, sportsbook-y === */
+
+:root{
+  --ink:#0b0b0d;
+  --panel:#131417;
+  --tile:#191a1e;
+
+  --text:#e7e9ee;
+  --muted:#aeb2bb;
+
+  --accent:#00f5ff;
+  --accent-rgb:0,245,255;
+  --neon-red:#ff003c;
+
+  --ok:#2fffa0;
+  --warn:#ff4e4e;
+
+  --divider:rgba(255,255,255,0.10);
+  --shadow:0 12px 40px rgba(0,0,0,0.55);
+
+  --discord:#5865F2;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:
+    radial-gradient(1000px 520px at 50% -180px, rgba(var(--accent-rgb),0.10), transparent 60%),
+    var(--ink);
+  color:var(--text);
+  font-family:'Orbitron',sans-serif;
+  letter-spacing:.2px;
+  text-align:center;
+}
+
+/* ===== Header / Shell ===== */
+.banner-container{ display:flex; justify-content:center; align-items:center; padding:12px 12px 0; }
+.logo-banner{
+  max-width:320px; width:92%; height:auto;
+  filter:drop-shadow(0 12px 28px rgba(0,0,0,0.55));
+}
+
+/* Champion banner — edge-to-edge */
+.champ-banner{
+  display:none;
+  width:100vw; max-width:100vw;
+  margin:12px 0;
+  margin-left:calc(50% - 50vw);
+  margin-right:calc(50% - 50vw);
+  padding:18px 0;
+  font-weight:900;
+  font-size:clamp(24px, 3.2vw, 42px);
+  line-height:1.1;
+  letter-spacing:.06em;
+  color:var(--accent);
+  border-top:2px solid var(--accent);
+  border-bottom:2px solid var(--accent);
+  background:linear-gradient(120deg, rgba(0,245,255,0.22), rgba(255,0,60,0.18), rgba(0,245,255,0.22));
+  background-size:300% 300%;
+  animation:bannerGlow 6s ease infinite;
+  text-shadow:0 0 14px var(--accent), 0 0 26px var(--neon-red);
+}
+@keyframes bannerGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+#app{
+  max-width:640px;
+  margin:12px auto 40px;
+  padding:16px;
+  background:var(--panel);
+  border-radius:16px;
+  border:2px solid rgba(255,255,255,0.08);
+  box-shadow:0 0 40px rgba(0, 245, 255, 0.08), var(--shadow);
+}
+
+#welcome{ margin:8px 0 10px; font-weight:900; font-size:26px; text-shadow:0 0 12px rgba(var(--accent-rgb),0.35); }
+
+/* ===== Username prompt ===== */
+#usernamePrompt.center{ display:flex; flex-direction:column; gap:8px; align-items:center; }
+.prompt-title{ font-weight:900; margin-bottom:4px; }
+#usernamePrompt input{
+  width:100%; max-width:320px;
+  background:var(--tile);
+  border:1px solid var(--divider);
+  border-radius:12px;
+  padding:10px 12px;
+  color:var(--text);
+  outline:none;
+}
+#usernamePrompt button{
+  background:var(--accent); color:#001214;
+  border:1px solid rgba(var(--accent-rgb),0.55);
+  border-radius:12px; padding:10px 16px; font-weight:900; letter-spacing:.5px;
+  cursor:pointer; box-shadow:0 0 14px rgba(0,245,255,0.35);
+  transition:transform .08s ease, box-shadow .2s ease, background .2s ease;
+}
+#usernamePrompt button:hover{ transform:translateY(-1px); background:var(--neon-red); color:#fff; }
+
+/* ===== Scoring ===== */
+.rules{
+  margin:8px auto 6px;
+  padding:8px 10px;
+  border-radius:14px;
+  border:1px solid var(--divider);
+  background:linear-gradient(180deg, #101116, #0e0f12);
+}
+.rules-list{ list-style:none; padding:0; margin:0; }
+.rules-list li{ font-size:15px; margin:4px 0; font-weight:900; letter-spacing:.3px; }
+.rules .muted{ color:var(--muted); font-weight:600; }
+
+.rules-collapsible{ max-width:640px; margin:6px auto 10px; }
+.rules-collapsible summary{
+  list-style:none; display:inline-flex; align-items:center; gap:8px;
+  padding:6px 10px; border:none; border-radius:12px;
+  background:transparent; color:var(--muted); font-weight:800; cursor:pointer;
+  user-select:none; transition:transform .06s ease, background .15s ease, color .15s ease;
+}
+.rules-collapsible summary::-webkit-details-marker{ display:none; }
+.rules-toggle-label{ letter-spacing:.06em; }
+.rules-caret{ transition:transform .2s ease, opacity .2s ease; opacity:.7; }
+.rules-collapsible summary:hover{ color:var(--text); background:rgba(255,255,255,0.03); }
+.rules-collapsible[open] summary{ background:rgba(255,255,255,0.05); }
+.rules-collapsible[open] .rules-caret{ transform:rotate(90deg); }
+.rules-collapsible .rules{ margin-top:8px; content-visibility:auto; contain-intrinsic-size:220px; }
+
+/* ===== Titles ===== */
+.section-title{
+  margin:12px 0 8px;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:.18em;
+  color:var(--accent);
+  text-shadow:0 0 10px rgba(var(--accent-rgb),0.35);
+}
+.section-title--leader{
+  margin-top:14px;
+  font-size:28px;
+  letter-spacing:.24em;
+  text-shadow:0 0 14px rgba(var(--accent-rgb),0.45);
+}
+
+/* ===== Fight list — sleek rows (no boxes) ===== */
+#fightList{ display:flex; flex-direction:column; gap:0; align-items:center; width:100%; }
+.fight{
+  width:100%; max-width:640px;
+  padding:12px 6px;
+  background:transparent;
+  border:none;
+  box-shadow:none;
+}
+.fight + .fight{ border-top:1px solid var(--divider); }
+.fight h3{
+  color:var(--text);
+  margin:0 0 6px 0;
+  font-weight:900;
+  letter-spacing:.6px;
+  text-shadow:0 0 6px rgba(0,0,0,0.3);
+}
+
+.options{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+.fight label{
+  position:relative; display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+  margin:0; background:transparent; border:none; padding:8px 6px; border-radius:10px;
+  cursor:pointer; transition:transform .06s ease, text-shadow .2s ease;
+  min-height:36px;
+}
+.fight label:hover{ transform:translateY(-1px); }
+.fight label input[type="radio"]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+.fight label .fighter-name{ font-weight:900; opacity:.8; color:var(--text); text-shadow:none; }
+
+/* Subtle selection ring without boxiness */
+.fight label:has(input:checked){
+  outline:1px dashed rgba(var(--accent-rgb),0.35);
+  outline-offset:2px;
+}
+
+.fighter-name.is-underdog{ text-shadow:0 0 6px rgba(0,245,255,0.18); }
+.dog-tag{ color:#e7faff; font-weight:900; font-variant-numeric:tabular-nums; }
+.dog-tag--plain{ padding:0; border:none; background:none; box-shadow:none; }
+
+.pick-controls{ display:flex; justify-content:center; gap:8px; margin-top:6px; }
+.pick-controls select{
+  background:var(--tile);
+  border:1px solid var(--divider);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:12px;
+  outline:none;
+  min-width:132px;
+  font-size:15px;
+}
+
+/* Submit + Tabs */
+#submitBtn,
+.segmented button{
+  background:var(--accent);
+  color:#001214;
+  border:1px solid rgba(var(--accent-rgb),0.55);
+  border-radius:14px;
+  padding:10px 16px;
+  font-weight:900;
+  letter-spacing:.6px;
+  cursor:pointer;
+  transition:transform .08s ease, box-shadow .2s ease, opacity .2s ease, background .2s ease, filter .2s ease;
+  box-shadow:0 0 14px rgba(0,245,255,0.35);
+}
+#submitBtn:hover,
+.segmented button:hover{
+  transform:translateY(-1px);
+  background:var(--neon-red);
+  color:#fff;
+  box-shadow:0 12px 22px rgba(0,0,0,0.35);
+}
+#submitBtn:disabled{ opacity:.6; cursor:not-allowed; }
+#submitBtn{ display:inline-block; width:auto; margin:10px auto 0; }
+
+.segmented{ display:flex; justify-content:center; align-items:center; gap:8px; margin:8px 0 10px; }
+.segmented button[aria-pressed="false"]{ filter:saturate(0.8) brightness(0.95); opacity:.95; }
+.segmented button[aria-pressed="true"]{ filter:none; }
+
+/* ===== FOTN ===== */
+#fotnBlock{
+  width:100%;
+  background:linear-gradient(180deg, var(--panel), #0f1013);
+  border:1px solid rgba(0,245,255,0.25);
+  border-radius:16px; padding:8px; box-shadow:var(--shadow); margin-top:6px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+}
+.fotn-title{ font-weight:900; letter-spacing:.4px; }
+.fotn-select{
+  width:100%; max-width:420px;
+  background:var(--tile);
+  border:1px solid var(--divider);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:12px;
+  text-align:center; text-align-last:center;
+}
+
+/* ===== Leaderboards ===== */
+.board{ list-style:none; margin:0; padding:0; }
+#leaderboard, #allTimeBoard{ max-width:640px; margin:0 auto; }
+
+/* Weekly board */
+.board.weekly li{
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; justify-items:center; gap:10px;
+  background:rgba(255,255,255,0.04); border:1px solid var(--divider); border-radius:12px; padding:10px 12px; margin:8px 0;
+  transition:border-color .25s ease, transform .2s ease, box-shadow .25s ease;
+}
+.board.weekly li:hover{ box-shadow:0 0 12px rgba(0,245,255,0.40); transform:translateY(-2px); }
+.board.weekly li .crown{ filter:drop-shadow(0 0 6px rgba(0,245,255,0.35)); font-size:20px; }
+.board.weekly li:first-child, .board.weekly li.tied-first, .board.weekly li.champ-glow{
+  background:rgba(0,245,255,0.10); box-shadow:0 0 14px rgba(0,245,255,0.50); animation:pulseChampion 1.8s infinite;
+}
+@keyframes pulseChampion{0%,100%{box-shadow:0 0 14px rgba(0,245,255,0.50)}50%{box-shadow:0 0 28px rgba(255,0,60,0.60)}}
+
+.board-hint{
+  display:flex; justify-content:center; align-items:center;
+  padding:12px; border-radius:12px; border:1px dashed var(--divider);
+  color:var(--muted); background:rgba(255,255,255,0.03); margin:8px 0;
+  text-align:center; width:100%;
+}
+
+/* ===== All-Time (desktop / tablet) =====
+   JS renders: #allTimeBoard.board.at-five > li
+   children: .rank .user .num.rate .num.crowns .num.events */
+#allTimeBoard.board.at-five{ max-width:640px; margin:0 auto; padding:0; }
 #allTimeBoard .board-header.at-five,
 #allTimeBoard.board.at-five li{
   display:grid;
   grid-template-columns: 70px 1fr 80px 70px 90px; /* rank | user | % | crowns | events */
-  align-items:center;
-  justify-items:center;
-  gap:10px;
-  background:rgba(255,255,255,0.04);
-  border:1px solid var(--divider);
-  border-radius:12px;
-  padding:10px 12px;
-  margin:8px 0;
+  align-items:center; justify-items:center; gap:10px;
+  background:rgba(255,255,255,0.04); border:1px solid var(--divider); border-radius:12px; padding:10px 12px; margin:8px 0;
 }
 #allTimeBoard .board-header.at-five{
   background:linear-gradient(180deg, var(--panel), #101116);
@@ -36,11 +290,82 @@
 }
 #allTimeBoard .mobile-meta{ display:none; } /* kept for safety if present */
 
-/* ================================
-   ALL-TIME — MOBILE REFLOW
-   First line:  rank | user | CROWNS (right)
-   Second line:          Rate  •  Events
-   ================================= */
+/* ===== Your Picks (Betslip) ===== */
+#myPicks{ margin-top:14px; display:grid; gap:12px; justify-items:center; }
+#myPicks h3{ margin:0; color:var(--accent); font-weight:900; }
+
+/* clean lane with dividers (no cards) */
+.scored-pick{
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  width:100%; max-width:640px;
+  padding:12px 6px;
+  border:none; background:transparent;
+  text-align:center;
+}
+.scored-pick + .scored-pick{ border-top:1px solid var(--divider); }
+
+/* Header: Fight line — NEUTRAL */
+.ticket-fight{
+  font-weight:900;
+  color:var(--muted);
+  letter-spacing:.08em;
+}
+.ticket-fight .fighter{ opacity:.9; color:var(--text); text-shadow:none; }
+.ticket-fight .fighter.picked{ opacity:.9; color:var(--text); text-shadow:none; }
+.vs{ opacity:.75; font-weight:800; margin:0 6px; }
+
+/* GRID: Pick | Method | Round | Points */
+.ticket-grid{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  align-items:center; justify-items:center;
+  gap:10px; width:100%;
+}
+.cell{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap; min-height:28px; }
+.value{ font-weight:900; }
+
+/* Icons: ✓ ✗ • */
+.ico{ display:inline-block; width:18px; text-align:center; font-weight:900; font-size:16px; }
+.ico.ok{ color:var(--ok); }
+.ico.x{ color:var(--warn); }
+.ico.dot{ color:var(--muted); }
+
+/* Points: big, clean number in neon blue */
+.points-badge{
+  font-weight:900; font-size:18px; line-height:1;
+  font-variant-numeric:tabular-nums;
+  color:var(--accent);
+  text-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
+}
+.points-muted{ color:var(--muted); text-shadow:none; }
+
+/* Dog bonus chip next to fighter */
+.dog{ font-weight:900; margin-left:4px; }
+
+/* ===== Responsive ===== */
+@media (max-width:600px){
+  .logo-banner{ max-width:260px; }
+  #app{ margin:8px auto 36px; padding:14px; }
+  .champ-banner{ padding:16px 0; font-size:clamp(22px, 5.0vw, 36px); }
+
+  .ticket-grid{
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    row-gap:8px;
+  }
+}
+
+/* ======== Performance cues ======== */
+#fightList, #leaderboard, #allTimeBoard, #myPicks{ content-visibility:auto; contain-intrinsic-size:540px; }
+#app{ contain:content; }
+
+@media (prefers-reduced-motion: reduce){
+  .champ-banner{ animation:none; }
+  .segmented button, .fight label{ transition:none; }
+}
+
+/* ===== All-Time — MOBILE REFLOW =====
+   Line 1: rank | user | CROWNS (right)
+   Line 2:           Rate • Events */
 @media (max-width:540px){
   /* Hide wide header on phones */
   #allTimeBoard .board-header.at-five{ display:none !important; }
@@ -61,23 +386,23 @@
   /* Rank */
   #allTimeBoard .rank{
     grid-column:1/2; grid-row:1/2;
-    min-width:36px; text-align:left;
+    min-width:36px; text-align:left; font-weight:900;
   }
 
   /* Username */
   #allTimeBoard .user{
     grid-column:2/3; grid-row:1/2;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900;
   }
 
-  /* Crowns = big number on the right, spanning lines */
+  /* Crowns = big, right aligned, spans lines */
   #allTimeBoard .crowns{
     grid-column:3/4; grid-row:1/3;
     justify-self:end; align-self:center;
     font-size:1.08rem; line-height:1; opacity:.95;
   }
 
-  /* Rate + Events under the name with tiny labels */
+  /* Rate + Events under the name with labels */
   #allTimeBoard .rate,
   #allTimeBoard .events{
     grid-column:2/3; grid-row:2/3;
@@ -87,7 +412,7 @@
   #allTimeBoard .rate::before{ content:"Rate "; opacity:.75; }
   #allTimeBoard .events::before{ content:"Events "; opacity:.75; }
 
-  /* If a .mobile-meta exists in markup, keep it hidden (we lay out our own meta) */
+  /* If a .mobile-meta exists, keep it hidden (we control layout) */
   #allTimeBoard .mobile-meta{ display:none !important; }
 }
 
