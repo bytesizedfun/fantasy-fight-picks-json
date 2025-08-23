@@ -354,3 +354,74 @@ body{
   .champ-banner{ animation:none; }
   .segmented button, .fight label{ transition:none; }
 }
+
+/* ===== All-Time leaderboard — mobile reflow ===== */
+@media (max-width:540px){
+  /* Hide the 5-col header on mobile to save space */
+  #allTimeBoard .board-header.at-five{ display:none !important; }
+
+  /* Turn each row into a compact 2-line layout */
+  #allTimeBoard .board.at-five li{
+    grid-template-columns: 44px 1fr auto;           /* rank | user | points */
+    grid-template-areas:
+      "rank user points"
+      ".    meta points";
+    justify-items: initial;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 10px 12px;
+  }
+
+  /* Rank */
+  #allTimeBoard .board.at-five li .rank{
+    grid-area: rank;
+    justify-self: start;
+    font-weight: 900;
+    width: auto; min-width: 36px;
+    text-align: left;
+  }
+
+  /* Username (ellipsis if long) */
+  #allTimeBoard .board.at-five li .user{
+    grid-area: user;
+    justify-self: start;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 900;
+  }
+
+  /* Show the extra stats on a second line */
+  #allTimeBoard .board.at-five li .mobile-meta{
+    grid-area: meta;
+    display: inline-flex !important;
+    gap: 10px;
+    color: var(--muted);
+    font-size: .9rem;
+    flex-wrap: wrap;
+  }
+
+  /* Hide middle numeric columns (e.g., Events, %), keep only the last one as Points */
+  #allTimeBoard .board.at-five li .num{ display: none; }
+  #allTimeBoard .board.at-five li .num:last-child{
+    display: block;
+    grid-area: points;
+    justify-self: end;
+    font-weight: 900;
+    font-size: 1.05rem;
+    line-height: 1;
+    color: var(--text);
+    opacity: .95;
+  }
+}
+
+/* Tiny phones: tighten spacing a bit more */
+@media (max-width:360px){
+  #allTimeBoard .board.at-five li{
+    grid-template-columns: 38px 1fr auto;
+    gap: 6px 8px;
+    padding: 8px 10px;
+  }
+  #allTimeBoard .board.at-five li .num:last-child{ font-size: 1rem; }
+}
