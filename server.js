@@ -1,5 +1,5 @@
 // server.js
-// Express server + ESPN Fightcenter scraper + GAS bridge (cards/odds from ESPN, results from UFCStats)
+// Express server + ESPN Fightcenter scraper + UFCStats (results) + GAS bridge
 
 const express = require("express");
 const cheerio = require("cheerio");
@@ -11,7 +11,7 @@ const GOOGLE_SCRIPT_URL =
   process.env.GAS_URL ||
   "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-const UFC_BASE = "http://www.ufcstats.com"; // legacy: results only
+const UFC_BASE = "http://www.ufcstats.com"; // UFCStats is http
 const ESPN_FIGHTCENTER = "https://www.espn.com/mma/fightcenter";
 
 // ======== MIDDLEWARE ========
@@ -25,7 +25,7 @@ app.use((req, _res, next) => {
 // ======== HEALTH ========
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// ======== GAS PROXY ENDPOINTS (frontend) ========
+// ======== GAS PROXY (frontend) ========
 app.get("/api/fights", async (_req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
@@ -110,7 +110,7 @@ async function fetchJSON(url, ms = 15000) {
   }
 }
 
-// ======== (LEGACY) UFCSTATS SCRAPER - results only ========
+// ======== UFCSTATS (results; also supports card if ever needed) ========
 function toEventUrl(ref) {
   if (/^https?:\/\/.+\/event-details\/[a-z0-9]+/i.test(ref))
     return ref.replace(/^http:/i, "http:");
@@ -153,15 +153,19 @@ async function scrapeFightDetails(fightId) {
   persons.each((_, el) => {
     const status = $(el).find(".b-fight-details__person-status").text().trim();
     if (/^W\b/i.test(status)) {
-      const n = $(el).find(".b-fight-details__person-name a").first().text().trim();
+      const n = $(el)
+        .find(".b-fight-details__person-name a")
+        .first()
+        .text()
+        .trim();
       if (n) winner = n;
     }
   });
 
   const methodRaw = pickValueAfterLabel($, "Method:");
-  const roundRaw = pickValueAfterLabel($, "Round:");
+  theRound = pickValueAfterLabel($, "Round:");
   const method = normalizeMethod(methodRaw);
-  const round = method === "Decision" ? "N/A" : roundRaw.match(/\d+/)?.[0] || "";
+  const round = method === "Decision" ? "N/A" : theRound.match(/\d+/)?.[0] || "";
   const finished = !!(winner && method && (method === "Decision" || round));
 
   return {
@@ -222,7 +226,7 @@ async function scrapeEvent(ref) {
   return { provider: "ufcstats", eventId, eventName, eventDate, fights: cleaned };
 }
 
-// ======== ESPN SCRAPER (Fightcenter + Core API for odds) ========
+// ======== ESPN SCRAPER (card + odds) ========
 function fmtMoneyline(n) {
   if (n == null || n === "" || isNaN(Number(n))) return "";
   const v = Number(n);
@@ -264,7 +268,6 @@ async function scrapeEspnEvent(ref) {
   if (!refResolved || refResolved.toLowerCase() === "latest" || refResolved.toLowerCase() === "fightcenter") {
     refResolved = await getEspnLatestEventId();
   }
-
   const { id, url } = toEspnIdAndUrl(refResolved);
 
   async function mapLimit(items, limit, fn) {
@@ -281,7 +284,7 @@ async function scrapeEspnEvent(ref) {
     return out;
   }
 
-  // Preferred: ESPN Core API (yields card + odds when available)
+  // Preferred: ESPN Core API
   if (id) {
     try {
       const ev = await fetchJSON(
@@ -384,11 +387,11 @@ async function scrapeEspnEvent(ref) {
         return { provider: "espn", eventId: id, eventName, eventDate, fights };
       }
     } catch (e) {
-      // fall through to HTML scrape
+      // fall through to HTML
     }
   }
 
-  // Fallback HTML scrape
+  // Fallback: HTML (best-effort)
   try {
     const html = await fetchHTML(url);
     const $ = cheerio.load(html);
@@ -470,12 +473,12 @@ async function scrapeEspnEvent(ref) {
   }
 }
 
-// ======== UFCSTATS ROUTES (results only) ========
+// ======== UFCSTATS ROUTES ========
 app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
   try {
     res.json(await scrapeEvent(req.params.id));
   } catch (e) {
-    console.error("scrape by id:", e);
+    console.error("ufcstats by id:", e);
     res.status(500).json({ error: String(e.message || e) });
   }
 });
@@ -485,7 +488,7 @@ app.get("/api/scrape/ufcstats/event", async (req, res) => {
     if (!url) return res.status(400).json({ error: "Missing ?url" });
     res.json(await scrapeEvent(url));
   } catch (e) {
-    console.error("scrape by url:", e);
+    console.error("ufcstats by url:", e);
     res.status(500).json({ error: String(e.message || e) });
   }
 });
@@ -507,7 +510,6 @@ app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
 });
 
 // ======== ESPN ROUTES ========
-// Preferred: numeric ID
 app.get("/api/scrape/espn/event/:id(\\d+)", async (req, res) => {
   try {
     res.json(await scrapeEspnEvent(req.params.id));
@@ -516,7 +518,6 @@ app.get("/api/scrape/espn/event/:id(\\d+)", async (req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 });
-// Optional: query-param with full URL
 app.get("/api/scrape/espn/event", async (req, res) => {
   try {
     const url = String(req.query.url || "").trim();
@@ -527,7 +528,6 @@ app.get("/api/scrape/espn/event", async (req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 });
-// Latest (from Fightcenter landing)
 app.get("/api/scrape/espn/latest", async (_req, res) => {
   try {
     const latestId = await getEspnLatestEventId();
@@ -538,22 +538,19 @@ app.get("/api/scrape/espn/latest", async (_req, res) => {
   }
 });
 
-// ======== ADMIN: SYNC INTO SHEETS ========
+// ======== ADMIN -> GAS ========
 function publicBase(req) {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   return `${proto}://${host}`;
 }
 
-// UFCStats -> Sheets (results-only)
 app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   try {
     const refRaw = (req.query.ref || "").toString().trim();
     if (!refRaw) return res.status(400).json({ error: "Missing ?ref=<eventId|url|upcoming|completed>" });
-
     const base = publicBase(req);
     const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromScraper&ref=${encodeURIComponent(refRaw)}&base=${encodeURIComponent(base)}&mode=resultsOnly`;
-
     const r = await fetch(gasUrl, { headers: { "cache-control": "no-cache" } });
     const text = await r.text();
     if (!r.ok) return res.status(r.status).type("text/plain").send(text);
@@ -564,7 +561,6 @@ app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   }
 });
 
-// ESPN -> Sheets (cards + odds)
 app.get("/api/admin/syncFromESPN", async (req, res) => {
   try {
     let refRaw = (req.query.ref || "").toString().trim();
@@ -572,11 +568,10 @@ app.get("/api/admin/syncFromESPN", async (req, res) => {
       refRaw = await getEspnLatestEventId();
     } else {
       const m = refRaw.match(/\/id\/(\d+)/);
-      if (m) refRaw = m[1]; // normalize to numeric id if a URL came in
+      if (m) refRaw = m[1];
     }
     const base = publicBase(req);
     const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromESPN&ref=${encodeURIComponent(refRaw)}&base=${encodeURIComponent(base)}`;
-
     const r = await fetch(gasUrl, { headers: { "cache-control": "no-cache" } });
     const text = await r.text();
     if (!r.ok) return res.status(r.status).type("text/plain").send(text);
