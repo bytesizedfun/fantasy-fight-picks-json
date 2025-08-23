@@ -11,13 +11,12 @@ const GOOGLE_SCRIPT_URL =
   process.env.GAS_URL ||
   "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-const UFC_BASE = "http://www.ufcstats.com"; // Legacy: results-only via UFCStats
+const UFC_BASE = "http://www.ufcstats.com"; // kept for legacy results
 const ESPN_FIGHTCENTER = "https://www.espn.com/mma/fightcenter";
 
 // ======== MIDDLEWARE ========
 app.use(express.json());
 app.use(express.static("public"));
-// tiny request logger so you can see traffic in Render logs
 app.use((req, _res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
@@ -143,12 +142,12 @@ async function fetchJSON(url, ms = 15000) {
   }
 }
 
-// ======== UFCSTATS (LEGACY RESULTS-ONLY SUPPORT) ========
+// ======== (LEGACY) UFCSTATS SCRAPER - results only support ========
 function toEventUrl(ref) {
   if (/^https?:\/\/.+\/event-details\/[a-z0-9]+/i.test(ref))
     return ref.replace(/^http:/i, "http:");
   if (/^[a-z0-9]+$/i.test(ref)) return `${UFC_BASE}/event-details/${ref}`;
-  throw new Error("Bad UFCStats ref. Provide full event URL or the event ID.");
+  throw new Error("Bad UFCStats ref.");
 }
 
 function normalizeMethod(txt) {
@@ -186,11 +185,7 @@ async function scrapeFightDetails(fightId) {
   persons.each((_, el) => {
     const status = $(el).find(".b-fight-details__person-status").text().trim();
     if (/^W\b/i.test(status)) {
-      const n = $(el)
-        .find(".b-fight-details__person-name a")
-        .first()
-        .text()
-        .trim();
+      const n = $(el).find(".b-fight-details__person-name a").first().text().trim();
       if (n) winner = n;
     }
   });
@@ -210,7 +205,7 @@ async function scrapeFightDetails(fightId) {
   };
 }
 
-async function firstEventUrl(listPath /* "upcoming" | "completed" */) {
+async function firstEventUrl(listPath) {
   const html = await fetchHTML(`${UFC_BASE}/statistics/events/${listPath}`);
   const $ = cheerio.load(html);
   const first = $('a[href*="/event-details/"]').first().attr("href");
@@ -239,7 +234,6 @@ async function scrapeEvent(ref) {
   });
   const fightIds = Array.from(idSet);
 
-  // limit concurrency to 5
   async function mapLimit(items, limit, fn) {
     let i = 0;
     const out = new Array(items.length);
@@ -298,15 +292,13 @@ function toEspnIdAndUrl(refRaw) {
 }
 
 async function scrapeEspnEvent(ref) {
-  // Support "latest" or Fightcenter landing
   let refResolved = String(ref || "").trim();
-  if (!refResolved || refResolved.toLowerCase() === "latest" || /espn\.com\/mma\/fightcenter\/?$/i.test(refResolved)) {
+  if (!refResolved || refResolved.toLowerCase() === "latest" || refResolved.toLowerCase() === "fightcenter") {
     refResolved = await getEspnLatestEventId();
   }
 
   const { id, url } = toEspnIdAndUrl(refResolved);
 
-  // Helper: limit concurrency
   async function mapLimit(items, limit, fn) {
     let i = 0;
     const out = new Array(items.length);
@@ -321,7 +313,6 @@ async function scrapeEspnEvent(ref) {
     return out;
   }
 
-  // Try ESPN Core API first
   if (id) {
     try {
       const ev = await fetchJSON(
@@ -332,7 +323,6 @@ async function scrapeEspnEvent(ref) {
         ev?.name || ev?.shortName || ev?.slug || `ESPN Event ${id}`;
       const eventDate = ev?.date || "";
 
-      // competitions refs
       let compRefs = [];
       if (Array.isArray(ev?.competitions)) {
         compRefs = ev.competitions
@@ -353,7 +343,6 @@ async function scrapeEspnEvent(ref) {
           let f1 = "";
           let f2 = "";
 
-          // Prefer comp.name like "A vs B"
           const label = comp?.name || comp?.shortName || "";
           if (/\bvs\.?\b/i.test(label)) {
             const parts = label.split(/\s+vs\.?\s+/i);
@@ -363,7 +352,6 @@ async function scrapeEspnEvent(ref) {
             }
           }
 
-          // If names not parsed, try loaded competitor list
           if ((!f1 || !f2) && comp?.competitors?.$ref) {
             const compList = await fetchJSON(comp.competitors.$ref);
             const items = Array.isArray(compList?.items)
@@ -378,7 +366,6 @@ async function scrapeEspnEvent(ref) {
             }
           }
 
-          // Odds
           let o1 = "";
           let o2 = "";
           let competitorSide = {};
@@ -420,15 +407,12 @@ async function scrapeEspnEvent(ref) {
                       ? fmtMoneyline(homeML)
                       : fmtMoneyline(awayML);
                 } else {
-                  // Fallback: assume listing order == away vs home
                   o1 = fmtMoneyline(awayML);
                   o2 = fmtMoneyline(homeML);
                 }
               }
             }
-          } catch (_) {
-            // ignore odds failures
-          }
+          } catch (_) {}
 
           if (f1 && f2) {
             fights.push({
@@ -450,18 +434,16 @@ async function scrapeEspnEvent(ref) {
           fights,
         };
       }
-      // Fall through to HTML scrape if API didn't yield fights
     } catch (e) {
-      // API path failed, attempt HTML next
+      // fall through to HTML scrape
     }
   }
 
-  // Fallback: HTML scrape event page (Next.js data)
+  // Fallback HTML scrape
   try {
     const html = await fetchHTML(url);
     const $ = cheerio.load(html);
 
-    // Try __NEXT_DATA__
     let nextData = null;
     try {
       const txt = $('script#__NEXT_DATA__').first().text();
@@ -481,18 +463,11 @@ async function scrapeEspnEvent(ref) {
       if (typeof obj === "string") {
         if (/\bvs\.?\b/i.test(obj)) {
           const parts = obj.split(/\s+vs\.?\s+/i);
-          if (parts.length >= 2) {
-            const f1 = parts[0].trim();
-            const f2 = parts.slice(1).join(" vs ").trim();
-            maybePush(f1, f2);
-          }
+          if (parts.length >= 2) maybePush(parts[0].trim(), parts.slice(1).join(" vs ").trim());
         }
         return;
       }
-      if (Array.isArray(obj)) {
-        obj.forEach(deepCollect);
-        return;
-      }
+      if (Array.isArray(obj)) return obj.forEach(deepCollect);
       if (typeof obj === "object") {
         if (Array.isArray(obj.competitors)) {
           const names = obj.competitors
@@ -510,11 +485,7 @@ async function scrapeEspnEvent(ref) {
           obj?.away?.moneyLine ??
           obj?.moneyLineAway ??
           null;
-        if (
-          typeof obj.name === "string" &&
-          /\bvs\.?\b/i.test(obj.name) &&
-          (mlHome != null || mlAway != null)
-        ) {
+        if (typeof obj.name === "string" && /\bvs\.?\b/i.test(obj.name) && (mlHome != null || mlAway != null)) {
           const parts = obj.name.split(/\s+vs\.?\s+/i);
           if (parts.length >= 2) {
             const f1 = parts[0].trim();
@@ -560,7 +531,7 @@ async function scrapeEspnEvent(ref) {
   }
 }
 
-// ======== SCRAPER ROUTES (LEGACY UFCStats — keep for results) ========
+// ======== SCRAPER ROUTES (legacy UFCStats for results) ========
 app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
   try {
     res.json(await scrapeEvent(req.params.id));
@@ -599,7 +570,7 @@ app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
   }
 });
 
-// ======== ESPN: ROUTES (card + odds) ========
+// ======== ESPN ROUTES (card + odds) ========
 app.get("/api/scrape/espn/event/:id", async (req, res) => {
   try {
     res.json(await scrapeEspnEvent(req.params.id));
@@ -623,8 +594,8 @@ app.get("/api/scrape/espn/event", async (req, res) => {
 // NEW: Latest from Fightcenter landing (no ID needed)
 app.get("/api/scrape/espn/latest", async (_req, res) => {
   try {
-    const latest = await scrapeEspnEvent("latest");
-    res.json(latest);
+    const latestId = await getEspnLatestEventId();
+    res.json(await scrapeEspnEvent(latestId));
   } catch (e) {
     console.error("espn latest:", e);
     res.status(500).json({ error: String(e.message || e) });
@@ -638,22 +609,14 @@ function publicBase(req) {
   return `${proto}://${host}`;
 }
 
-async function resolveRefToIdOrUrl(ref) {
-  const r = (ref || "").toString().trim().toLowerCase();
-  if (r === "upcoming") return await firstEventUrl("upcoming"); // legacy
-  if (r === "completed") return await firstEventUrl("completed"); // legacy
-  return ref; // id or full url
-}
-
-// UFCStats -> Sheets (legacy RESULTS path kept)
+// UFCStats -> Sheets (results-only use via GAS, legacy support)
 app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   try {
     const refRaw = (req.query.ref || "").toString().trim();
     if (!refRaw) return res.status(400).json({ error: "Missing ?ref=<eventId|url|upcoming|completed>" });
 
-    const resolved = await resolveRefToIdOrUrl(refRaw);
     const base = publicBase(req);
-    const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromScraper&ref=${encodeURIComponent(resolved)}&base=${encodeURIComponent(base)}`;
+    const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromScraper&ref=${encodeURIComponent(refRaw)}&base=${encodeURIComponent(base)}&mode=resultsOnly`;
 
     const r = await fetch(gasUrl, { headers: { "cache-control": "no-cache" } });
     const text = await r.text();
@@ -665,16 +628,13 @@ app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   }
 });
 
-// ESPN -> Sheets (cards + odds ONLY)
+// ESPN -> Sheets (cards + odds)
 app.get("/api/admin/syncFromESPN", async (req, res) => {
   try {
     let refRaw = (req.query.ref || "").toString().trim();
-
-    // Accept "latest" or the Fightcenter landing URL
     if (!refRaw || refRaw.toLowerCase() === "latest" || /espn\.com\/mma\/fightcenter\/?$/i.test(refRaw)) {
       refRaw = await getEspnLatestEventId();
     }
-
     const base = publicBase(req);
     const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromESPN&ref=${encodeURIComponent(refRaw)}&base=${encodeURIComponent(base)}`;
 
