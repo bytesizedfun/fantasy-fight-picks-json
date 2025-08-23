@@ -313,6 +313,7 @@ async function scrapeEspnEvent(ref) {
     return out;
   }
 
+  // Preferred: ESPN Core API
   if (id) {
     try {
       const ev = await fetchJSON(
@@ -571,15 +572,20 @@ app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
 });
 
 // ======== ESPN ROUTES (card + odds) ========
-app.get("/api/scrape/espn/event/:id", async (req, res) => {
+// Tolerant path: supports numeric ID OR percent-encoded full URL
+app.get("/api/scrape/espn/event/:ref", async (req, res) => {
   try {
-    res.json(await scrapeEspnEvent(req.params.id));
+    const raw = String(req.params.ref || "");
+    const decoded = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })();
+    const value = /^https?:\/\//i.test(decoded) ? decoded : raw; // accept ID or full URL
+    res.json(await scrapeEspnEvent(value));
   } catch (e) {
-    console.error("espn scrape by id:", e);
+    console.error("espn scrape by id/url:", e);
     res.status(500).json({ error: String(e.message || e) });
   }
 });
 
+// Query-param form for full URLs (preferred from GAS)
 app.get("/api/scrape/espn/event", async (req, res) => {
   try {
     const url = String(req.query.url || "").trim();
@@ -591,7 +597,7 @@ app.get("/api/scrape/espn/event", async (req, res) => {
   }
 });
 
-// NEW: Latest from Fightcenter landing (no ID needed)
+// Latest from Fightcenter landing (no ID needed)
 app.get("/api/scrape/espn/latest", async (_req, res) => {
   try {
     const latestId = await getEspnLatestEventId();
@@ -609,7 +615,7 @@ function publicBase(req) {
   return `${proto}://${host}`;
 }
 
-// UFCStats -> Sheets (results-only use via GAS, legacy support)
+// UFCStats -> Sheets (results-only use via GAS)
 app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   try {
     const refRaw = (req.query.ref || "").toString().trim();
