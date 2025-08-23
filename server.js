@@ -1,8 +1,8 @@
 // server.js
-// Express server + ESPN Fightcenter scraper + GAS bridge
+// Express server + ESPN Fightcenter scraper + GAS bridge (cards/odds from ESPN, results from UFCStats)
 
 const express = require("express");
-const cheerio = require("cheerio"); // use cheerio.load(html) -> $
+const cheerio = require("cheerio");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -11,7 +11,7 @@ const GOOGLE_SCRIPT_URL =
   process.env.GAS_URL ||
   "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-const UFC_BASE = "http://www.ufcstats.com"; // kept for legacy results
+const UFC_BASE = "http://www.ufcstats.com"; // legacy: results only
 const ESPN_FIGHTCENTER = "https://www.espn.com/mma/fightcenter";
 
 // ======== MIDDLEWARE ========
@@ -25,7 +25,7 @@ app.use((req, _res, next) => {
 // ======== HEALTH ========
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// ======== GAS PROXY ENDPOINTS FOR YOUR FRONTEND ========
+// ======== GAS PROXY ENDPOINTS (frontend) ========
 app.get("/api/fights", async (_req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
@@ -73,38 +73,6 @@ app.get("/api/champion", async (_req, res) => {
   }
 });
 
-// ✅ Submit picks -> GAS
-app.post("/api/submit", async (req, res) => {
-  try {
-    const r = await fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "submitPicks", ...req.body }),
-    });
-    const j = await r.json();
-    res.json(j);
-  } catch (e) {
-    console.error("submitPicks:", e);
-    res.status(500).json({ success: false, error: "Failed to submit picks" });
-  }
-});
-
-// ✅ Get user picks -> GAS
-app.post("/api/picks", async (req, res) => {
-  try {
-    const r = await fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getUserPicks", ...req.body }),
-    });
-    const j = await r.json();
-    res.json(j);
-  } catch (e) {
-    console.error("getUserPicks:", e);
-    res.status(500).json({ success: false, error: "Failed to fetch picks" });
-  }
-});
-
 // ======== HTTP HELPERS ========
 async function fetchHTML(url, ms = 15000) {
   const controller = new AbortController();
@@ -142,7 +110,7 @@ async function fetchJSON(url, ms = 15000) {
   }
 }
 
-// ======== (LEGACY) UFCSTATS SCRAPER - results only support ========
+// ======== (LEGACY) UFCSTATS SCRAPER - results only ========
 function toEventUrl(ref) {
   if (/^https?:\/\/.+\/event-details\/[a-z0-9]+/i.test(ref))
     return ref.replace(/^http:/i, "http:");
@@ -276,7 +244,7 @@ async function getEspnLatestEventId() {
 }
 
 function toEspnIdAndUrl(refRaw) {
-  const ref = String(refRaw || "").trim();
+  const ref = String(refRaw || "").trim().replace(/^["']|["']$/g, "");
   if (/^\d+$/.test(ref)) {
     return {
       id: ref,
@@ -313,7 +281,7 @@ async function scrapeEspnEvent(ref) {
     return out;
   }
 
-  // Preferred: ESPN Core API
+  // Preferred: ESPN Core API (yields card + odds when available)
   if (id) {
     try {
       const ev = await fetchJSON(
@@ -355,9 +323,7 @@ async function scrapeEspnEvent(ref) {
 
           if ((!f1 || !f2) && comp?.competitors?.$ref) {
             const compList = await fetchJSON(comp.competitors.$ref);
-            const items = Array.isArray(compList?.items)
-              ? compList.items
-              : [];
+            const items = Array.isArray(compList?.items) ? compList.items : [];
             const names = items
               .map((it) => it?.displayName || it?.name || "")
               .filter(Boolean);
@@ -375,8 +341,7 @@ async function scrapeEspnEvent(ref) {
               const compList = await fetchJSON(comp.competitors.$ref);
               const items = Array.isArray(compList?.items) ? compList.items : [];
               items.forEach((it, idx) => {
-                const name =
-                  it?.displayName || it?.name || (idx === 0 ? f1 : f2);
+                const name = it?.displayName || it?.name || (idx === 0 ? f1 : f2);
                 if (name) competitorSide[name] = it?.homeAway || "";
               });
             }
@@ -399,14 +364,8 @@ async function scrapeEspnEvent(ref) {
 
               if (homeML != null || awayML != null) {
                 if (competitorSide[f1] && competitorSide[f2]) {
-                  o1 =
-                    competitorSide[f1] === "home"
-                      ? fmtMoneyline(homeML)
-                      : fmtMoneyline(awayML);
-                  o2 =
-                    competitorSide[f2] === "home"
-                      ? fmtMoneyline(homeML)
-                      : fmtMoneyline(awayML);
+                  o1 = competitorSide[f1] === "home" ? fmtMoneyline(homeML) : fmtMoneyline(awayML);
+                  o2 = competitorSide[f2] === "home" ? fmtMoneyline(homeML) : fmtMoneyline(awayML);
                 } else {
                   o1 = fmtMoneyline(awayML);
                   o2 = fmtMoneyline(homeML);
@@ -416,24 +375,13 @@ async function scrapeEspnEvent(ref) {
           } catch (_) {}
 
           if (f1 && f2) {
-            fights.push({
-              fighter1: f1,
-              fighter2: f2,
-              f1Odds: o1 || "",
-              f2Odds: o2 || "",
-            });
+            fights.push({ fighter1: f1, fighter2: f2, f1Odds: o1 || "", f2Odds: o2 || "" });
           }
         } catch (_) {}
       });
 
       if (fights.length) {
-        return {
-          provider: "espn",
-          eventId: id,
-          eventName,
-          eventDate,
-          fights,
-        };
+        return { provider: "espn", eventId: id, eventName, eventDate, fights };
       }
     } catch (e) {
       // fall through to HTML scrape
@@ -458,7 +406,6 @@ async function scrapeEspnEvent(ref) {
       if (!a || !b) return;
       fights.push({ fighter1: a, fighter2: b, f1Odds: o1 || "", f2Odds: o2 || "" });
     }
-
     function deepCollect(obj) {
       if (!obj) return;
       if (typeof obj === "string") {
@@ -476,16 +423,8 @@ async function scrapeEspnEvent(ref) {
             .filter(Boolean);
           if (names.length >= 2) maybePush(names[0], names[1]);
         }
-        const mlHome =
-          obj?.homeTeamOdds?.moneyLine ??
-          obj?.home?.moneyLine ??
-          obj?.moneyLineHome ??
-          null;
-        const mlAway =
-          obj?.awayTeamOdds?.moneyLine ??
-          obj?.away?.moneyLine ??
-          obj?.moneyLineAway ??
-          null;
+        const mlHome = obj?.homeTeamOdds?.moneyLine ?? obj?.home?.moneyLine ?? obj?.moneyLineHome ?? null;
+        const mlAway = obj?.awayTeamOdds?.moneyLine ?? obj?.away?.moneyLine ?? obj?.moneyLineAway ?? null;
         if (typeof obj.name === "string" && /\bvs\.?\b/i.test(obj.name) && (mlHome != null || mlAway != null)) {
           const parts = obj.name.split(/\s+vs\.?\s+/i);
           if (parts.length >= 2) {
@@ -497,7 +436,6 @@ async function scrapeEspnEvent(ref) {
         Object.values(obj).forEach(deepCollect);
       }
     }
-
     if (nextData) deepCollect(nextData);
 
     if (fights.length === 0) {
@@ -532,7 +470,7 @@ async function scrapeEspnEvent(ref) {
   }
 }
 
-// ======== SCRAPER ROUTES (legacy UFCStats for results) ========
+// ======== UFCSTATS ROUTES (results only) ========
 app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
   try {
     res.json(await scrapeEvent(req.params.id));
@@ -541,7 +479,6 @@ app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 });
-
 app.get("/api/scrape/ufcstats/event", async (req, res) => {
   try {
     const url = String(req.query.url || "").trim();
@@ -552,7 +489,6 @@ app.get("/api/scrape/ufcstats/event", async (req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 });
-
 app.get("/api/scrape/ufcstats/latest-upcoming", async (_req, res) => {
   try {
     res.json(await scrapeEvent(await firstEventUrl("upcoming")));
@@ -561,7 +497,6 @@ app.get("/api/scrape/ufcstats/latest-upcoming", async (_req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 });
-
 app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
   try {
     res.json(await scrapeEvent(await firstEventUrl("completed")));
@@ -571,33 +506,28 @@ app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
   }
 });
 
-// ======== ESPN ROUTES (card + odds) ========
-// Tolerant path: supports numeric ID OR percent-encoded full URL
-app.get("/api/scrape/espn/event/:ref", async (req, res) => {
+// ======== ESPN ROUTES ========
+// Preferred: numeric ID
+app.get("/api/scrape/espn/event/:id(\\d+)", async (req, res) => {
   try {
-    const raw = String(req.params.ref || "");
-    const decoded = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })();
-    const value = /^https?:\/\//i.test(decoded) ? decoded : raw; // accept ID or full URL
-    res.json(await scrapeEspnEvent(value));
+    res.json(await scrapeEspnEvent(req.params.id));
   } catch (e) {
-    console.error("espn scrape by id/url:", e);
+    console.error("espn by id:", e);
     res.status(500).json({ error: String(e.message || e) });
   }
 });
-
-// Query-param form for full URLs (preferred from GAS)
+// Optional: query-param with full URL
 app.get("/api/scrape/espn/event", async (req, res) => {
   try {
     const url = String(req.query.url || "").trim();
     if (!url) return res.status(400).json({ error: "Missing ?url" });
     res.json(await scrapeEspnEvent(url));
   } catch (e) {
-    console.error("espn scrape by url:", e);
+    console.error("espn by url:", e);
     res.status(500).json({ error: String(e.message || e) });
   }
 });
-
-// Latest from Fightcenter landing (no ID needed)
+// Latest (from Fightcenter landing)
 app.get("/api/scrape/espn/latest", async (_req, res) => {
   try {
     const latestId = await getEspnLatestEventId();
@@ -608,14 +538,14 @@ app.get("/api/scrape/espn/latest", async (_req, res) => {
   }
 });
 
-// ======== ADMIN: SYNC INTO SHEETS (calls your GAS) ========
+// ======== ADMIN: SYNC INTO SHEETS ========
 function publicBase(req) {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   return `${proto}://${host}`;
 }
 
-// UFCStats -> Sheets (results-only use via GAS)
+// UFCStats -> Sheets (results-only)
 app.get("/api/admin/syncFromUFCStats", async (req, res) => {
   try {
     const refRaw = (req.query.ref || "").toString().trim();
@@ -640,6 +570,9 @@ app.get("/api/admin/syncFromESPN", async (req, res) => {
     let refRaw = (req.query.ref || "").toString().trim();
     if (!refRaw || refRaw.toLowerCase() === "latest" || /espn\.com\/mma\/fightcenter\/?$/i.test(refRaw)) {
       refRaw = await getEspnLatestEventId();
+    } else {
+      const m = refRaw.match(/\/id\/(\d+)/);
+      if (m) refRaw = m[1]; // normalize to numeric id if a URL came in
     }
     const base = publicBase(req);
     const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromESPN&ref=${encodeURIComponent(refRaw)}&base=${encodeURIComponent(base)}`;
