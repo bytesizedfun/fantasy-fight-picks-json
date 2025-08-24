@@ -625,13 +625,39 @@ document.addEventListener("DOMContentLoaded", () => {
   let allTimeLoaded = false;
   let allTimeData = [];
 
+  // normalize crown_rate to a NUMBER in [0..100]
+  function parsePercent(maybePercent) {
+    if (maybePercent == null) return 0;
+    if (typeof maybePercent === "number") {
+      // if already like 50 => assume percentage; if 0.5 => convert
+      return maybePercent > 1 ? maybePercent : (maybePercent * 100);
+    }
+    const s = String(maybePercent).trim();
+    const n = parseFloat(s.replace('%',''));
+    if (isNaN(n)) return 0;
+    // if someone sends "0.5%" mistakenly, treat literally
+    return n <= 1 && s.includes('%') ? n : n;
+  }
+
   function sortAllTime(rows) {
     const cleaned = (rows || []).filter(r => r && r.username && String(r.username).trim() !== "");
     return cleaned
-      .map(r => ({ user: r.username, crowns: +r.crowns || 0, events: +r.events_played || 0, rate: +r.crown_rate || 0 }))
-      .sort((a,b) => (b.rate - a.rate) || (b.crowns - a.crowns) || (b.events - a.events) || (a.user || "").localeCompare(b.user || ""));
+      .map(r => ({
+        user: r.username,
+        crowns: Number(r.crowns) || 0,
+        events: Number(r.events_played) || 0,
+        rate: parsePercent(r.crown_rate) // 0..100
+      }))
+      .sort((a,b) =>
+        (b.rate - a.rate) ||
+        (b.crowns - a.crowns) ||
+        (b.events - a.events) ||
+        (a.user || "").localeCompare(b.user || "")
+      );
   }
-  function rowsEqual(a, b) { return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events; }
+  function rowsEqual(a, b) {
+    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
+  }
 
   function renderAllTimeHeader() {
     const li = document.createElement("li");
@@ -649,7 +675,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function drawAllTime(data) {
     allTimeList.innerHTML = "";
 
-    // ✅ ensure the container has the classes CSS expects
+    // ensure the container has the classes CSS expects
     allTimeList.classList.add("board","at-five");
 
     if (!data.length) { allTimeList.innerHTML = "<li>No All-Time data yet.</li>"; return; }
@@ -670,7 +696,7 @@ document.addEventListener("DOMContentLoaded", () => {
       li.className = classes.join(" ");
 
       const rankLabel = isTop ? "🥇" : `#${rank}`;
-      const pct = (row.rate * 100).toFixed(1) + "%";
+      const pct = row.rate.toFixed(1) + "%"; // already normalized to 0..100
 
       li.innerHTML = `
         <span class="rank">${rankLabel}</span>
@@ -678,13 +704,12 @@ document.addEventListener("DOMContentLoaded", () => {
         <span class="num rate">${pct}</span>
         <span class="num crowns">${row.crowns}</span>
         <span class="num events">${row.events}</span>
-        <span class="mobile-meta" aria-hidden="true">👑 ${row.crowns}/${row.events} events • ${pct}</span>
       `;
       allTimeList.appendChild(li);
       prev = row;
     });
 
-    // 🔧 After rendering, normalize any stray plain-text rows (defensive)
+    // defensive: normalize any stray plain-text rows (if ever present)
     normalizeAllTimeIfNeeded();
   }
 
@@ -722,7 +747,7 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
 
-  /* === All-Time Board Normalizer: convert tabbed/plain rows into structured cells (defensive) === */
+  /* === Defensive: convert any plain text all-time rows into structured cells === */
   function normalizeAllTimeIfNeeded() {
     const list = allTimeList;
     if (!list) return;
@@ -738,17 +763,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (parts.length < 4) return;
 
       const events = parts.pop();
-      const rate   = parts.pop();
+      const rateRaw = parts.pop();
       const crowns = parts.pop();
       const user   = parts.join(" ");
+
+      const rateVal = parsePercent(rateRaw);
 
       li.innerHTML = `
         <span class="rank">#${idx}</span>
         <span class="user">${user}</span>
-        <span class="num rate">${rate}</span>
+        <span class="num rate">${rateVal.toFixed(1)}%</span>
         <span class="num crowns">${crowns}</span>
         <span class="num events">${events}</span>
-        <span class="mobile-meta" aria-hidden="true">👑 ${crowns}/${events} events • ${rate}</span>
       `;
     });
   }
