@@ -41,7 +41,7 @@ body{
   filter:drop-shadow(0 12px 28px rgba(0,0,0,0.55));
 }
 
-/* Champion banner */
+/* Champion banner — edge-to-edge */
 .champ-banner{
   display:none;
   width:100vw; max-width:100vw;
@@ -364,6 +364,14 @@ body{
     grid-area:crowns;
     justify-self:end; align-self:center;
     font-weight:900; font-size:1.08rem; line-height:1;
+    display:inline-flex;               /* 👑 + number on one line (mobile-only tweak) */
+    align-items:center;
+    gap:6px;
+  }
+  #allTimeBoard .crowns::before{
+    content:"👑";                      /* MOBILE-ONLY crown emoji beside the number */
+    line-height:1;
+    filter:drop-shadow(0 0 6px rgba(0,245,255,.35));
   }
 
   /* mobile line shows; desktop cells hidden */
@@ -397,6 +405,7 @@ body{
 /* ===== Performance & motion ===== */
 #fightList, #leaderboard, #allTimeBoard, #myPicks{ content-visibility:auto; contain-intrinsic-size:540px; }
 #app{ contain:content; }
+
 @media (prefers-reduced-motion: reduce){
   .champ-banner{ animation:none; }
   .segmented button, .fight label{ transition:none; }
