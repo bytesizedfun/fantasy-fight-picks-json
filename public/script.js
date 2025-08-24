@@ -494,12 +494,10 @@ document.addEventListener("DOMContentLoaded", () => {
               ? `<span class="points-badge">${score}</span>`
               : `<span class="points-badge points-muted">—</span>`;
 
-            // 🐶 BONUS: show next to fighter (only when actually earned)
             const dogBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
               ? `<span class="dog">🐶 +${dogTier}</span>`
               : "";
 
-            // NEUTRAL header; grid with aligned points
             myPicksDiv.innerHTML += `
               <div class="scored-pick">
                 <div class="ticket-fight">
@@ -514,17 +512,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="value">${winner}</span>
                     ${dogBonus}
                   </div>
-
                   <div class="cell cell-method">
                     <span class="ico ${icoMethodCls}">${icoMethodChar}</span>
                     <span class="value">${methodVal}</span>
                   </div>
-
                   <div class="cell cell-round">
                     <span class="ico ${icoRoundCls}">${icoRoundChar}</span>
                     <span class="value">${roundVal}</span>
                   </div>
-
                   <div class="cell cell-points">
                     ${pointsBadge}
                   </div>
@@ -629,14 +624,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function parsePercent(maybePercent) {
     if (maybePercent == null) return 0;
     if (typeof maybePercent === "number") {
-      // if already like 50 => assume percentage; if 0.5 => convert
       return maybePercent > 1 ? maybePercent : (maybePercent * 100);
     }
     const s = String(maybePercent).trim();
     const n = parseFloat(s.replace('%',''));
     if (isNaN(n)) return 0;
-    // if someone sends "0.5%" mistakenly, treat literally
-    return n <= 1 && s.includes('%') ? n : n;
+    return n;
   }
 
   function sortAllTime(rows) {
@@ -663,19 +656,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const li = document.createElement("li");
     li.className = "board-header at-five";
     li.innerHTML = `
-      <span>Rank</span>
-      <span>Player</span>
-      <span>%</span>
-      <span>👑</span>
-      <span>Events</span>
+      <span class="h-rank">Rank</span>
+      <span class="h-user">Player</span>
+      <span class="h-rate">%</span>
+      <span class="h-crowns">👑</span>
+      <span class="h-events">Events</span>
     `;
     allTimeList.appendChild(li);
   }
 
   function drawAllTime(data) {
     allTimeList.innerHTML = "";
-
-    // ensure the container has the classes CSS expects
     allTimeList.classList.add("board","at-five");
 
     if (!data.length) { allTimeList.innerHTML = "<li>No All-Time data yet.</li>"; return; }
@@ -696,7 +687,7 @@ document.addEventListener("DOMContentLoaded", () => {
       li.className = classes.join(" ");
 
       const rankLabel = isTop ? "🥇" : `#${rank}`;
-      const pct = row.rate.toFixed(1) + "%"; // already normalized to 0..100
+      const pct = row.rate.toFixed(1) + "%";
 
       li.innerHTML = `
         <span class="rank">${rankLabel}</span>
@@ -709,7 +700,6 @@ document.addEventListener("DOMContentLoaded", () => {
       prev = row;
     });
 
-    // defensive: normalize any stray plain-text rows (if ever present)
     normalizeAllTimeIfNeeded();
   }
 
@@ -747,18 +737,17 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
 
-  /* === Defensive: convert any plain text all-time rows into structured cells === */
+  /* ---------- Defensive: convert any plain text rows ---------- */
   function normalizeAllTimeIfNeeded() {
     const list = allTimeList;
     if (!list) return;
     [...list.querySelectorAll("li")].forEach((li, idx) => {
-      if (li.classList.contains("board-header")) return;       // skip header
-      if (li.querySelector(".user,.crowns,.rate,.events")) return; // already structured
+      if (li.classList.contains("board-header")) return;
+      if (li.querySelector(".user,.crowns,.rate,.events")) return;
 
       const raw = (li.textContent || "").replace(/\s+/g, " ").trim();
       if (!raw) return;
 
-      // Expect shape: "username crowns crown_rate events_played"
       const parts = raw.split(" ");
       if (parts.length < 4) return;
 
