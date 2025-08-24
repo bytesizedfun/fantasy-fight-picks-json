@@ -648,9 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {
         (a.user || "").localeCompare(b.user || "")
       );
   }
-  function rowsEqual(a, b) {
-    return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events;
-  }
+  function rowsEqual(a, b) { return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events; }
 
   function renderAllTimeHeader() {
     const li = document.createElement("li");
@@ -689,12 +687,21 @@ document.addEventListener("DOMContentLoaded", () => {
       const rankLabel = isTop ? "🥇" : `#${rank}`;
       const pct = row.rate.toFixed(1) + "%";
 
+      // NOTE: we render BOTH standalone .rate/.events (desktop) AND a .meta wrapper (mobile).
       li.innerHTML = `
         <span class="rank">${rankLabel}</span>
         <span class="user" title="${row.user}">${row.user}</span>
+
+        <!-- desktop cells -->
         <span class="num rate">${pct}</span>
         <span class="num crowns">${row.crowns}</span>
         <span class="num events">${row.events}</span>
+
+        <!-- mobile-only line -->
+        <span class="meta">
+          <span class="rate">${pct}</span>
+          <span class="events">${row.events}</span>
+        </span>
       `;
       allTimeList.appendChild(li);
       prev = row;
@@ -737,13 +744,13 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
 
-  /* ---------- Defensive: convert any plain text rows ---------- */
+  /* ---------- Defensive: normalize any plain text rows ---------- */
   function normalizeAllTimeIfNeeded() {
     const list = allTimeList;
     if (!list) return;
     [...list.querySelectorAll("li")].forEach((li, idx) => {
       if (li.classList.contains("board-header")) return;
-      if (li.querySelector(".user,.crowns,.rate,.events")) return;
+      if (li.querySelector(".user,.crowns,.rate,.events,.meta")) return;
 
       const raw = (li.textContent || "").replace(/\s+/g, " ").trim();
       if (!raw) return;
@@ -757,13 +764,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const user   = parts.join(" ");
 
       const rateVal = parsePercent(rateRaw);
+      const pct = rateVal.toFixed(1) + "%";
 
       li.innerHTML = `
         <span class="rank">#${idx}</span>
         <span class="user">${user}</span>
-        <span class="num rate">${rateVal.toFixed(1)}%</span>
+
+        <span class="num rate">${pct}</span>
         <span class="num crowns">${crowns}</span>
         <span class="num events">${events}</span>
+
+        <span class="meta">
+          <span class="rate">${pct}</span>
+          <span class="events">${events}</span>
+        </span>
       `;
     });
   }
