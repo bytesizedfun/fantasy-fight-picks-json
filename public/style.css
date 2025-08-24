@@ -262,7 +262,7 @@ body{
 }
 
 /* ===== All-Time (desktop / tablet) =====
-   JS renders: #allTimeBoard.board.at-five > li
+   markup: #allTimeBoard.board.at-five > li
    children: .rank .user .num.rate .num.crowns .num.events */
 #allTimeBoard.board.at-five{ max-width:640px; margin:0 auto; padding:0; }
 #allTimeBoard .board-header.at-five,
@@ -288,7 +288,7 @@ body{
   font-weight:900; color:var(--text); opacity:.95;
   font-variant-numeric:tabular-nums;
 }
-#allTimeBoard .mobile-meta{ display:none; } /* kept for safety if present */
+#allTimeBoard .mobile-meta{ display:none; }
 
 /* ===== Your Picks (Betslip) ===== */
 #myPicks{ margin-top:14px; display:grid; gap:12px; justify-items:center; }
@@ -305,11 +305,7 @@ body{
 .scored-pick + .scored-pick{ border-top:1px solid var(--divider); }
 
 /* Header: Fight line — NEUTRAL */
-.ticket-fight{
-  font-weight:900;
-  color:var(--muted);
-  letter-spacing:.08em;
-}
+.ticket-fight{ font-weight:900; color:var(--muted); letter-spacing:.08em; }
 .ticket-fight .fighter{ opacity:.9; color:var(--text); text-shadow:none; }
 .ticket-fight .fighter.picked{ opacity:.9; color:var(--text); text-shadow:none; }
 .vs{ opacity:.75; font-weight:800; margin:0 6px; }
@@ -324,13 +320,13 @@ body{
 .cell{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap; min-height:28px; }
 .value{ font-weight:900; }
 
-/* Icons: ✓ ✗ • */
+/* Icons */
 .ico{ display:inline-block; width:18px; text-align:center; font-weight:900; font-size:16px; }
 .ico.ok{ color:var(--ok); }
 .ico.x{ color:var(--warn); }
 .ico.dot{ color:var(--muted); }
 
-/* Points: big, clean number in neon blue */
+/* Points */
 .points-badge{
   font-weight:900; font-size:18px; line-height:1;
   font-variant-numeric:tabular-nums;
@@ -339,7 +335,7 @@ body{
 }
 .points-muted{ color:var(--muted); text-shadow:none; }
 
-/* Dog bonus chip next to fighter */
+/* Dog bonus chip */
 .dog{ font-weight:900; margin-left:4px; }
 
 /* ===== Responsive ===== */
@@ -364,15 +360,15 @@ body{
 }
 
 /* ===== All-Time — MOBILE REFLOW =====
-   Line 1: rank | user | CROWNS (right)
-   Line 2:           Rate • Events */
+   Line 1: [rank] [user spans cols 2-3] [crowns pinned right]
+   Line 2: [    ] [rate (col 2)]        [events (col 3)]   */
 @media (max-width:540px){
-  /* Hide wide header on phones */
   #allTimeBoard .board-header.at-five{ display:none !important; }
 
-  /* Two-line compact grid per row */
+  /* 4 columns so rate & events are separated on line 2 */
   #allTimeBoard.board.at-five li{
-    grid-template-columns: 46px 1fr auto; /* rank | user | crowns */
+    display:grid;
+    grid-template-columns: 46px 1fr auto auto; /* rank | user | rate/events | crowns */
     grid-auto-rows:auto;
     align-items:center;
     justify-items:start;
@@ -380,47 +376,44 @@ body{
     padding:10px 12px;
   }
 
-  /* Allow children to shrink */
-  #allTimeBoard.board.at-five li > *{ min-width:0; justify-self:start; }
+  #allTimeBoard.board.at-five li > *{ min-width:0; }
 
-  /* Rank */
-  #allTimeBoard .rank{
-    grid-column:1/2; grid-row:1/2;
+  .rank{
+    grid-column:1; grid-row:1;
     min-width:36px; text-align:left; font-weight:900;
   }
 
-  /* Username */
-  #allTimeBoard .user{
-    grid-column:2/3; grid-row:1/2;
+  .user{
+    grid-column:2 / 4; grid-row:1;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900;
   }
 
-  /* Crowns = big, right aligned, spans lines */
-  #allTimeBoard .crowns{
-    grid-column:3/4; grid-row:1/3;
+  .crowns{
+    grid-column:4; grid-row:1 / 3;
     justify-self:end; align-self:center;
-    font-size:1.08rem; line-height:1; opacity:.95;
+    font-weight:900; font-size:1.08rem; line-height:1; opacity:.95;
   }
 
-  /* Rate + Events under the name with labels */
-  #allTimeBoard .rate,
-  #allTimeBoard .events{
-    grid-column:2/3; grid-row:2/3;
-    display:inline-flex; gap:12px; color:var(--muted);
-    font-size:.9rem; flex-wrap:wrap;
+  .rate{
+    grid-column:2; grid-row:2;
+    color:var(--muted); font-size:.9rem;
   }
-  #allTimeBoard .rate::before{ content:"Rate "; opacity:.75; }
-  #allTimeBoard .events::before{ content:"Events "; opacity:.75; }
+  .events{
+    grid-column:3; grid-row:2;
+    color:var(--muted); font-size:.9rem;
+  }
 
-  /* If a .mobile-meta exists, keep it hidden (we control layout) */
+  .rate::before{ content:"Rate "; opacity:.75; }
+  .events::before{ content:"Events "; opacity:.75; }
+
   #allTimeBoard .mobile-meta{ display:none !important; }
 }
 
 /* Tiny phones */
 @media (max-width:360px){
   #allTimeBoard.board.at-five li{
-    grid-template-columns:38px 1fr auto;
+    grid-template-columns:38px 1fr auto auto;
     gap:6px 8px; padding:8px 10px;
   }
-  #allTimeBoard .crowns{ font-size:1rem; }
+  .crowns{ font-size:1rem; }
 }
