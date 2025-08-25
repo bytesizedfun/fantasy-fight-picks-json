@@ -141,16 +141,25 @@ function normalizeMethod(txt) {
   return "";
 }
 
-function pickValueAfterLabel($, label) {
-  let val = "";
-  $("i").each((_, el) => {
-    const t = $(el).text().trim();
-    if (t.toLowerCase().startsWith(label.toLowerCase())) {
-      const next = $(el).next("i");
-      if (next.length) val = next.text().trim();
-    }
-  });
-  return val;
+// --- NEW robust metadata readers (fixes Round 0 issue) ---
+function readMetaBlock($) {
+  // Grab the combined text that contains "Method:", "Round:", "Time:", "Referee:"
+  // This selector covers current UFCStats markup reliably.
+  const txt = $(".b-fight-details__content .b-fight-details__text")
+    .text()
+    .replace(/\s+/g, " ")
+    .trim();
+  return txt;
+}
+
+function parseMethodAndRound(metaText) {
+  // Method: take the token after "Method:" until a known next field
+  const m = metaText.match(/Method:\s*([A-Za-z/ \-]+?)(?=\s{2,}|Round:|Time:|Referee:|$)/i);
+  const methodRaw = (m && m[1] ? m[1].trim() : "");
+  // Round: strictly the integer after "Round:", not the Time line
+  const r = metaText.match(/Round:\s*(\d+)/i);
+  const roundRaw = (r && r[1] ? r[1].trim() : "");
+  return { methodRaw, roundRaw };
 }
 
 async function scrapeFightDetails(fightId) {
@@ -177,10 +186,12 @@ async function scrapeFightDetails(fightId) {
     }
   });
 
-  const methodRaw = pickValueAfterLabel($, "Method:");
-  const roundRaw = pickValueAfterLabel($, "Round:");
+  // NEW: robust meta parsing to avoid grabbing "Time: 0:xx" as the round
+  const metaText = readMetaBlock($);
+  const { methodRaw, roundRaw } = parseMethodAndRound(metaText);
+
   const method = normalizeMethod(methodRaw);
-  const round = method === "Decision" ? "N/A" : roundRaw.match(/\d+/)?.[0] || "";
+  const round = method === "Decision" ? "N/A" : (roundRaw || "");
   const finished = !!(winner && method && (method === "Decision" || round));
 
   return {
