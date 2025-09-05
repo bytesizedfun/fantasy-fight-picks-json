@@ -148,6 +148,54 @@ app.post("/api/picks", async (req, res) => {
   }
 });
 
+/* =========================
+   NEW: SIMPLE CONFIG ENDPOINT (includes event name/date)
+   ========================= */
+app.get("/api/config", async (req, res) => {
+  try {
+    const lbReq = fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getLeaderboard" }),
+    });
+    const chReq = fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`);
+    const emReq = fetch(`${GOOGLE_SCRIPT_URL}?action=getEventMeta`);
+
+    const [lbRes, chRes, emRes] = await Promise.all([lbReq, chReq, emReq]);
+
+    const lb = await lbRes.json().catch(() => ({}));
+    const ch = await chRes.json().catch(() => ({}));
+    const em = await emRes.json().catch(() => ({}));
+
+    const override = (req.query.lockout || "").toString().trim() || process.env.LOCKOUT_OVERRIDE || null;
+
+    const payload = {
+      preLockout: !!lb.preLockout,
+      lockoutISO: lb.lockoutISO || em.lockoutISO || null,
+      lockoutOverride: override,
+      banner: ch.message || "",
+      eventName: em.eventName || "",
+      eventDate: em.eventDate || "",
+      serverNowISO: new Date().toISOString(),
+    };
+
+    res.set("Cache-Control", "no-store");
+    res.json(payload);
+  } catch (e) {
+    console.error("api/config:", e);
+    res.status(500).json({
+      preLockout: null,
+      lockoutISO: null,
+      lockoutOverride: null,
+      banner: "",
+      eventName: "",
+      eventDate: "",
+      serverNowISO: new Date().toISOString(),
+      error: "Failed to fetch config",
+    });
+  }
+});
+
 // ======== SCRAPER CORE (Cheerio) ========
 async function fetchHTML(url, ms = 15000) {
   const controller = new AbortController();
@@ -186,8 +234,6 @@ function normalizeMethod(txt) {
 
 // --- NEW robust metadata readers (fixes Round 0 issue) ---
 function readMetaBlock($) {
-  // Grab the combined text that contains "Method:", "Round:", "Time:", "Referee:"
-  // This selector covers current UFCStats markup reliably.
   const txt = $(".b-fight-details__content .b-fight-details__text")
     .text()
     .replace(/\s+/g, " ")
@@ -196,10 +242,8 @@ function readMetaBlock($) {
 }
 
 function parseMethodAndRound(metaText) {
-  // Method: take the token after "Method:" until a known next field
   const m = metaText.match(/Method:\s*([A-Za-z/ \-]+?)(?=\s{2,}|Round:|Time:|Referee:|$)/i);
   const methodRaw = (m && m[1] ? m[1].trim() : "");
-  // Round: strictly the integer after "Round:", not the Time line
   const r = metaText.match(/Round:\s*(\d+)/i);
   const roundRaw = (r && r[1] ? r[1].trim() : "");
   return { methodRaw, roundRaw };
@@ -229,7 +273,6 @@ async function scrapeFightDetails(fightId) {
     }
   });
 
-  // NEW: robust meta parsing to avoid grabbing "Time: 0:xx" as the round
   const metaText = readMetaBlock($);
   const { methodRaw, roundRaw } = parseMethodAndRound(metaText);
 
