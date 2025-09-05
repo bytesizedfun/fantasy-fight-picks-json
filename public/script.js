@@ -1,40 +1,129 @@
-// === script.js (FINAL) ===
+// === script.js (FULL FILE — AUTO-DETECT PATH vs ACTION) ===
 document.addEventListener("DOMContentLoaded", () => {
-  // Set this in your HTML if not using a proxy:
+  // Set this in index.html if not using a proxy:
   // <script>window.API_BASE = "https://script.google.com/macros/s/XXXX/exec";</script>
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
 
+  const withTimeout = (p, ms = 10000) =>
+    new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error("timeout")), ms);
+      p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
+    });
+
+  // --- Detect whether backend exposes PATH endpoints or ?action= endpoints
+  async function detectApiMode() {
+    const cached = localStorage.getItem("apiMode");
+    if (cached === "path" || cached === "action") return cached;
+
+    // Try PATH: GET /fights
+    try {
+      const r = await withTimeout(fetch(`${BASE}/fights`, { method: "GET" }), 7000);
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j)) { localStorage.setItem("apiMode", "path"); return "path"; }
+      }
+    } catch (_) {}
+
+    // Try ACTION: GET ?action=getFights
+    try {
+      const sep = BASE.includes("?") ? "&" : "?";
+      const r = await withTimeout(fetch(`${BASE}${sep}action=getFights`, { method: "GET" }), 7000);
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j)) { localStorage.setItem("apiMode", "action"); return "action"; }
+      }
+    } catch (_) {}
+
+    // Default to PATH (works with your server.js)
+    localStorage.setItem("apiMode", "path");
+    return "path";
+  }
+
   const api = {
-    // ----- READS over GET ?action=... -----
+    mode: "path",
+    async init() { this.mode = await detectApiMode(); },
+
+    // ---------- Fights ----------
     getFights() {
-      const sep = BASE.includes("?") ? "&" : "?";
-      return fetch(`${BASE}${sep}action=getFights`, { method: "GET" }).then(r => r.json());
-    },
-    getUserPicks(username) {
-      const sep = BASE.includes("?") ? "&" : "?";
-      const q = new URLSearchParams({ action: "getUserPicks", username }).toString();
-      return fetch(`${BASE}${sep}${q}`, { method: "GET" }).then(r => r.json());
-    },
-    getLeaderboard() {
-      const sep = BASE.includes("?") ? "&" : "?";
-      return fetch(`${BASE}${sep}action=getLeaderboard`, { method: "GET" }).then(r => r.json());
-    },
-    getChampionBanner() {
-      const sep = BASE.includes("?") ? "&" : "?";
-      return fetch(`${BASE}${sep}action=getChampionBanner`, { method: "GET" }).then(r => r.json());
-    },
-    getHall() {
-      const sep = BASE.includes("?") ? "&" : "?";
-      return fetch(`${BASE}${sep}action=getHall`, { method: "GET" }).then(r => r.json());
+      if (this.mode === "path") {
+        return fetch(`${BASE}/fights`, { method: "GET" }).then(r => r.json());
+      } else {
+        const sep = BASE.includes("?") ? "&" : "?";
+        return fetch(`${BASE}${sep}action=getFights`, { method: "GET" }).then(r => r.json());
+      }
     },
 
-    // ----- MUTATION stays POST -----
+    // ---------- User picks (READ) ----------
+    getUserPicks(username) {
+      if (this.mode === "path") {
+        // server.js standard: POST /picks { username }
+        return fetch(`${BASE}/picks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username })
+        }).then(r => r.json());
+      } else {
+        // GAS: POST body action=getUserPicks
+        return fetch(BASE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getUserPicks", username })
+        }).then(r => r.json());
+      }
+    },
+
+    // ---------- Submit picks ----------
     submitPicks(payload) {
-      return fetch(BASE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "submitPicks", ...payload })
-      }).then(r => r.json());
+      if (this.mode === "path") {
+        return fetch(`${BASE}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }).then(r => r.json());
+      } else {
+        return fetch(BASE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "submitPicks", ...payload })
+        }).then(r => r.json());
+      }
+    },
+
+    // ---------- Weekly leaderboard ----------
+    getLeaderboard() {
+      if (this.mode === "path") {
+        return fetch(`${BASE}/leaderboard`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        }).then(r => r.json());
+      } else {
+        return fetch(BASE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getLeaderboard" })
+        }).then(r => r.json());
+      }
+    },
+
+    // ---------- Champion banner ----------
+    getChampionBanner() {
+      if (this.mode === "path") {
+        return fetch(`${BASE}/champion`, { method: "GET" }).then(r => r.json());
+      } else {
+        const sep = BASE.includes("?") ? "&" : "?";
+        return fetch(`${BASE}${sep}action=getChampionBanner`, { method: "GET" }).then(r => r.json());
+      }
+    },
+
+    // ---------- All-time hall ----------
+    getHall() {
+      if (this.mode === "path") {
+        return fetch(`${BASE}/hall`, { method: "GET" }).then(r => r.json());
+      } else {
+        const sep = BASE.includes("?") ? "&" : "?";
+        return fetch(`${BASE}${sep}action=getHall`, { method: "GET" }).then(r => r.json());
+      }
     }
   };
 
@@ -129,26 +218,14 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
     welcome.style.display = "block";
 
-    Promise.allSettled([ getFightsCached(), api.getUserPicks(username) ])
-      .then(async ([fightsRes, picksRes]) => {
-        const fightsData = fightsRes.status === "fulfilled" ? fightsRes.value : [];
-        const pickData   = picksRes.status === "fulfilled" ? picksRes.value : { success:false, picks:[] };
-
-        const submitted = !!(pickData && pickData.success === true && Array.isArray(pickData.picks) && data.picks.length > 0);
-        // fix: typo above (data -> pickData)
-      }).catch(()=>{});
-  }
-
-  // ---- FIX the quick typo block above properly:
-  async function startApp() {
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
-    welcome.style.display = "block";
+    await api.init();
 
     Promise.allSettled([ getFightsCached(), api.getUserPicks(username) ])
       .then(async ([fightsRes, picksRes]) => {
         const fightsData = fightsRes.status === "fulfilled" ? fightsRes.value : [];
         const pickData   = picksRes.status === "fulfilled" ? picksRes.value : { success:false, picks:[] };
 
+        // FIX: use pickData.picks (was data.picks)
         const submitted = !!(pickData && pickData.success === true && Array.isArray(pickData.picks) && pickData.picks.length > 0);
         if (submitted) {
           localStorage.setItem("submitted", "true");
@@ -161,13 +238,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         leaderboardEl.classList.add("board","weekly");
+
         await loadLeaderboard();
         await loadMyPicks();
         preloadAllTime();
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("Startup error:", err);
-        fightList.innerHTML = `<div class="board-hint">Server unavailable. Check window.API_BASE in index.html.</div>`;
+        fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base in index.html (window.API_BASE).</div>`;
         submitBtn.style.display = "none";
         loadLeaderboard().catch(()=>{});
       });
@@ -256,8 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
           loadLeaderboard().then(() => loadMyPicks());
         } else {
           alert(data.error || "Something went wrong.");
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Submit Picks";
+          submitBtn.disabled = false; submitBtn.textContent = "Submit Picks";
         }
       })
       .catch(() => { alert("Network error submitting picks."); submitBtn.disabled = false; submitBtn.textContent = "Submit Picks"; });
@@ -281,7 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setPolling(resultsStarted && completed < totalFights);
         data.picks.forEach(({ fight, winner, method, round }) => {
           const actual = fightResults[fight] || {}; const hasResult = !!(actual.winner && actual.method);
-          const matchWinner = hasResult && winner === actual.winner; const matchMethod = hasResult && method === actual.method; const matchRound = hasResult && round == actual.round;
+          const matchWinner = hasResult && winner === actual.winner; const matchMethod = hasResult && method === actual.method; const matchRound  = hasResult && round == actual.round;
           const meta = fightMeta.get(fight) || {}; const f1 = meta.f1 || (String(fight).split(" vs ")[0] || ""); const f2 = meta.f2 || (String(fight).split(" vs ")[1] || "");
           const dogSide = meta.underdogSide; const dogTier = (function(oddsRaw){ const n = normalizeAmericanOdds(oddsRaw); if (n == null || n < 100) return 0; return 1 + Math.floor((n - 100) / 100); })(meta.underdogOdds);
           const chosenIsUnderdog = (dogSide === "Fighter 1" && winner === meta.f1) || (dogSide === "Fighter 2" && winner === meta.f2);
@@ -333,7 +410,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl; board.classList.add("board","weekly"); board.innerHTML = "";
 
-      // Pre-lockout: show frozen weekly scores
+      // Pre-lockout: frozen scores from backend weekly_leaderboard
       const preLock = !!(leaderboardData && leaderboardData.preLockout);
       const preLockScores = leaderboardData && leaderboardData.scores ? Object.entries(leaderboardData.scores) : [];
       if (preLock && preLockScores.length) {
@@ -344,8 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (leaderboardData.champs?.includes(user)) classes.push("champ-glow");
           if (user === username) classes.push("current-user");
           li.className = classes.join(" "); li.innerHTML = `<span>#${actualRank}</span> <span>${user}</span><span>${score} pts</span>`;
-          board.appendChild(li);
-          prevScore = score; rank++;
+          board.appendChild(li); prevScore = score; rank++;
         });
         setPolling(false);
         return;
@@ -364,8 +440,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (scores.length >= 3 && index === scores.length - 1) { classes.push("loser"); displayName = `💩 ${displayName}`; }
           if (user === username) classes.push("current-user");
           li.className = classes.join(" "); li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
-          board.appendChild(li);
-          prevScore = score; rank++;
+          board.appendChild(li); prevScore = score; rank++;
         });
         const lis = board.querySelectorAll("li"); if (lis.length > 0) { const topScore = parseInt(lis[0].lastElementChild.textContent, 10); lis.forEach(li => { const val = parseInt(li.lastElementChild.textContent, 10); if (val === topScore) li.classList.add("tied-first"); }); }
       }
@@ -386,6 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function preloadAllTime() { api.getHall().then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; }).catch(() => {}); }
   function loadAllTimeInteractive() { if (allTimeLoaded) { drawAllTime(allTimeData); return; } const keepHeight = leaderboardEl?.offsetHeight || 260; allTimeList.style.minHeight = `${keepHeight}px`; allTimeList.innerHTML = ""; api.getHall().then(rows => { allTimeData = sortAllTime(rows); allTimeLoaded = true; drawAllTime(allTimeData); }).catch(() => { allTimeList.innerHTML = `<li>All-Time unavailable.</li>`; }).finally(() => { allTimeList.style.minHeight = ""; }); }
   weeklyTabBtn?.addEventListener("click", (e) => { e.preventDefault(); leaderboardEl.style.display = "block"; allTimeList.style.display = "none"; weeklyTabBtn.setAttribute("aria-pressed","true"); allTimeTabBtn.setAttribute("aria-pressed","false"); });
-  allTimeTabBtn?.addEventListener("click", (e) => { e.preventDefault(); loadAllTimeInteractive(); leaderboardEl.style.display = "none"; allTimeList.style.display = "block"; weeklyTabBtn.setAttribute("aria-pressed","false"); allTimeTabBtn.setAttribute("aria-pressed","true"); });
+  allTimeTabBtn?.addEventListener("click", (e) => { e.preventDefault(); loadAllTimeInteractive(); leaderboardEl.style.display = "none"; allTimeList.style.display = "block"; allTimeTabBtn.setAttribute("aria-pressed","true"); weeklyTabBtn.setAttribute("aria-pressed","false"); });
   function normalizeAllTimeIfNeeded() { const list = allTimeList; if (!list) return; [...list.querySelectorAll("li")].forEach((li, idx) => { if (li.classList.contains("board-header")) return; if (li.querySelector(".user,.crowns,.rate,.events,.meta")) return; const raw = (li.textContent || "").replace(/\s+/g, " ").trim(); if (!raw) return; const parts = raw.split(" "); if (parts.length < 4) return; const events = parts.pop(); const rateRaw = parts.pop(); const crowns = parts.pop(); const user   = parts.join(" "); const rateVal = parsePercent(rateRaw); const pct = rateVal.toFixed(1) + "%"; li.innerHTML = `<span class="rank">#${idx}</span><span class="user">${user}</span><span class="num rate">${pct}</span><span class="num crowns">${crowns}</span><span class="num events">${events}</span><span class="meta"><span class="rate">${pct}</span><span class="events">${events}</span></span>`; }); }
+
 });
