@@ -13,6 +13,11 @@ const GOOGLE_SCRIPT_URL =
 
 const UFC_BASE = "http://www.ufcstats.com"; // UFCStats is served over http
 
+// 🔒 Optional manual lockout override (ISO8601 string, e.g. 2025-09-06T12:00:00-04:00)
+// Only used if you pass ?lockout=... to /api/fights or set env LOCKOUT_OVERRIDE.
+// If you don't set it, nothing changes.
+const LOCKOUT_OVERRIDE_ENV = process.env.LOCKOUT_OVERRIDE || "";
+
 // ======== MIDDLEWARE ========
 app.use(express.json());
 app.use(express.static("public"));
@@ -25,11 +30,49 @@ app.use((req, _res, next) => {
 // ======== HEALTH ========
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
+// ======== LOCKOUT UTILS (no-op unless you provide an override) ========
+function normalizeISO(dt) {
+  try {
+    if (typeof dt !== "string") dt = String(dt || "");
+    if (/^\d{4}-\d{2}-\d{2}T/.test(dt)) return dt; // already ISO-like
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString();
+  } catch {
+    return "";
+  }
+}
+function applyLockoutOverride(payload, overrideRaw) {
+  if (!overrideRaw) return payload;
+  const iso = normalizeISO(overrideRaw);
+  if (!iso) return payload;
+
+  // Try to set common keys if present. If they don't exist, we just add a helper field.
+  const setLockout = (obj, key) => {
+    if (obj && Object.prototype.hasOwnProperty.call(obj, key)) obj[key] = overrideRaw;
+  };
+  setLockout(payload, "lockout");
+  setLockout(payload, "LOCKOUT_ET");
+  if (payload && payload.event && typeof payload.event === "object") {
+    setLockout(payload.event, "lockout");
+    setLockout(payload.event, "LOCKOUT_ET");
+  }
+  // always expose normalized ISO for UI convenience (non-breaking)
+  payload.lockoutISO = iso;
+  return payload;
+}
+
 // ======== GAS PROXY ENDPOINTS FOR YOUR FRONTEND ========
-app.get("/api/fights", async (_req, res) => {
+app.get("/api/fights", async (req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
-    res.json(await r.json());
+    const data = await r.json();
+
+    // Allow per-request (?lockout=...) or env override
+    const override = (req.query.lockout || "").toString().trim() || LOCKOUT_OVERRIDE_ENV;
+    const patched = applyLockoutOverride(data, override);
+
+    res.json(patched);
   } catch (e) {
     console.error("getFights:", e);
     res.status(500).json({ error: "Failed to fetch fights" });
