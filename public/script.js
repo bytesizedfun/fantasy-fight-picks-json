@@ -1,5 +1,9 @@
+// === script.js (FULL FILE) ===
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = window.API_BASE || "/api";
+
+  // 🔒 Force GAS action endpoints (prevents autodetect choosing /path mode)
+  localStorage.setItem("apiMode", "action");
 
   const withTimeout = (p, ms = 10000) =>
     new Promise((res, rej) => {
@@ -7,33 +11,13 @@ document.addEventListener("DOMContentLoaded", () => {
       p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
     });
 
+  // We keep detectApiMode around for future flexibility, but we hard-lock to "action".
   async function detectApiMode() {
-    const cached = localStorage.getItem("apiMode");
-    if (cached === "path" || cached === "action") return cached;
-
-    try {
-      const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/fights`, { method: "GET" }), 7000);
-      if (r.ok) {
-        const j = await r.json();
-        if (Array.isArray(j)) { localStorage.setItem("apiMode", "path"); return "path"; }
-      }
-    } catch (_) {}
-
-    try {
-      const sep = BASE.includes("?") ? "&" : "?";
-      const r = await withTimeout(fetch(`${BASE}${sep}action=getFights`, { method: "GET" }), 7000);
-      if (r.ok) {
-        const j = await r.json();
-        if (Array.isArray(j)) { localStorage.setItem("apiMode", "action"); return "action"; }
-      }
-    } catch (_) {}
-
-    localStorage.setItem("apiMode", "path");
-    return "path";
+    return "action";
   }
 
   const api = {
-    mode: "path",
+    mode: "action",
     async init() { this.mode = await detectApiMode(); },
 
     getFights() {
@@ -557,7 +541,7 @@ document.addEventListener("DOMContentLoaded", () => {
       board.classList.add("board","weekly");
       board.innerHTML = "";
 
-      // >>>>>>>>>> NEW: Render frozen weekly board pre-lockout
+      // >>> Render frozen weekly board pre-lockout (from backend payload)
       const preLock = !!(leaderboardData && leaderboardData.preLockout);
       const preLockScores = leaderboardData && leaderboardData.scores ? Object.entries(leaderboardData.scores) : [];
       if (preLock && preLockScores.length) {
@@ -584,7 +568,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setPolling(false);
         return;
       }
-      // <<<<<<<<<< END new pre-lockout branch
+      // <<< end pre-lockout branch
 
       const resultsArr = Object.values((leaderboardData && leaderboardData.fightResults) || {});
       const resultsStarted = resultsArr.some(r => r && r.winner && r.method);
