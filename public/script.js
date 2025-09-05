@@ -1,40 +1,41 @@
-// === script.js (FULL FILE — AUTO-DETECT PATH vs ACTION) ===
+// === script.js (FULL FILE — auto-detect PATH vs ACTION, no caching) ===
 document.addEventListener("DOMContentLoaded", () => {
-  // Set this in index.html if not using a proxy:
-  // <script>window.API_BASE = "https://script.google.com/macros/s/XXXX/exec";</script>
-  const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
+  // If you want to force GAS exec, set API_BASE in index.html:
+  // <script>window.API_BASE="https://script.google.com/macros/s/EXEC/exec";</script>
+  const BASE = (window.API_BASE || "").replace(/\/$/, "") || "";
 
-  const withTimeout = (p, ms = 10000) =>
-    new Promise((res, rej) => {
-      const t = setTimeout(() => rej(new Error("timeout")), ms);
-      p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
-    });
+  // Cache buster for GETs
+  const bust = (url) => url + (url.includes("?") ? "&" : "?") + "_ts=" + Date.now();
 
-  // --- Detect whether backend exposes PATH endpoints or ?action= endpoints
+  // --- Detect whether backend exposes PATH endpoints (/fights) or ?action= endpoints
   async function detectApiMode() {
     const cached = localStorage.getItem("apiMode");
     if (cached === "path" || cached === "action") return cached;
 
-    // Try PATH: GET /fights
+    // Try PATH on same origin or API_BASE
+    const pathBase = BASE || "";
     try {
-      const r = await withTimeout(fetch(`${BASE}/fights`, { method: "GET" }), 7000);
+      const url = pathBase ? `${pathBase}/fights` : `/fights`;
+      const r = await fetch(bust(url), { method: "GET", credentials: "omit" });
       if (r.ok) {
         const j = await r.json();
         if (Array.isArray(j)) { localStorage.setItem("apiMode", "path"); return "path"; }
       }
     } catch (_) {}
 
-    // Try ACTION: GET ?action=getFights
+    // Try ACTION (?action=getFights)
     try {
-      const sep = BASE.includes("?") ? "&" : "?";
-      const r = await withTimeout(fetch(`${BASE}${sep}action=getFights`, { method: "GET" }), 7000);
+      const base = pathBase || "";
+      const sep = (base || "").includes("?") ? "&" : "?";
+      const url = base ? `${base}${sep}action=getFights` : `/${sep}action=getFights`; // base "" ⇒ "/?action=..."
+      const r = await fetch(bust(url), { method: "GET", credentials: "omit" });
       if (r.ok) {
         const j = await r.json();
         if (Array.isArray(j)) { localStorage.setItem("apiMode", "action"); return "action"; }
       }
     } catch (_) {}
 
-    // Default to PATH (works with your server.js)
+    // Default to PATH (works with your onrender server.js)
     localStorage.setItem("apiMode", "path");
     return "path";
   }
@@ -43,28 +44,30 @@ document.addEventListener("DOMContentLoaded", () => {
     mode: "path",
     async init() { this.mode = await detectApiMode(); },
 
-    // ---------- Fights ----------
+    // GET fights
     getFights() {
       if (this.mode === "path") {
-        return fetch(`${BASE}/fights`, { method: "GET" }).then(r => r.json());
+        const url = (BASE ? `${BASE}/fights` : `/fights`);
+        return fetch(bust(url)).then(r => r.json());
       } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getFights`, { method: "GET" }).then(r => r.json());
+        const sep = (BASE || "").includes("?") ? "&" : "?";
+        const base = BASE || "/";
+        return fetch(bust(`${base}${sep}action=getFights`)).then(r => r.json());
       }
     },
 
-    // ---------- User picks (READ) ----------
+    // READ picks for a user
     getUserPicks(username) {
       if (this.mode === "path") {
-        // server.js standard: POST /picks { username }
-        return fetch(`${BASE}/picks`, {
+        const url = (BASE ? `${BASE}/picks` : `/picks`);
+        return fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username })
         }).then(r => r.json());
       } else {
-        // GAS: POST body action=getUserPicks
-        return fetch(BASE, {
+        const base = BASE || "/";
+        return fetch(base, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "getUserPicks", username })
@@ -72,16 +75,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // ---------- Submit picks ----------
+    // SUBMIT picks
     submitPicks(payload) {
       if (this.mode === "path") {
-        return fetch(`${BASE}/submit`, {
+        const url = (BASE ? `${BASE}/submit` : `/submit`);
+        return fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         }).then(r => r.json());
       } else {
-        return fetch(BASE, {
+        const base = BASE || "/";
+        return fetch(base, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "submitPicks", ...payload })
@@ -89,16 +94,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // ---------- Weekly leaderboard ----------
+    // WEEKLY leaderboard (frozen pre-lockout or live after)
     getLeaderboard() {
       if (this.mode === "path") {
-        return fetch(`${BASE}/leaderboard`, {
+        const url = (BASE ? `${BASE}/leaderboard` : `/leaderboard`);
+        return fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({})
         }).then(r => r.json());
       } else {
-        return fetch(BASE, {
+        const base = BASE || "/";
+        return fetch(base, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "getLeaderboard" })
@@ -106,23 +113,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
-    // ---------- Champion banner ----------
+    // Champion banner
     getChampionBanner() {
       if (this.mode === "path") {
-        return fetch(`${BASE}/champion`, { method: "GET" }).then(r => r.json());
+        const url = (BASE ? `${BASE}/champion` : `/champion`);
+        return fetch(bust(url)).then(r => r.json());
       } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getChampionBanner`, { method: "GET" }).then(r => r.json());
+        const sep = (BASE || "").includes("?") ? "&" : "?";
+        const base = BASE || "/";
+        return fetch(bust(`${base}${sep}action=getChampionBanner`)).then(r => r.json());
       }
     },
 
-    // ---------- All-time hall ----------
+    // All-time
     getHall() {
       if (this.mode === "path") {
-        return fetch(`${BASE}/hall`, { method: "GET" }).then(r => r.json());
+        const url = (BASE ? `${BASE}/hall` : `/hall`);
+        return fetch(bust(url)).then(r => r.json());
       } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getHall`, { method: "GET" }).then(r => r.json());
+        const sep = (BASE || "").includes("?") ? "&" : "?";
+        const base = BASE || "/";
+        return fetch(bust(`${base}${sep}action=getHall`)).then(r => r.json());
       }
     }
   };
@@ -143,12 +154,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let username = localStorage.getItem("username");
   const fightMeta = new Map();
 
-  // ---------- Caches ----------
+  // ====== kill caching (reflects sheet changes instantly) ======
+  const FIGHTS_TTL = 0;
+  const LB_TTL = 0;
   const now = () => Date.now();
-  const FIGHTS_TTL = 5 * 60 * 1000;
-  const LB_TTL    = 30 * 1000;
   let fightsCache = { data: null, ts: 0, promise: null };
-  let lbCache     = { data: null, ts: 0, promise: null };
+  let lbCache = { data: null, ts: 0, promise: null };
 
   function getFightsCached() {
     const fresh = fightsCache.data && (now() - fightsCache.ts < FIGHTS_TTL);
@@ -207,11 +218,15 @@ document.addEventListener("DOMContentLoaded", () => {
   if (username) { usernameInput.value = username; usernamePrompt.style.display = "none"; startApp(); }
   else { usernamePrompt.style.display = "flex"; }
 
-  // ---------- Polling ----------
+  // Polling while results are coming in
   let pollTimer = null;
   function setPolling(on) {
-    if (on) { if (!pollTimer) pollTimer = setInterval(() => { loadLeaderboard().then(() => loadMyPicks()); }, 30000); }
-    else if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (on) {
+      if (!pollTimer) pollTimer = setInterval(() => { loadLeaderboard().then(() => loadMyPicks()); }, 30000);
+    } else if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
   }
 
   async function startApp() {
@@ -225,7 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const fightsData = fightsRes.status === "fulfilled" ? fightsRes.value : [];
         const pickData   = picksRes.status === "fulfilled" ? picksRes.value : { success:false, picks:[] };
 
-        // FIX: use pickData.picks (was data.picks)
+        // IMPORTANT: use pickData.picks (bug in older script used data.picks)
         const submitted = !!(pickData && pickData.success === true && Array.isArray(pickData.picks) && pickData.picks.length > 0);
         if (submitted) {
           localStorage.setItem("submitted", "true");
@@ -245,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .catch((err) => {
         console.error("Startup error:", err);
-        fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base in index.html (window.API_BASE).</div>`;
+        fightList.innerHTML = `<div class="board-hint">Server unavailable. Set window.API_BASE or ensure server routes exist.</div>`;
         submitBtn.style.display = "none";
         loadLeaderboard().catch(()=>{});
       });
@@ -300,6 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
       fightList.appendChild(div);
     });
 
+    // Decision disables round
     document.querySelectorAll(".fight").forEach(fight => {
       const methodSelect = fight.querySelector(`select[name$="-method"]`);
       const roundSelect = fight.querySelector(`select[name$="-round"]`);
@@ -410,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl; board.classList.add("board","weekly"); board.innerHTML = "";
 
-      // Pre-lockout: frozen scores from backend weekly_leaderboard
+      // Pre-lockout frozen weekly scores
       const preLock = !!(leaderboardData && leaderboardData.preLockout);
       const preLockScores = leaderboardData && leaderboardData.scores ? Object.entries(leaderboardData.scores) : [];
       if (preLock && preLockScores.length) {
