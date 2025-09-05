@@ -237,6 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fightList.style.display = "none";
           submitBtn.style.display = "none";
         } else {
+          // Safety: if the sheet changed and picks were cleared, ensure the UI lets user submit again
           localStorage.removeItem("submitted");
           renderFightList(fightsData);
           submitBtn.style.display = "block";
@@ -555,6 +556,35 @@ document.addEventListener("DOMContentLoaded", () => {
       const board = leaderboardEl;
       board.classList.add("board","weekly");
       board.innerHTML = "";
+
+      // >>>>>>>>>> NEW: Render frozen weekly board pre-lockout
+      const preLock = !!(leaderboardData && leaderboardData.preLockout);
+      const preLockScores = leaderboardData && leaderboardData.scores ? Object.entries(leaderboardData.scores) : [];
+      if (preLock && preLockScores.length) {
+        const sorted = preLockScores.sort((a,b) => b[1] - a[1]);
+        let rank = 1, prevScore = null, actualRank = 1;
+
+        sorted.forEach(([user, score], index) => {
+          if (score !== prevScore) actualRank = rank;
+
+          const li = document.createElement("li");
+          const classes = [];
+          if (leaderboardData.champs?.includes(user)) classes.push("champ-glow");
+          if (user === username) classes.push("current-user");
+
+          li.className = classes.join(" ");
+          li.innerHTML = `<span>#${actualRank}</span> <span>${user}</span><span>${score} pts</span>`;
+          board.appendChild(li);
+
+          prevScore = score;
+          rank++;
+        });
+
+        // No polling pre-lockout
+        setPolling(false);
+        return;
+      }
+      // <<<<<<<<<< END new pre-lockout branch
 
       const resultsArr = Object.values((leaderboardData && leaderboardData.fightResults) || {});
       const resultsStarted = resultsArr.some(r => r && r.winner && r.method);
