@@ -7,6 +7,35 @@ const html = (s)=>String(s??"").replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;',
 const API_BASE = (typeof window !== "undefined" && window.API_BASE) || "/api";
 setText("apiBaseText", API_BASE);
 
+// ===== storage & cookies (restore original “remember me” feel) =====
+function setCookie(name, value, days=365) {
+  try {
+    const d = new Date(); d.setTime(d.getTime() + days*24*60*60*1000);
+    document.cookie = `${name}=${encodeURIComponent(value||"")}; expires=${d.toUTCString()}; path=/`;
+  } catch {}
+}
+function getCookie(name) {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )'+name.replace(/([.$?*|{}()[\]\\/+^])/g,'\\$1')+'=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : "";
+  } catch { return ""; }
+}
+function saveUsername(name) {
+  try { localStorage.setItem("FFP_USER", name||""); } catch {}
+  setCookie("FFP_USER", name||"");
+}
+function loadSavedUsername() {
+  try {
+    const qp = new URLSearchParams(location.search);
+    const qUser = qp.get("user") || qp.get("username");
+    if (qUser) return qUser;
+  } catch {}
+  const ls = (()=>{ try { return localStorage.getItem("FFP_USER")||""; } catch { return ""; } })();
+  if (ls) return ls;
+  const ck = getCookie("FFP_USER");
+  return ck || "";
+}
+
 // ===== utils =====
 async function getJSON(path, opts = {}) {
   const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
@@ -32,7 +61,7 @@ async function postJSON(path, body) {
   return res.json();
 }
 
-// ===== strict state (matches your GAS handleGetFights) =====
+// ===== state (strict to your GAS shape) =====
 let FIGHTS = [];        // [{fight,fighter1,fighter2,f1Odds,f2Odds,underdog,underdogOdds}]
 let MY_PICKS = {};      // { [fight]: { winner, method, round } }
 let RESULTS = {};       // { [fight]: { winner, method, round, underdog:"Y"|"N" } }
@@ -42,16 +71,10 @@ let CHAMPM  = "";
 const METHODS = ["Decision","KO/TKO","Submission"];
 const ROUNDS  = ["N/A","1","2","3","4","5"];
 
-// ===== username persistence (so it “sticks” like before) =====
-function saveUsername(name) { try { localStorage.setItem("FFP_USER", name || ""); } catch {} }
-function loadUsername()     { try { return localStorage.getItem("FFP_USER") || ""; } catch { return ""; } }
-
-// ===== rendering =====
+// ===== render =====
 function ensurePick(fight) {
   if (!MY_PICKS[fight]) MY_PICKS[fight] = { winner: "", method: "Decision", round: "N/A" };
 }
-function badge(text) { return `<span class="badge">${html(text)}</span>`; } // style comes from your CSS
-
 function renderFights() {
   const mount = $id("fights"); if (!mount) return;
 
@@ -67,7 +90,7 @@ function renderFights() {
           <div class="fighter fighter--left">
             ${html(f.fighter1)} ${f.f1Odds ? ` <span class="odds">${html(f.f1Odds)}</span>` : ""}
           </div>
-          <div class="vs">vs</div>
+            <div class="vs">vs</div>
           <div class="fighter fighter--right">
             ${html(f.fighter2)} ${f.f2Odds ? ` <span class="odds">${html(f.f2Odds)}</span>` : ""}
           </div>
@@ -148,17 +171,31 @@ function setBanner(msg) {
   else { el.textContent = ""; el.style.display = "none"; }
 }
 
+function showWelcome(name) {
+  const sec = $id("welcomeSection");
+  const txt = $id("welcomeText");
+  if (!sec || !txt) return;
+  if (name) {
+    txt.textContent = `Welcome, ${name}!`;
+    sec.style.display = "block";
+  } else {
+    txt.textContent = "";
+    sec.style.display = "none";
+  }
+}
+
 // ===== loads =====
 async function loadHealth() {
   try { await getJSON("/health"); setText("appStatus","ok"); }
   catch (e) { setText("appStatus","API error"); console.error(e); }
 }
 async function loadBanner() {
-  try { const j = await getJSON("/champion-banner"); setBanner(j.message || ""); }
-  catch { try { const j2 = await getJSON("/champion"); setBanner(j2.message || ""); } catch { setBanner(""); } }
+  // Your server exposes GET /champion
+  try { const j = await getJSON("/champion"); setBanner(j.message || ""); }
+  catch { setBanner(""); }
 }
 async function loadFights() {
-  const arr = await getJSON("/fights"); // strict shape from code.gs
+  const arr = await getJSON("/fights"); // strict GAS shape
   FIGHTS = (Array.isArray(arr)?arr:[]).filter(r =>
     r && typeof r.fight === "string" && (r.fighter1 || r.fighter2)
   ).map(r => ({
@@ -183,13 +220,15 @@ async function loadMyPicks() {
     renderFights();
     setText("loginHint", `Loaded picks for ${name}.`);
     saveUsername(name);
+    showWelcome(name);
   } else {
     setText("loginHint","Could not load picks.");
   }
 }
 async function loadLeaderboard() {
   try {
-    const j = await getJSON("/leaderboard");
+    // IMPORTANT: your server has POST /leaderboard (not GET)
+    const j = await postJSON("/leaderboard", { action: "getLeaderboard" });
     SCORES  = j?.scores || {};
     RESULTS = j?.fightResults || {};
     CHAMPM  = j?.champMessage || "";
@@ -228,6 +267,7 @@ async function submitPicks() {
     if (j?.success) {
       msg.textContent = "Picks submitted ✅";
       saveUsername(name);
+      showWelcome(name);
       await loadLeaderboard();
     } else {
       msg.textContent = j?.error || "Submit failed.";
@@ -245,9 +285,16 @@ async function submitPicks() {
 function wire() {
   $id("submitBtn")?.addEventListener("click", submitPicks);
   $id("loadPicksBtn")?.addEventListener("click", loadMyPicks);
-  // auto-fill username from last time (so it "sticks" like before)
-  const last = loadUsername();
-  if (last) $id("username").value = last;
+
+  // Detect saved username and greet + prefill + auto-load picks
+  const saved = loadSavedUsername();
+  if (saved) {
+    const u = $id("username");
+    if (u) u.value = saved;
+    showWelcome(saved);
+    // auto-load saved user's picks like the original did
+    loadMyPicks().catch(()=>{});
+  }
 }
 async function init() {
   wire();
