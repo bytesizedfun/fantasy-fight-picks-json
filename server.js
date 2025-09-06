@@ -2,6 +2,7 @@
 // Express server + UFCStats result scraper + GAS bridge (Render-ready)
 
 const express = require("express");
+const path = require("path");
 const cheerio = require("cheerio"); // use cheerio.load(html) -> $
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,7 +16,26 @@ const UFC_BASE = "http://www.ufcstats.com"; // UFCStats is served over http
 
 // ======== MIDDLEWARE ========
 app.use(express.json());
-app.use(express.static("public"));
+
+// Serve static assets from /public and kill caching for HTML
+app.use(
+  express.static("public", {
+    extensions: ["html"],
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".html")) {
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+        res.set("Pragma", "no-cache");
+        res.set("Expires", "0");
+        res.set("Surrogate-Control", "no-store");
+      }
+    },
+  })
+);
+
+// explicit root -> public/index.html (prevents serving wrong file at "/")
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "index.html"));
+});
 
 // tiny request logger so you can see traffic in Render logs
 app.use((req, _res, next) => {
@@ -101,7 +121,7 @@ app.get("/api/hall", async (_req, res) => {
   }
 });
 
-// Keep champion route; also provide alias many clients expect
+// Champion banner
 app.get("/api/champion", async (_req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`, {
