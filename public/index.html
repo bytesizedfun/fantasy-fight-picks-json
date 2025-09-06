@@ -2,29 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  />
+  <title>Fantasy Fight Picks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-  <!-- Kill aggressive client caching (helps mobile) -->
+  <!-- Kill stubborn mobile caching -->
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
 
-  <title>Fantasy Fight Picks</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #161a22;
+      --muted: #8892a6;
+      --text: #e6edf3;
+      --accent: #4aa3ff;
+      --good: #22c55e;
+      --bad: #ef4444;
+      --warn: #f59e0b;
+      --pill: #1e2633;
+      --border: #222a36;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 50% 0%, #0f1115, #0c0e12) fixed;
+      color: var(--text);
+    }
+    .wrap { max-width: 1100px; margin: 24px auto 80px auto; padding: 0 16px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+    h1 { font-size: 22px; margin: 0; font-weight: 700; letter-spacing: .2px; }
+    #appStatus { margin-left: auto; font-size: 13px; color: var(--muted); }
 
-  <!-- Your stylesheet -->
-  <link rel="stylesheet" href="style.css" />
+    .bar { background: var(--panel); border: 1px solid var(--border); padding: 12px; border-radius: 12px; margin-bottom: 14px; }
+    .pill { background: var(--pill); border: 1px solid var(--border); padding: 10px 12px; border-radius: 999px; width: 100%; color: var(--text); outline: none; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .section { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-top: 16px; }
+    .section h2 { margin: 0 0 10px 0; font-size: 18px; }
+    .muted { color: var(--muted); }
+    .list { display: grid; gap: 10px; }
+    .fight { border: 1px solid var(--border); background: #121722; border-radius: 12px; padding: 10px; }
+    .fight .line { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+    .vs { color: var(--muted); font-size: 12px; text-align: center; }
+    .odds { font-size: 12px; color: var(--muted); text-align: center; }
+    .underdog { color: var(--warn); font-size: 11px; text-align: center; }
+    select, input[type="number"] {
+      background: var(--pill); color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px; width: 100%;
+    }
+    button {
+      appearance: none; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
+      background: #172033; color: var(--text); cursor: pointer; font-weight: 600;
+    }
+    button.primary { background: var(--accent); border-color: #3a92ea; color: black; }
+    button.good { background: #163021; border-color: #204b2f; color: #b6ffcf; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
 
-  <!-- HARD-WIRE the API so every device hits the Render backend -->
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+
+    #champBanner { margin: 0 0 12px 0; font-weight: 700; color: #ffd166; }
+    footer { margin-top: 28px; color: var(--muted); font-size: 12px; text-align: center; }
+  </style>
+
   <script>
-    // Absolute API base for everyone:
+    // Default API base; can be overridden with ?api=... once (persisted)
     window.API_BASE = "https://fantasy-fight-picks-json.onrender.com/api";
-  </script>
-
-  <!-- Optional override: if you ever visit with ?api=... it will persist -->
-  <script>
     (function () {
       try {
         const qp = new URLSearchParams(location.search);
@@ -32,43 +82,79 @@
         if (param) localStorage.setItem("API_BASE", param);
         const saved = localStorage.getItem("API_BASE");
         if (saved) window.API_BASE = saved;
-        console.log("[FPP] API_BASE =", window.API_BASE);
-      } catch (e) {
-        console.warn("[FPP] API_BASE override error:", e);
-      }
+      } catch (e) {}
     })();
-  </script>
 
-  <!-- One-time safety: unregister any old service worker + clear caches -->
-  <script>
+    // Nuke any old service workers/caches from previous builds
     (function () {
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistrations()
-          .then(regs => regs.forEach(r => r.unregister()))
-          .catch(() => {});
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
       }
-      try {
-        if (window.caches && caches.keys) {
-          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-        }
-      } catch {}
+      if (window.caches && caches.keys) {
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+      }
     })();
   </script>
 </head>
-
 <body>
-  <noscript>This app requires JavaScript.</noscript>
+  <div class="wrap">
+    <header>
+      <h1>Fantasy Fight Picks</h1>
+      <div id="appStatus" class="muted">loading…</div>
+    </header>
 
-  <!-- Status line your JS can update on network errors -->
-  <div id="appStatus"></div>
+    <div id="champBanner" class="bar" role="status"></div>
 
-  <!-- Champion banner container -->
-  <div id="champBanner"></div>
+    <div class="bar">
+      <div class="row">
+        <input id="search" class="pill" type="text" placeholder="Search fights or fighters…" />
+        <input id="username" class="pill" type="text" placeholder="Your username (for picks)" />
+      </div>
+    </div>
 
-  <!-- Your app’s main container. Keep IDs your script.js expects. -->
-  <main id="app"></main>
+    <section class="section">
+      <h2>Card</h2>
+      <div id="fights" class="list" aria-live="polite"></div>
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button id="submitBtn" class="primary">Submit Picks</button>
+        <button id="loadPicksBtn">Load My Picks</button>
+      </div>
+      <div id="submitMsg" class="muted" style="margin-top:8px;"></div>
+    </section>
 
-  <!-- Load your client code AFTER API_BASE is set -->
+    <section class="section">
+      <h2>Live Leaderboard</h2>
+      <div id="leaderboardNote" class="muted" style="margin-bottom:8px;"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th class="right">Points</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Results (as fights conclude)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Fight</th>
+            <th>Winner</th>
+            <th>Method</th>
+            <th class="center">Round</th>
+            <th class="center">Underdog?</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </section>
+
+    <footer>API: <span id="apiBaseText" class="muted"></span></footer>
+  </div>
+
   <script src="script.js" defer></script>
 </body>
 </html>
