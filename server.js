@@ -9,10 +9,8 @@ const cheerio = require("cheerio");
 let fetchFn = global.fetch;
 if (!fetchFn) {
   try {
-    // cross-fetch works with CommonJS require
     fetchFn = require("cross-fetch");
   } catch {
-    // dynamic import fallback to node-fetch (ESM)
     fetchFn = (...args) =>
       import("node-fetch").then(({ default: f }) => f(...args));
   }
@@ -21,6 +19,7 @@ const fetch = fetchFn;
 
 // AbortController fallback (Node 16)
 const AC = global.AbortController || require("abort-controller");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
