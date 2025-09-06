@@ -1,83 +1,73 @@
-// server.js — Node/Express proxy for Fantasy Fight Picks
-// PROXIES /api calls to your Google Apps Script Web App.
+// Place near the top of script.js
+(function () {
+  // Allow override via query param for quick testing on phone:
+  // e.g. https://yourapp/?api=https://your-render-service.onrender.com/api
+  const qp = new URLSearchParams(location.search);
+  const override = qp.get("api");
 
-const express = require("express");
-const path = require("path");
+  // If your front-end is served by the same Express app, /api works.
+  // If you host the front-end elsewhere (GoDaddy/GitHub Pages), set window.API_BASE globally or use ?api=
+  const DEFAULT_BASE = "/api";
+  window.API_BASE = override || window.API_BASE || DEFAULT_BASE;
 
-// ✅ Your actual GAS Web App URL (you gave me this)
-const GAS_BASE = process.env.GAS_BASE
-  || "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+  // Basic fetch with timeout + hard errors surfaced to console/UI
+  window.fetchJSON = async function fetchJSON(url, opts = {}) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), opts.timeout || 12000);
 
-// Use built-in fetch on Node 18+, fallback to node-fetch if needed
-const _fetch = (typeof fetch === "function")
-  ? fetch
-  : (...args) => import("node-fetch").then(({ default: f }) => f(...args));
+    try {
+      const r = await fetch(url, {
+        method: "GET",
+        redirect: "follow",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+      if (!r.ok) {
+        const raw = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status} on ${url} :: ${raw.slice(0, 200)}`);
+      }
+      return await r.json();
+    } catch (e) {
+      clearTimeout(t);
+      console.error("fetchJSON error:", e.message || e);
+      const statusEl = document.getElementById("status") || document.getElementById("appStatus");
+      if (statusEl) {
+        statusEl.textContent = "Network error loading data. Pull-to-refresh or try again.";
+      }
+      throw e;
+    }
+  };
 
-const app = express();
+  // Drop-in loaders that your existing code can call
+  window.loadFightList = async function loadFightList() {
+    const base = window.API_BASE;
+    try {
+      // Preferred alias
+      return await fetchJSON(`${base}/fights`);
+    } catch {
+      // Fallback to generic GAS passthrough
+      return await fetchJSON(`${base}/gas?action=getFightList`);
+    }
+  };
 
-function ensureGas() {
-  if (!GAS_BASE || !/script\.google\.com\/macros\/s\/.+\/exec/.test(GAS_BASE)) {
-    const msg = "GAS_BASE is not set to a valid Apps Script /exec URL.";
-    const err = new Error(msg);
-    err.status = 500;
-    throw err;
-  }
-}
-function sep(url) { return url.includes("?") ? "&" : "?"; }
+  window.loadLeaderboard = async function loadLeaderboard() {
+    const base = window.API_BASE;
+    try {
+      return await fetchJSON(`${base}/leaderboard`);
+    } catch {
+      return await fetchJSON(`${base}/gas?action=getLeaderboard`);
+    }
+  };
 
-// Health check
-app.get("/health", (_req, res) => {
-  res.json({ ok: true, gasConfigured: !!(GAS_BASE && GAS_BASE.includes("/exec")) });
-});
+  window.loadChampionBanner = async function loadChampionBanner() {
+    const base = window.API_BASE;
+    try {
+      return await fetchJSON(`${base}/champion-banner`);
+    } catch {
+      return await fetchJSON(`${base}/gas?action=getChampionBanner`);
+    }
+  };
 
-// Static site (public/index.html, script.js, style.css, images…)
-app.use(express.static(path.join(__dirname, "public"), {
-  maxAge: "5m",
-  etag: true,
-  lastModified: true
-}));
-
-app.use(express.json({ limit: "1mb" }));
-
-// GET /api → forwards to GAS GET (e.g., ?action=getFights)
-app.get("/api", async (req, res) => {
-  try {
-    ensureGas();
-    const q = new URLSearchParams(req.query).toString();
-    const url = `${GAS_BASE}${sep(GAS_BASE)}${q}`;
-    const r = await _fetch(url, { method: "GET", headers: { "Accept": "application/json" } });
-    const body = await r.text();
-    res.status(r.status).type(r.headers.get("content-type") || "application/json").send(body);
-  } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: String(e.message || e) });
-  }
-});
-
-// POST /api → forwards JSON body to GAS POST
-app.post("/api", async (req, res) => {
-  try {
-    ensureGas();
-    const r = await _fetch(GAS_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify(req.body || {})
-    });
-    const body = await r.text();
-    res.status(r.status).type(r.headers.get("content-type") || "application/json").send(body);
-  } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: String(e.message || e) });
-  }
-});
-
-// SPA fallback
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Fantasy Fight Picks server listening on :${PORT}`);
-  if (!GAS_BASE || !GAS_BASE.includes("/exec")) {
-    console.warn("WARNING: GAS_BASE not configured — /api routes will fail.");
-  }
-});
+  console.log("[FPP] API_BASE =", window.API_BASE);
+})();
