@@ -16,12 +16,14 @@ const UFC_BASE = "http://www.ufcstats.com"; // UFCStats is served over http
 // ======== MIDDLEWARE ========
 app.use(express.json());
 app.use(express.static("public"));
+
 // tiny request logger so you can see traffic in Render logs
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
 });
-// 🚫 Kill API caching (mobile fix)
+
+// 🔒 kill caching on API responses (fixes phones serving stale/empty JSON)
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -36,16 +38,20 @@ app.use((req, res, next) => {
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 // ======== GAS PROXY ENDPOINTS FOR YOUR FRONTEND ========
-// ✅ Phones breaking cause: wrong action name. Try getFightList, then fallback to legacy getFights.
+
+// Prefer getFightList; if your GAS still uses getFights, fallback automatically.
 app.get("/api/fights", async (_req, res) => {
   try {
-    let r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFightList`, { headers: { "Cache-Control": "no-cache" } });
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFightList`, {
+      headers: { "Cache-Control": "no-cache" },
+    });
     if (!r.ok) throw new Error(`GAS ${r.status}`);
-    const j = await r.json();
-    return res.json(j);
+    return res.json(await r.json());
   } catch (e1) {
     try {
-      let r2 = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`, { headers: { "Cache-Control": "no-cache" } });
+      const r2 = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`, {
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!r2.ok) throw new Error(`GAS ${r2.status}`);
       return res.json(await r2.json());
     } catch (e2) {
@@ -55,7 +61,7 @@ app.get("/api/fights", async (_req, res) => {
   }
 });
 
-// Keep your original POST, add GET alias (some clients fetch via GET)
+// Keep your original POST, add GET alias for clients that request it via GET
 app.post("/api/leaderboard", async (_req, res) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
@@ -69,9 +75,12 @@ app.post("/api/leaderboard", async (_req, res) => {
     res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
 });
+
 app.get("/api/leaderboard", async (_req, res) => {
   try {
-    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`, { headers: { "Cache-Control": "no-cache" } });
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`, {
+      headers: { "Cache-Control": "no-cache" },
+    });
     res.json(await r.json());
   } catch (e) {
     console.error("getLeaderboard (GET):", e);
@@ -92,19 +101,24 @@ app.get("/api/hall", async (_req, res) => {
   }
 });
 
-// Keep your champion route, add alias path many clients expect
+// Keep champion route; also provide alias many clients expect
 app.get("/api/champion", async (_req, res) => {
   try {
-    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`, { headers: { "Cache-Control": "no-cache" } });
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`, {
+      headers: { "Cache-Control": "no-cache" },
+    });
     res.json(await r.json());
   } catch (e) {
     console.error("getChampionBanner:", e);
     res.status(500).json({ message: "" });
   }
 });
+
 app.get("/api/champion-banner", async (_req, res) => {
   try {
-    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`, { headers: { "Cache-Control": "no-cache" } });
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`, {
+      headers: { "Cache-Control": "no-cache" },
+    });
     res.json(await r.json());
   } catch (e) {
     console.error("getChampionBanner alias:", e);
