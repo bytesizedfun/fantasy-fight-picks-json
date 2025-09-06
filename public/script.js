@@ -1,41 +1,34 @@
-// === script.js (FULL FILE — auto-detect PATH vs ACTION, no caching) ===
+// === script.js v24 ===
 document.addEventListener("DOMContentLoaded", () => {
-  // If you want to force GAS exec, set API_BASE in index.html:
-  // <script>window.API_BASE="https://script.google.com/macros/s/EXEC/exec";</script>
   const BASE = (window.API_BASE || "").replace(/\/$/, "") || "";
 
   // Cache buster for GETs
   const bust = (url) => url + (url.includes("?") ? "&" : "?") + "_ts=" + Date.now();
 
-  // --- Detect whether backend exposes PATH endpoints (/fights) or ?action= endpoints
+  // Detect PATH vs ACTION backend once, but never trust stale localStorage
   async function detectApiMode() {
-    const cached = localStorage.getItem("apiMode");
-    if (cached === "path" || cached === "action") return cached;
-
-    // Try PATH on same origin or API_BASE
-    const pathBase = BASE || "";
+    try { localStorage.removeItem("apiMode"); } catch(_) {}
+    // Try PATH
     try {
-      const url = pathBase ? `${pathBase}/fights` : `/fights`;
+      const url = BASE ? `${BASE}/fights` : `/fights`;
       const r = await fetch(bust(url), { method: "GET", credentials: "omit" });
       if (r.ok) {
         const j = await r.json();
         if (Array.isArray(j)) { localStorage.setItem("apiMode", "path"); return "path"; }
       }
     } catch (_) {}
-
-    // Try ACTION (?action=getFights)
+    // Try ACTION
     try {
-      const base = pathBase || "";
+      const base = BASE || "/";
       const sep = (base || "").includes("?") ? "&" : "?";
-      const url = base ? `${base}${sep}action=getFights` : `/${sep}action=getFights`; // base "" ⇒ "/?action=..."
+      const url = `${base}${sep}action=getFights`;
       const r = await fetch(bust(url), { method: "GET", credentials: "omit" });
       if (r.ok) {
         const j = await r.json();
         if (Array.isArray(j)) { localStorage.setItem("apiMode", "action"); return "action"; }
       }
     } catch (_) {}
-
-    // Default to PATH (works with your onrender server.js)
+    // Default to PATH (Render)
     localStorage.setItem("apiMode", "path");
     return "path";
   }
@@ -44,101 +37,89 @@ document.addEventListener("DOMContentLoaded", () => {
     mode: "path",
     async init() { this.mode = await detectApiMode(); },
 
-    // GET fights
     getFights() {
       if (this.mode === "path") {
         const url = (BASE ? `${BASE}/fights` : `/fights`);
         return fetch(bust(url)).then(r => r.json());
       } else {
-        const sep = (BASE || "").includes("?") ? "&" : "?";
         const base = BASE || "/";
+        const sep = base.includes("?") ? "&" : "?";
         return fetch(bust(`${base}${sep}action=getFights`)).then(r => r.json());
       }
     },
 
-    // READ picks for a user
     getUserPicks(username) {
       if (this.mode === "path") {
         const url = (BASE ? `${BASE}/picks` : `/picks`);
         return fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username })
         }).then(r => r.json());
       } else {
         const base = BASE || "/";
         return fetch(base, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "getUserPicks", username })
         }).then(r => r.json());
       }
     },
 
-    // SUBMIT picks
     submitPicks(payload) {
       if (this.mode === "path") {
         const url = (BASE ? `${BASE}/submit` : `/submit`);
         return fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         }).then(r => r.json());
       } else {
         const base = BASE || "/";
         return fetch(base, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "submitPicks", ...payload })
         }).then(r => r.json());
       }
     },
 
-    // WEEKLY leaderboard (frozen pre-lockout or live after)
     getLeaderboard() {
       if (this.mode === "path") {
         const url = (BASE ? `${BASE}/leaderboard` : `/leaderboard`);
         return fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({})
         }).then(r => r.json());
       } else {
         const base = BASE || "/";
         return fetch(base, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "getLeaderboard" })
         }).then(r => r.json());
       }
     },
 
-    // Champion banner
     getChampionBanner() {
       if (this.mode === "path") {
         const url = (BASE ? `${BASE}/champion` : `/champion`);
         return fetch(bust(url)).then(r => r.json());
       } else {
-        const sep = (BASE || "").includes("?") ? "&" : "?";
         const base = BASE || "/";
+        const sep = base.includes("?") ? "&" : "?";
         return fetch(bust(`${base}${sep}action=getChampionBanner`)).then(r => r.json());
       }
     },
 
-    // All-time
     getHall() {
       if (this.mode === "path") {
         const url = (BASE ? `${BASE}/hall` : `/hall`);
         return fetch(bust(url)).then(r => r.json());
       } else {
-        const sep = (BASE || "").includes("?") ? "&" : "?";
         const base = BASE || "/";
+        const sep = base.includes("?") ? "&" : "?";
         return fetch(bust(`${base}${sep}action=getHall`)).then(r => r.json());
       }
     }
   };
 
-  // ========================= DOM refs =========================
+  // ===== DOM refs
   const welcome = document.getElementById("welcome");
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
@@ -154,9 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let username = localStorage.getItem("username");
   const fightMeta = new Map();
 
-  // ====== kill caching (reflects sheet changes instantly) ======
-  const FIGHTS_TTL = 0;
-  const LB_TTL = 0;
+  // ===== No caching (instant updates)
+  const FIGHTS_TTL = 0, LB_TTL = 0;
   const now = () => Date.now();
   let fightsCache = { data: null, ts: 0, promise: null };
   let lbCache = { data: null, ts: 0, promise: null };
@@ -218,15 +198,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (username) { usernameInput.value = username; usernamePrompt.style.display = "none"; startApp(); }
   else { usernamePrompt.style.display = "flex"; }
 
-  // Polling while results are coming in
+  // Polling while event is in progress
   let pollTimer = null;
   function setPolling(on) {
     if (on) {
       if (!pollTimer) pollTimer = setInterval(() => { loadLeaderboard().then(() => loadMyPicks()); }, 30000);
-    } else if (pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-    }
+    } else if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   }
 
   async function startApp() {
@@ -240,7 +217,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const fightsData = fightsRes.status === "fulfilled" ? fightsRes.value : [];
         const pickData   = picksRes.status === "fulfilled" ? picksRes.value : { success:false, picks:[] };
 
-        // IMPORTANT: use pickData.picks (bug in older script used data.picks)
         const submitted = !!(pickData && pickData.success === true && Array.isArray(pickData.picks) && pickData.picks.length > 0);
         if (submitted) {
           localStorage.setItem("submitted", "true");
@@ -260,7 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .catch((err) => {
         console.error("Startup error:", err);
-        fightList.innerHTML = `<div class="board-hint">Server unavailable. Set window.API_BASE or ensure server routes exist.</div>`;
+        fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base.</div>`;
         submitBtn.style.display = "none";
         loadLeaderboard().catch(()=>{});
       });
@@ -479,5 +455,4 @@ document.addEventListener("DOMContentLoaded", () => {
   weeklyTabBtn?.addEventListener("click", (e) => { e.preventDefault(); leaderboardEl.style.display = "block"; allTimeList.style.display = "none"; weeklyTabBtn.setAttribute("aria-pressed","true"); allTimeTabBtn.setAttribute("aria-pressed","false"); });
   allTimeTabBtn?.addEventListener("click", (e) => { e.preventDefault(); loadAllTimeInteractive(); leaderboardEl.style.display = "none"; allTimeList.style.display = "block"; allTimeTabBtn.setAttribute("aria-pressed","true"); weeklyTabBtn.setAttribute("aria-pressed","false"); });
   function normalizeAllTimeIfNeeded() { const list = allTimeList; if (!list) return; [...list.querySelectorAll("li")].forEach((li, idx) => { if (li.classList.contains("board-header")) return; if (li.querySelector(".user,.crowns,.rate,.events,.meta")) return; const raw = (li.textContent || "").replace(/\s+/g, " ").trim(); if (!raw) return; const parts = raw.split(" "); if (parts.length < 4) return; const events = parts.pop(); const rateRaw = parts.pop(); const crowns = parts.pop(); const user   = parts.join(" "); const rateVal = parsePercent(rateRaw); const pct = rateVal.toFixed(1) + "%"; li.innerHTML = `<span class="rank">#${idx}</span><span class="user">${user}</span><span class="num rate">${pct}</span><span class="num crowns">${crowns}</span><span class="num events">${events}</span><span class="meta"><span class="rate">${pct}</span><span class="events">${events}</span></span>`; }); }
-
 });
