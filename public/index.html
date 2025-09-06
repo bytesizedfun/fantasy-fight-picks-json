@@ -4,33 +4,16 @@
   <meta charset="utf-8" />
   <title>Fantasy Fight Picks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- Load YOUR stylesheet (cache-busted so phones pull fresh) -->
-  <link rel="stylesheet" href="style.css?v=2025-09-06-1" />
-
-  <!-- Minimal resets only; your style.css is the authority -->
-  <style>
-    /* fallback only if style.css is missing */
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; }
-    .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .hidden { display: none; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 8px; }
-    .right { text-align: right; }
-    .center { text-align: center; }
-    .muted { opacity: .75; }
-    .btn { cursor:pointer; }
-  </style>
-
+  <!-- Your stylesheet and logo are used as-is -->
+  <link rel="stylesheet" href="style.css?v=2025-09-06-2" />
   <script>
-    // Keep your API base; overridable with ?api=... once (persisted)
+    // API base; can be overridden once with ?api=...
     window.API_BASE = "https://fantasy-fight-picks-json.onrender.com/api";
     (function () {
       try {
         const qp = new URLSearchParams(location.search);
-        const param = qp.get("api");
-        if (param) localStorage.setItem("API_BASE", param);
+        const override = qp.get("api");
+        if (override) localStorage.setItem("API_BASE", override);
         const saved = localStorage.getItem("API_BASE");
         if (saved) window.API_BASE = saved;
       } catch (_) {}
@@ -40,48 +23,53 @@
 <body>
   <div class="container">
 
-    <!-- Your logo (hide if file missing) -->
-    <div id="brand" style="display:flex;align-items:center;gap:12px;margin:8px 0 16px;">
+    <!-- Brand header (uses your CSS) -->
+    <header id="brand" class="brand">
       <img id="siteLogo" src="logo.png" alt="Fantasy Fight Picks" height="48"
            onerror="this.style.display='none'"/>
       <h1 id="siteTitle">Fantasy Fight Picks</h1>
-      <div id="appStatus" style="margin-left:auto;" class="muted">loading…</div>
-    </div>
+      <div id="appStatus" class="status">loading…</div>
+    </header>
 
-    <!-- Champion / weekly banner -->
-    <div id="champBanner" class="hidden" role="status"></div>
-
-    <!-- Search + username -->
-    <div class="row" style="margin:12px 0;">
-      <input id="search" type="text" placeholder="Search fights or fighters…" />
-      <input id="username" type="text" placeholder="Your username (for picks)" />
-    </div>
-
-    <!-- Card -->
-    <section id="cardSection">
-      <h2>Card</h2>
-      <div id="fights" aria-live="polite"></div>
-      <div style="display:flex;gap:10px;margin-top:12px;">
-        <button id="submitBtn" class="btn">Submit Picks</button>
+    <!-- Username (login) -->
+    <section id="loginSection" class="section">
+      <label for="username" class="label">Username</label>
+      <div class="row">
+        <input id="username" type="text" placeholder="Enter username" />
         <button id="loadPicksBtn" class="btn">Load My Picks</button>
       </div>
-      <div id="submitMsg" class="muted" style="margin-top:8px;"></div>
+      <div class="hint" id="loginHint"></div>
+    </section>
+
+    <!-- Champion banner -->
+    <section id="bannerSection" class="section">
+      <div id="champBanner" class="banner" role="status"></div>
+    </section>
+
+    <!-- Card -->
+    <section id="cardSection" class="section">
+      <h2>Card</h2>
+      <div id="fights" class="fight-list" aria-live="polite"></div>
+      <div class="actions">
+        <button id="submitBtn" class="btn primary">Submit Picks</button>
+      </div>
+      <div id="submitMsg" class="hint"></div>
     </section>
 
     <!-- Live leaderboard -->
-    <section id="leaderboardSection" style="margin-top:24px;">
+    <section id="leaderboardSection" class="section">
       <h2>Live Leaderboard</h2>
-      <div id="leaderboardNote" class="muted" style="margin-bottom:8px;"></div>
-      <table>
+      <div id="leaderboardNote" class="hint"></div>
+      <table class="table">
         <thead><tr><th>User</th><th class="right">Points</th></tr></thead>
         <tbody id="leaderboardBody"></tbody>
       </table>
     </section>
 
     <!-- Results -->
-    <section id="resultsSection" style="margin-top:24px;">
+    <section id="resultsSection" class="section">
       <h2>Results (as fights conclude)</h2>
-      <table>
+      <table class="table">
         <thead>
           <tr>
             <th>Fight</th><th>Winner</th><th>Method</th>
@@ -92,7 +80,9 @@
       </table>
     </section>
 
-    <div class="muted" style="margin-top:24px;">API: <span id="apiBaseText"></span></div>
+    <footer class="footer">
+      API: <span id="apiBaseText"></span>
+    </footer>
   </div>
 
   <script src="script.js" defer></script>
