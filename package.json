@@ -1,18 +1,19 @@
 {
   "name": "fantasy-fight-picks",
   "version": "1.0.0",
-  "description": "UFC fight picks app with leaderboard and scoring.",
+  "description": "A UFC fight picks app with leaderboard and scoring.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=16"
   },
   "dependencies": {
-    "abort-controller": "^3.0.0",
-    "cheerio": "^1.1.0",
-    "cross-fetch": "^4.0.0",
-    "express": "^4.18.2"
-  }
+    "express": "^4.18.2",
+    "node-fetch": "^2.6.7"
+  },
+  "keywords": [],
+  "author": "joshbouw",
+  "license": "MIT"
 }
