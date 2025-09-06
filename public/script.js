@@ -1,37 +1,55 @@
 // ===============================
-// Fantasy Fight Picks — script.js
-// (Full drop-in restore; preserves original UX)
+// Fantasy Fight Picks — script.js (FULL)
 // ===============================
 
 // ----- tiny DOM helpers -----
 const $id = (id) => document.getElementById(id);
 const setText = (id, v) => { const el = $id(id); if (el) el.textContent = v; };
-const html = (s)=>String(s??"").replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+// Safe HTML escape
+const html = (s) =>
+  String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[c]);
 
 // ----- API base -----
 const API_BASE = (typeof window !== "undefined" && window.API_BASE) || "/api";
 setText("apiBaseText", API_BASE);
 
-// ----- storage & cookies (original remember-me vibe) -----
-function setCookie(name, value, days=365) {
+// ----- storage & cookies (robust; no broken regex) -----
+function setCookie(name, value, days = 365) {
   try {
     const d = new Date();
-    d.setTime(d.getTime() + days*24*60*60*1000);
-    document.cookie = `${name}=${encodeURIComponent(value||"")}; expires=${d.toUTCString()}; path=/`;
+    d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = `${name}=${encodeURIComponent(
+      value || ""
+    )}; expires=${d.toUTCString()}; path=/`;
   } catch {}
 }
+
 function getCookie(name) {
   try {
-    const m = document.cookie.match(new RegExp('(?:^|; )'+name.replace(/([.$?*|{}()[\\]\\/+^])/g,'\\$1')+'=([^;]*)'));
+    // escape cookie name safely
+    const safe = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const m = document.cookie.match(new RegExp("(?:^|; )" + safe + "=([^;]*)"));
     return m ? decodeURIComponent(m[1]) : "";
-  } catch { return ""; }
+  } catch {
+    return "";
+  }
 }
+
 function saveUsername(name) {
-  try { localStorage.setItem("FFP_USER", name||""); } catch {}
-  setCookie("FFP_USER", name||"");
+  try {
+    localStorage.setItem("FFP_USER", name || "");
+  } catch {}
+  setCookie("FFP_USER", name || "");
 }
+
 function loadSavedUsername() {
-  // querystring override still supported (?user= or ?username=)
   try {
     const qp = new URLSearchParams(location.search);
     const qUser = qp.get("user") || qp.get("username");
@@ -47,9 +65,13 @@ function loadSavedUsername() {
 // ----- net utils -----
 async function getJSON(path, opts = {}) {
   const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
-  const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache" }, ...opts });
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { "Cache-Control": "no-cache" },
+    ...opts,
+  });
   if (!res.ok) {
-    const t = await res.text().catch(()=>String(res.status));
+    const t = await res.text().catch(() => String(res.status));
     throw new Error(`GET ${url} -> ${res.status}: ${t}`);
   }
   return res.json();
@@ -59,25 +81,28 @@ async function postJSON(path, body) {
   const res = await fetch(url, {
     method: "POST",
     cache: "no-store",
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
-    body: JSON.stringify(body || {})
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-cache",
+    },
+    body: JSON.stringify(body || {}),
   });
   if (!res.ok) {
-    const t = await res.text().catch(()=>String(res.status));
+    const t = await res.text().catch(() => String(res.status));
     throw new Error(`POST ${url} -> ${res.status}: ${t}`);
   }
   return res.json();
 }
 
 // ----- app state (matches your GAS/server shapes) -----
-let FIGHTS = [];      // [{fight,fighter1,fighter2,f1Odds,f2Odds,underdog("Fighter 1"|"Fighter 2"), underdogOdds}]
-let MY_PICKS = {};    // { [fight]: { winner, method, round } }
-let RESULTS = {};     // { [fight]: { winner, method, round } }
-let SCORES = {};      // { username: points }
-let CHAMP_MSG = "";   // string for champ banner (only shown when all fights complete)
+let FIGHTS = []; // [{fight,fighter1,fighter2,f1Odds,f2Odds,underdog("Fighter 1"/"Fighter 2"), underdogOdds}]
+let MY_PICKS = {}; // { [fight]: { winner, method, round } }
+let RESULTS = {}; // { [fight]: { winner, method, round } }
+let SCORES = {}; // { username: points }
+let CHAMP_MSG = ""; // string for champ banner (only shown when all fights complete)
 
-const METHODS = ["Decision","KO/TKO","Submission"];
-const ROUNDS  = ["N/A","1","2","3","4","5"];
+const METHODS = ["Decision", "KO/TKO", "Submission"];
+const ROUNDS = ["N/A", "1", "2", "3", "4", "5"];
 
 // ============ UI helpers ============
 function showWelcome(name) {
@@ -85,7 +110,7 @@ function showWelcome(name) {
   const txt = $id("welcomeText");
   if (!sec || !txt) return;
   if (name) {
-    // per your preference: Buffer-style hype lives ONLY here, not in scoring rules
+    // Keep hype line ONLY here, per your preference
     txt.textContent = `🎤 IIIIIIIIIIIIT’S ${name.toUpperCase()}!`;
     sec.style.display = "block";
   } else {
@@ -108,15 +133,16 @@ function setBanner(msg) {
 
 // underdog emoji next to the correct fighter label
 function withDog(label, fightRow, which) {
+  const ud = String(fightRow.underdog || "").toLowerCase();
   const isUnderdog =
-    (String(fightRow.underdog||"").toLowerCase() === "fighter 1" && which === 1) ||
-    (String(fightRow.underdog||"").toLowerCase() === "fighter 2" && which === 2);
+    (ud === "fighter 1" && which === 1) || (ud === "fighter 2" && which === 2);
   return isUnderdog ? `${label} 🐶` : label;
 }
 
 // ensure pick structure exists
 function ensurePick(fight) {
-  if (!MY_PICKS[fight]) MY_PICKS[fight] = { winner: "", method: "Decision", round: "N/A" };
+  if (!MY_PICKS[fight])
+    MY_PICKS[fight] = { winner: "", method: "Decision", round: "N/A" };
 }
 
 // ============ Renderers ============
@@ -127,40 +153,59 @@ function renderFights() {
   const cards = FIGHTS.map((f) => {
     const key = f.fight;
     const p = MY_PICKS[key] || {};
+
+    const f1label = withDog(f.fighter1, f, 1);
+    const f2label = withDog(f.fighter2, f, 2);
+
     const winnerSel = `
       <select class="pick-winner">
         <option value="">— Pick winner —</option>
-        <option value="${html(f.fighter1)}"${p.winner===f.fighter1?' selected':''}>${html(withDog(f.fighter1, f, 1))}</option>
-        <option value="${html(f.fighter2)}"${p.winner===f.fighter2?' selected':''}>${html(withDog(f.fighter2, f, 2))}</option>
-      </select>
-    `;
-    const methodSel = `
-      <select class="pick-method">
-        ${METHODS.map(m => `<option value="${m}"${(p.method||"Decision")===m?' selected':''}>${m}</option>`).join("")}
-      </select>
-    `;
-    // Round is N/A for Decisions; 1 default for finishes
-    const effectiveMethod = p.method || "Decision";
-    const roundVal = effectiveMethod === "Decision" ? "N/A" : (p.round && p.round !== "N/A" ? p.round : "1");
-    const roundSel = `
-      <select class="pick-round"${effectiveMethod==="Decision" ? ' disabled' : ''}>
-        ${ROUNDS.map(r => `<option value="${r}"${roundVal===r?' selected':''}>${r}</option>`).join("")}
+        <option value="${html(f.fighter1)}"${
+      p.winner === f.fighter1 ? " selected" : ""
+    }>${html(f1label)}</option>
+        <option value="${html(f.fighter2)}"${
+      p.winner === f.fighter2 ? " selected" : ""
+    }>${html(f2label)}</option>
       </select>
     `;
 
-    const f1 = withDog(f.fighter1, f, 1);
-    const f2 = withDog(f.fighter2, f, 2);
+    const methodSel = `
+      <select class="pick-method">
+        ${METHODS.map(
+          (m) =>
+            `<option value="${m}"${
+              (p.method || "Decision") === m ? " selected" : ""
+            }>${m}</option>`
+        ).join("")}
+      </select>
+    `;
+
+    const effectiveMethod = p.method || "Decision";
+    const roundVal =
+      effectiveMethod === "Decision"
+        ? "N/A"
+        : p.round && p.round !== "N/A"
+        ? p.round
+        : "1";
+
+    const roundSel = `
+      <select class="pick-round"${effectiveMethod === "Decision" ? " disabled" : ""}>
+        ${ROUNDS.map(
+          (r) => `<option value="${r}"${roundVal === r ? " selected" : ""}>${r}</option>`
+        ).join("")}
+      </select>
+    `;
 
     return `
       <div class="fight card" data-fight="${encodeURIComponent(key)}">
         <div class="fight-row">
           <div class="f-col f1">
-            <div class="f-name">${html(f1)}</div>
+            <div class="f-name">${html(f1label)}</div>
             ${f.f1Odds ? `<div class="f-odds">${html(f.f1Odds)}</div>` : ""}
           </div>
           <div class="vs">vs</div>
           <div class="f-col f2">
-            <div class="f-name">${html(f2)}</div>
+            <div class="f-name">${html(f2label)}</div>
             ${f.f2Odds ? `<div class="f-odds">${html(f.f2Odds)}</div>` : ""}
           </div>
         </div>
@@ -177,7 +222,7 @@ function renderFights() {
   mount.innerHTML = cards.join("") || `<div class="empty">No fights found.</div>`;
 
   // wire selectors
-  mount.querySelectorAll(".fight").forEach(card => {
+  mount.querySelectorAll(".fight").forEach((card) => {
     const fight = decodeURIComponent(card.getAttribute("data-fight") || "");
     const selW = card.querySelector(".pick-winner");
     const selM = card.querySelector(".pick-method");
@@ -202,11 +247,13 @@ function renderFights() {
       ensurePick(fight);
       MY_PICKS[fight].method = selM.value || "Decision";
       syncRound();
-      MY_PICKS[fight].round = selR?.value || (selM.value === "Decision" ? "N/A" : "1");
+      MY_PICKS[fight].round =
+        selR?.value || (selM.value === "Decision" ? "N/A" : "1");
     });
     selR?.addEventListener("change", () => {
       ensurePick(fight);
-      MY_PICKS[fight].round = selR.value || (selM?.value === "Decision" ? "N/A" : "1");
+      MY_PICKS[fight].round =
+        selR.value || (selM?.value === "Decision" ? "N/A" : "1");
     });
 
     syncRound();
@@ -218,7 +265,7 @@ function renderResults() {
   if (!tb) return;
 
   const rows = Object.entries(RESULTS).map(([fight, r]) => {
-    const rd = r.method === "Decision" ? "N/A" : (r.round || "");
+    const rd = r.method === "Decision" ? "N/A" : r.round || "";
     return `
       <tr>
         <td>${html(fight)}</td>
@@ -237,8 +284,9 @@ function renderLeaderboard() {
   const note = $id("leaderboardNote");
   if (!tb) return;
 
-  const sorted = Object.entries(SCORES).map(([u, pts]) => ({ u, pts: Number(pts||0) }))
-    .sort((a,b) => b.pts - a.pts);
+  const sorted = Object.entries(SCORES)
+    .map(([u, pts]) => ({ u, pts: Number(pts || 0) }))
+    .sort((a, b) => b.pts - a.pts);
 
   if (!sorted.length) {
     tb.innerHTML = "";
@@ -246,15 +294,14 @@ function renderLeaderboard() {
     return;
   }
 
-  // assign ranks w/ ties
-  let rank = 0, lastPts = null, shown = 0;
+  // ranks with ties
+  let rank = 0;
+  let lastPts = null;
   const rows = sorted.map((row, idx) => {
     if (row.pts !== lastPts) {
       rank = idx + 1;
       lastPts = row.pts;
     }
-    shown++;
-    // crowd crown for rank 1 (ties OK) — your CSS shows the bouncing crown on first(s)
     const crown = rank === 1 ? " 👑" : "";
     return `
       <tr>
@@ -272,7 +319,7 @@ function renderLeaderboard() {
 // All fights complete?
 function allFightsCompleted() {
   if (!FIGHTS.length) return false;
-  const completed = FIGHTS.filter(f => {
+  const completed = FIGHTS.filter((f) => {
     const r = RESULTS[f.fight];
     if (!r || !r.winner || !r.method) return false;
     if (r.method === "Decision") return true;
@@ -285,47 +332,46 @@ function allFightsCompleted() {
 async function loadHealth() {
   try {
     await getJSON("/health");
-    setText("appStatus","ok");
+    setText("appStatus", "ok");
   } catch (e) {
-    setText("appStatus","API error");
+    setText("appStatus", "API error");
     console.error(e);
   }
 }
 
-// Banner: show ONLY after all fights completed (per your requirement)
+// Banner: show ONLY after all fights completed
 async function loadBanner() {
   try {
-    // Your server exposes GET /champion which returns { message }
-    const j = await getJSON("/champion");
+    const j = await getJSON("/champion"); // { message }
     CHAMP_MSG = j?.message || "";
-    // Only reveal if the event is fully scored:
     if (allFightsCompleted()) {
       setBanner(CHAMP_MSG);
     } else {
       setBanner("");
     }
   } catch {
-    // quiet
     setBanner("");
   }
 }
 
 async function loadFights() {
   const arr = await getJSON("/fights");
-  FIGHTS = (Array.isArray(arr)?arr:[])
-    .filter(r => r && typeof r.fight === "string" && (r.fighter1 || r.fighter2))
-    .map(r => ({
+  FIGHTS = (Array.isArray(arr) ? arr : [])
+    .filter(
+      (r) => r && typeof r.fight === "string" && (r.fighter1 || r.fighter2)
+    )
+    .map((r) => ({
       fight: r.fight,
       fighter1: r.fighter1 || "",
       fighter2: r.fighter2 || "",
       f1Odds: r.f1Odds || "",
       f2Odds: r.f2Odds || "",
-      underdog: r.underdog || "",       // expects "Fighter 1"/"Fighter 2"
-      underdogOdds: r.underdogOdds || ""
+      underdog: r.underdog || "", // "Fighter 1" / "Fighter 2"
+      underdogOdds: r.underdogOdds || "",
     }));
 
   renderFights();
-  setText("appStatus","ready");
+  setText("appStatus", "ready");
 }
 
 async function loadMyPicks() {
@@ -336,14 +382,17 @@ async function loadMyPicks() {
     return;
   }
   try {
-    const j = await postJSON("/picks", { action: "getUserPicks", username: name });
+    const j = await postJSON("/picks", {
+      action: "getUserPicks",
+      username: name,
+    });
     if (j && j.success && Array.isArray(j.picks)) {
       MY_PICKS = {};
-      j.picks.forEach(p => {
+      j.picks.forEach((p) => {
         MY_PICKS[p.fight] = {
           winner: p.winner || "",
           method: p.method || "Decision",
-          round:  p.method === "Decision" ? "N/A" : (p.round || "1")
+          round: p.method === "Decision" ? "N/A" : p.round || "1",
         };
       });
       renderFights();
@@ -361,17 +410,14 @@ async function loadMyPicks() {
 
 async function loadLeaderboard() {
   try {
-    // IMPORTANT: your server exposes POST /leaderboard
     const j = await postJSON("/leaderboard", { action: "getLeaderboard" });
-
-    SCORES  = j?.scores || {};
+    SCORES = j?.scores || {};
     RESULTS = j?.fightResults || {};
     CHAMP_MSG = j?.champMessage || "";
 
     renderResults();
     renderLeaderboard();
 
-    // champ banner only when fully complete
     if (allFightsCompleted()) {
       setBanner(CHAMP_MSG);
     } else {
@@ -394,14 +440,14 @@ async function submitPicks() {
   }
 
   const picks = [];
-  FIGHTS.forEach(f => {
+  FIGHTS.forEach((f) => {
     const p = MY_PICKS[f.fight];
     if (p && p.winner) {
       picks.push({
-        fight:  f.fight,
+        fight: f.fight,
         winner: p.winner,
         method: p.method || "Decision",
-        round:  (p.method === "Decision") ? "N/A" : (p.round || "1")
+        round: p.method === "Decision" ? "N/A" : p.round || "1",
       });
     }
   });
@@ -415,7 +461,11 @@ async function submitPicks() {
   if (msg) msg.textContent = "Submitting…";
 
   try {
-    const j = await postJSON("/submit", { action: "submitPicks", username: name, picks });
+    const j = await postJSON("/submit", {
+      action: "submitPicks",
+      username: name,
+      picks,
+    });
     if (j?.success) {
       if (msg) msg.textContent = "Picks submitted ✅";
       saveUsername(name);
@@ -444,17 +494,16 @@ function wire() {
     const u = $id("username");
     if (u) u.value = saved;
     showWelcome(saved);
-    // silently fetch their picks like before
-    loadMyPicks().catch(()=>{});
+    loadMyPicks().catch(() => {});
   }
 }
 
 async function init() {
   wire();
   await loadHealth();
-  await loadFights();      // fights first so RESULTS completeness check has context
-  await loadLeaderboard(); // pulls results + scores and conditionally shows banner
-  await loadBanner();      // also gated by allFightsCompleted()
+  await loadFights();      // fights first → completeness check has context
+  await loadLeaderboard(); // results + scores + maybe banner
+  await loadBanner();      // gated by allFightsCompleted()
   // live refresh during event night
   setInterval(loadLeaderboard, 30000);
 }
