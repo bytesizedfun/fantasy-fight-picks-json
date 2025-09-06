@@ -1,105 +1,84 @@
-// Fantasy Fight Picks — Service Worker (PWA)
-// ⬆️ cache bump so old assets are discarded
-const CACHE_NAME = 'ffp-cache-v3';
-
-const ASSETS = [
-  '/',                 // if your server serves index.html at /
-  '/index.html',
-  // NOTE: remove style.css and script.js from the precache so they can update instantly
-  // Icons (root filenames)
-  '/favicon.ico',
-  '/favicon-16.png',
-  '/favicon-32.png',
-  '/favicon-48.png',
-  '/favicon-64.png',
-  '/apple-touch-icon.png',
-  '/android-chrome-192x192.png',
-  '/android-chrome-512x512.png',
-  '/android-chrome-maskable-192x192.png',
-  '/android-chrome-maskable-512x512.png',
-  '/safari-pinned-tab.svg',
-  '/mstile-150x150.png',
-  '/mstile-310x310.png',
-  '/mstile-310x150.png',
-  '/site.webmanifest',
-  '/offline.html'
+// === sw.js v24 ===
+const VERSION = "v24";
+const STATIC_CACHE = `ffp-static-${VERSION}`;
+const STATIC_ASSETS = [
+  "/", "/index.html",
+  "/style.css?v=21",
+  "/script.js?v=24",
+  "/logo_fighter.png",
+  "/favicon.ico?v=19",
+  "/favicon-64.png?v=19",
+  "/favicon-48.png?v=19",
+  "/favicon-32.png?v=19",
+  "/favicon-16.png?v=19",
+  "/apple-touch-icon.png?v=19",
+  "/site.webmanifest?v=19",
+  "/safari-pinned-tab.svg?v=19",
+  "/mstile-150x150.png?v=19",
+  "/browserconfig.xml?v=19"
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+// Treat API endpoints as network-only (no caching)
+function isApiRequest(url) {
+  try {
+    const u = new URL(url);
+    if (u.pathname.startsWith("/api")) return true;
+    if (u.pathname === "/fights" || u.pathname === "/leaderboard" || u.pathname === "/picks" || u.pathname === "/champion" || u.pathname === "/hall") return true;
+    if (u.hostname.includes("script.google.com") && u.pathname.includes("/macros/s/")) return true;
+  } catch (_) {}
+  return false;
+}
+
+self.addEventListener("install", (event) => {
   self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : Promise.resolve()))
-    )
+    caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {})
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  if (req.method !== 'GET') return;
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => (k !== STATIC_CACHE ? caches.delete(k) : Promise.resolve())));
+      await self.clients.claim();
+    })()
+  );
+});
 
-  // Always try network first for HTML navigations
-  if (req.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const net = await fetch(req);
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(req, net.clone());
-        return net;
-      } catch (e) {
-        const cached = await caches.match(req);
-        return cached || caches.match('/offline.html');
-      }
-    })());
-    return;
-  }
+// Network-only for API, cache-first for static
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
 
-  // 🔥 NEW: network-first for CSS and JS so updates apply immediately
-  if (req.destination === 'style' || req.destination === 'script') {
-    event.respondWith((async () => {
-      try {
-        const net = await fetch(req, { cache: 'no-store' });
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(req, net.clone());
-        return net;
-      } catch (e) {
-        const cached = await caches.match(req);
-        return cached || new Response('', { status: 503, statusText: 'Offline' });
-      }
-    })());
-    return;
-  }
-
-  // Cache-first for our pre-cached ASSETS
-  const url = new URL(req.url);
-  if (ASSETS.includes(url.pathname)) {
-    event.respondWith((async () => {
-      const cached = await caches.match(req);
-      if (cached) return cached;
-      const net = await fetch(req);
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(req, net.clone());
-      return net;
-    })());
-    return;
-  }
-
-  // Default: network with cache fallback
-  event.respondWith((async () => {
-    try {
-      return await fetch(req);
-    } catch (e) {
-      const cached = await caches.match(req);
-      if (cached) return cached;
-      if (req.destination === 'image') {
-        return new Response(new Blob(), { headers: { 'Content-Type': 'image/png' } });
-      }
-      return new Response('Offline', { status: 503, statusText: 'Offline' });
+  // Don’t touch non-GET
+  if (request.method !== "GET") {
+    if (isApiRequest(request.url)) {
+      event.respondWith(fetch(request));
     }
-  })());
+    return;
+  }
+
+  if (isApiRequest(request.url)) {
+    event.respondWith(fetch(request).catch(() => new Response(JSON.stringify({ error: "offline" }), { status: 503 })));
+    return;
+  }
+
+  // Static: cache-first with network fallback
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((resp) => {
+        const copy = resp.clone();
+        caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+        return resp;
+      });
+    })
+  );
+});
+
+// Manual cache clear hook (optional)
+self.addEventListener("message", (event) => {
+  if (event.data === "clear-caches") {
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+  }
 });
