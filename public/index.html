@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap" rel="stylesheet">
 
-  <!-- Favicon / App Icons (root, same filenames you already have) -->
+  <!-- Favicon / App Icons -->
   <link rel="icon" href="/favicon.ico?v=19">
   <link rel="shortcut icon" href="/favicon.ico?v=19">
   <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png?v=19">
@@ -21,23 +21,22 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=19">
   <link rel="manifest" href="/site.webmanifest?v=19">
   <meta name="theme-color" content="#0b0b0d">
-
-  <!-- Safari pinned tab -->
   <link rel="mask-icon" href="/safari-pinned-tab.svg?v=19" color="#00F5FF">
-
-  <!-- Windows tiles -->
   <meta name="msapplication-TileColor" content="#0b0b0d">
   <meta name="msapplication-TileImage" content="/mstile-150x150.png?v=19">
   <meta name="msapplication-config" content="/browserconfig.xml?v=19">
 
-  <!-- ⬅️ version bump so new CSS is fetched -->
+  <!-- version bump so new CSS is fetched -->
   <link rel="stylesheet" href="style.css?v=21" />
   <script>
-    window.API_BASE = window.API_BASE || "/api";
-    // Register service worker for install + offline
+    // If using GAS instead of Render, set this to your /exec URL:
+    // window.API_BASE = "https://script.google.com/macros/s/EXEC_ID/exec";
+    window.API_BASE = "/api";
+
+    // Service worker (versioned so it updates)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(console.error);
+        navigator.serviceWorker.register('/sw.js?v=24').catch(console.error);
       });
     }
   </script>
@@ -48,7 +47,7 @@
     <img class="logo-banner" src="logo_fighter.png" alt="Logo" decoding="async" />
   </div>
 
-  <!-- Champion banner (edge-to-edge) -->
+  <!-- Champion banner -->
   <div id="champBanner" class="champ-banner"></div>
 
   <div id="app">
@@ -62,7 +61,7 @@
     <!-- Welcome -->
     <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring (collapsible only; content injected by JS) -->
+    <!-- Scoring (content injected by JS) -->
     <details id="scoringPanel" class="rules-collapsible">
       <summary>
         <span class="rules-toggle-label">🧠 Scoring</span>
@@ -80,7 +79,7 @@
     <!-- Submit -->
     <button id="submitBtn" style="display:none;">Submit Picks</button>
 
-    <!-- My Picks (hidden until user has picks) -->
+    <!-- My Picks -->
     <section id="myPicks" style="display:none;"></section>
 
     <!-- Leaderboard title -->
@@ -97,7 +96,7 @@
     <ul id="allTimeBoard" class="board at-five" style="display:none;"></ul>
   </div>
 
-  <!-- Discord CTA (bottom) -->
+  <!-- Discord CTA -->
   <div class="cta-discord">
     <a class="btn-discord" href="https://discord.gg/azMMVrEB" target="_blank" rel="noopener">
       <span class="discord-icon" aria-hidden="true">
@@ -110,6 +109,7 @@
     </a>
   </div>
 
-  <script src="script.js" defer></script>
+  <!-- versioned so new JS loads even with SW -->
+  <script src="script.js?v=24" defer></script>
 </body>
 </html>
