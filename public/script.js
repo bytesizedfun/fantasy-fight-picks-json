@@ -1,24 +1,18 @@
 // === script.js (FULL FILE) ===
 document.addEventListener("DOMContentLoaded", () => {
-  // Default to your server proxy (/api). You don't need to set window.API_BASE.
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
 
-  // Detect whether the backend exposes "path" routes (/api/fights) or "action" routes (?action=...).
-  // We'll prefer "path" since that's how your server.js is written.
-  let apiMode = "path"; // default
+  let apiMode = "path";
   async function detectApiMode() {
     try {
-      // try PATH first
       const r = await fetch(`${BASE}/fights`, { method: "GET" });
       if (r.ok) { apiMode = "path"; return "path"; }
     } catch (_) {}
     try {
-      // try ACTION fallback
       const sep = BASE.includes("?") ? "&" : "?";
       const r = await fetch(`${BASE}${sep}action=getFights`, { method: "GET" });
       if (r.ok) { apiMode = "action"; return "action"; }
     } catch (_) {}
-    // default to path so we don't break your server.js
     apiMode = "path";
     return "path";
   }
@@ -28,82 +22,64 @@ document.addEventListener("DOMContentLoaded", () => {
     async init() { this.mode = await detectApiMode(); },
 
     getFights() {
-      if (this.mode === "path") {
-        return fetch(`${BASE}/fights`).then(r => r.json());
-      } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getFights`).then(r => r.json());
-      }
+      if (this.mode === "path") return fetch(`${BASE}/fights`).then(r => r.json());
+      const sep = BASE.includes("?") ? "&" : "?";
+      return fetch(`${BASE}${sep}action=getFights`).then(r => r.json());
     },
 
     getUserPicks(username) {
       if (this.mode === "path") {
         return fetch(`${BASE}/picks`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type":"application/json" },
           body: JSON.stringify({ username })
         }).then(r => r.json());
-      } else {
-        return fetch(BASE, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "getUserPicks", username })
-        }).then(r => r.json());
       }
+      return fetch(BASE, {
+        method: "POST", headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ action:"getUserPicks", username })
+      }).then(r => r.json());
     },
 
     submitPicks(payload) {
       if (this.mode === "path") {
         return fetch(`${BASE}/submit`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type":"application/json" },
           body: JSON.stringify(payload)
         }).then(r => r.json());
-      } else {
-        return fetch(BASE, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "submitPicks", ...payload })
-        }).then(r => r.json());
       }
+      return fetch(BASE, {
+        method: "POST", headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ action:"submitPicks", ...payload })
+      }).then(r => r.json());
     },
 
     getLeaderboard() {
       if (this.mode === "path") {
         return fetch(`${BASE}/leaderboard`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type":"application/json" },
           body: JSON.stringify({})
         }).then(r => r.json());
-      } else {
-        return fetch(BASE, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "getLeaderboard" })
-        }).then(r => r.json());
       }
+      return fetch(BASE, {
+        method: "POST", headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ action:"getLeaderboard" })
+      }).then(r => r.json());
     },
 
     getChampionBanner() {
-      if (this.mode === "path") {
-        return fetch(`${BASE}/champion`).then(r => r.json());
-      } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
-      }
+      if (this.mode === "path") return fetch(`${BASE}/champion`).then(r => r.json());
+      const sep = BASE.includes("?") ? "&" : "?";
+      return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
     },
 
     getHall() {
-      if (this.mode === "path") {
-        return fetch(`${BASE}/hall`, { headers: { "Cache-Control": "no-cache" } }).then(r => r.json());
-      } else {
-        const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getHall`).then(r => r.json());
-      }
+      if (this.mode === "path") return fetch(`${BASE}/hall`, { headers: { "Cache-Control":"no-cache" } }).then(r => r.json());
+      const sep = BASE.includes("?") ? "&" : "?";
+      return fetch(`${BASE}${sep}action=getHall`).then(r => r.json());
     }
   };
 
-  // ---------- DOM ----------
+  // DOM refs
   const welcome = document.getElementById("welcome");
   const fightList = document.getElementById("fightList");
   const submitBtn = document.getElementById("submitBtn");
@@ -119,7 +95,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let username = localStorage.getItem("username");
   const fightMeta = new Map();
 
-  // ---------- caches ----------
   const now = () => Date.now();
   const FIGHTS_TTL = 5 * 60 * 1000;
   const LB_TTL    = 30 * 1000;
@@ -132,11 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (fightsCache.promise) return fightsCache.promise;
 
     fightsCache.promise = api.getFights()
-      .then(data => {
-        fightsCache = { data, ts: now(), promise: null };
-        buildFightMeta(data);
-        return data;
-      })
+      .then(data => { fightsCache = { data, ts: now(), promise: null }; buildFightMeta(data); return data; })
       .catch(err => { fightsCache.promise = null; throw err; });
 
     return fightsCache.promise;
@@ -200,7 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
     usernamePrompt.style.display = "flex";
   }
 
-  // ---------- Polling gate ----------
   let pollTimer = null;
   function setPolling(on) {
     if (on) {
@@ -213,7 +183,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---------- App ----------
   async function startApp() {
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
     welcome.style.display = "block";
@@ -261,7 +230,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ---------- Fights (pick form) ----------
   function renderFightList(data) {
     fightList.innerHTML = "";
     (data || []).forEach(({ fight, fighter1, fighter2 }) => {
@@ -321,7 +289,6 @@ document.addEventListener("DOMContentLoaded", () => {
       fightList.appendChild(div);
     });
 
-    // Decision disables round
     document.querySelectorAll(".fight").forEach(fight => {
       const methodSelect = fight.querySelector(`select[name$="-method"]`);
       const roundSelect = fight.querySelector(`select[name$="-round"]`);
@@ -339,7 +306,6 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.style.display = "block";
   }
 
-  // ---------- Submit picks ----------
   function submitPicks() {
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
@@ -387,7 +353,6 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  // ---------- Helpers for "Your Picks" ----------
   function shortMethod(m) {
     if (!m) return "";
     const s = String(m).toUpperCase();
@@ -397,7 +362,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return m;
   }
 
-  // ---------- My Picks (betslip) ----------
   function loadMyPicks() {
     return api.getUserPicks(username)
       .then(data => {
@@ -444,20 +408,84 @@ document.addEventListener("DOMContentLoaded", () => {
               (dogSide === "Fighter 1" && winner === meta.f1) ||
               (dogSide === "Fighter 2" && winner === meta.f2);
 
-            // Score calc
             let score = 0;
             if (matchWinner) {
-              s += 3; // BUGFIX: we must define s. Keep score variable name consistent.
+              score += 3;
+              if (matchMethod) {
+                score += 2;
+                if (method !== "Decision" && matchRound) score += 1;
+              }
+              if (hasResult && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0) {
+                score += dogTier;
+              }
             }
+
+            const pre = !hasResult;
+            const icoWinnerChar = pre ? "•" : (matchWinner ? "✓" : "✗");
+            const icoWinnerCls  = pre ? "dot" : (matchWinner ? "ok" : "x");
+
+            let icoMethodChar, icoMethodCls, methodVal;
+            if (pre) {
+              icoMethodChar = "•"; icoMethodCls = "dot"; methodVal = shortMethod(method);
+            } else if (!matchWinner) {
+              icoMethodChar = "✗"; icoMethodCls = "x"; methodVal = shortMethod(method);
+            } else {
+              icoMethodChar = matchMethod ? "✓" : "✗";
+              icoMethodCls = matchMethod ? "ok" : "x";
+              methodVal = shortMethod(method);
+            }
+
+            let icoRoundChar = "", icoRoundCls = "", roundVal = "";
+            if (method && method.toUpperCase().includes("DECISION")) {
+              icoRoundChar = "•"; icoRoundCls = "dot"; roundVal = "—";
+            } else {
+              const label = round ? `RD ${round}` : "—";
+              if (pre) { icoRoundChar = "•"; icoRoundCls = "dot"; roundVal = label; }
+              else if (!matchWinner) { icoRoundChar = "✗"; icoRoundCls = "x"; roundVal = label; }
+              else { icoRoundChar = matchRound ? "✓" : "✗"; icoRoundCls = matchRound ? "ok" : "x"; roundVal = label; }
+            }
+
+            const pointsBadge = hasResult
+              ? `<span class="points-badge">${score}</span>`
+              : `<span class="points-badge points-muted">—</span>`;
+
+            const dogBonus = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
+              ? `<span class="dog">🐶 +${dogTier}</span>`
+              : "";
+
+            myPicksDiv.innerHTML += `
+              <div class="scored-pick">
+                <div class="ticket-fight">
+                  <span class="fighter">${f1}</span>
+                  <span class="vs">vs</span>
+                  <span class="fighter">${f2}</span>
+                </div>
+
+                <div class="ticket-grid">
+                  <div class="cell cell-pick">
+                    <span class="ico ${icoWinnerCls}">${icoWinnerChar}</span>
+                    <span class="value">${winner}</span>
+                    ${dogBonus}
+                  </div>
+                  <div class="cell cell-method">
+                    <span class="ico ${icoMethodCls}">${icoMethodChar}</span>
+                    <span class="value">${methodVal}</span>
+                  </div>
+                  <div class="cell cell-round">
+                    <span class="ico ${icoRoundCls}">${icoRoundChar}</span>
+                    <span class="value">${roundVal}</span>
+                  </div>
+                  <div class="cell cell-points">
+                    ${pointsBadge}
+                  </div>
+                </div>
+              </div>`;
           });
         });
       })
-      .catch(err => {
-        console.error("loadMyPicks error:", err);
-      });
+      .catch(err => { console.error("loadMyPicks error:", err); });
   }
 
-  // ---------- Champion banner + Weekly Leaderboard ----------
   function showChampionBannerOnce() {
     if (showChampionBannerOnce.done) return;
     showChampionBannerOnce.done = true;
@@ -480,7 +508,6 @@ document.addEventListener("DOMContentLoaded", () => {
       board.classList.add("board","weekly");
       board.innerHTML = "";
 
-      // Pre-lockout: show frozen weekly scores from backend
       const preLock = !!(leaderboardData && leaderboardData.preLockout);
       const preLockScores = leaderboardData && leaderboardData.scores ? Object.entries(leaderboardData.scores) : [];
       if (preLock && preLockScores.length) {
@@ -503,7 +530,7 @@ document.addEventListener("DOMContentLoaded", () => {
           rank++;
         });
 
-        setPolling(false); // no polling pre-lockout
+        setPolling(false);
         return;
       }
 
@@ -562,20 +589,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const shouldPoll = resultsStarted && completed < totalFights;
       setPolling(shouldPoll);
     })
-    .catch(err => {
-      console.error("loadLeaderboard error:", err);
-    });
+    .catch(err => { console.error("loadLeaderboard error:", err); });
   }
 
-  // ---------- All-Time Leaderboard ----------
   let allTimeLoaded = false;
   let allTimeData = [];
 
   function parsePercent(maybePercent) {
     if (maybePercent == null) return 0;
-    if (typeof maybePercent === "number") {
-      return maybePercent > 1 ? maybePercent : (maybePercent * 100);
-    }
+    if (typeof maybePercent === "number") return maybePercent > 1 ? maybePercent : (maybePercent * 100);
     const s = String(maybePercent).trim();
     const n = parseFloat(s.replace('%',''));
     if (isNaN(n)) return 0;
@@ -589,7 +611,7 @@ document.addEventListener("DOMContentLoaded", () => {
         user: r.username,
         crowns: Number(r.crowns) || 0,
         events: Number(r.events_played) || 0,
-        rate: parsePercent(r.crown_rate) // 0..100
+        rate: parsePercent(r.crown_rate)
       }))
       .sort((a,b) =>
         (b.rate - a.rate) ||
@@ -640,13 +662,9 @@ document.addEventListener("DOMContentLoaded", () => {
       li.innerHTML = `
         <span class="rank">${rankLabel}</span>
         <span class="user" title="${row.user}">${row.user}</span>
-
-        <!-- desktop cells -->
         <span class="num rate">${pct}</span>
         <span class="num crowns">${row.crowns}</span>
         <span class="num events">${row.events}</span>
-
-        <!-- mobile-only line -->
         <span class="meta">
           <span class="rate">${pct}</span>
           <span class="events">${row.events}</span>
@@ -675,7 +693,6 @@ document.addEventListener("DOMContentLoaded", () => {
       .finally(() => { allTimeList.style.minHeight = ""; });
   }
 
-  // ---------- Tabs ----------
   weeklyTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
     leaderboardEl.style.display = "block";
@@ -693,7 +710,6 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
 
-  // ---------- Defensive: normalize any plain text rows ----------
   function normalizeAllTimeIfNeeded() {
     const list = allTimeList;
     if (!list) return;
@@ -718,11 +734,9 @@ document.addEventListener("DOMContentLoaded", () => {
       li.innerHTML = `
         <span class="rank">#${idx}</span>
         <span class="user">${user}</span>
-
         <span class="num rate">${pct}</span>
         <span class="num crowns">${crowns}</span>
         <span class="num events">${events}</span>
-
         <span class="meta">
           <span class="rate">${pct}</span>
           <span class="events">${events}</span>
