@@ -1,9 +1,26 @@
 // server.js
-// Express server + UFCStats result scraper + GAS bridge (Render-ready)
+// Express server + UFCStats scraper + GAS bridge (Render-ready, Node 16–20 safe)
 
 const express = require("express");
 const path = require("path");
-const cheerio = require("cheerio"); // use cheerio.load(html) -> $
+const cheerio = require("cheerio");
+
+// ---- fetch fallback for Node <18 ----
+let fetchFn = global.fetch;
+if (!fetchFn) {
+  try {
+    // cross-fetch works with CommonJS require
+    fetchFn = require("cross-fetch");
+  } catch {
+    // dynamic import fallback to node-fetch (ESM)
+    fetchFn = (...args) =>
+      import("node-fetch").then(({ default: f }) => f(...args));
+  }
+}
+const fetch = fetchFn;
+
+// AbortController fallback (Node 16)
+const AC = global.AbortController || require("abort-controller");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -12,12 +29,12 @@ const GOOGLE_SCRIPT_URL =
   process.env.GAS_URL ||
   "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
-const UFC_BASE = "http://www.ufcstats.com"; // UFCStats is served over http
+const UFC_BASE = "http://www.ufcstats.com"; // UFCStats is http
 
 // ======== MIDDLEWARE ========
 app.use(express.json());
 
-// Serve static assets from /public and kill caching for HTML
+// Serve static from /public; disable caching for HTML
 app.use(
   express.static("public", {
     extensions: ["html"],
@@ -32,18 +49,18 @@ app.use(
   })
 );
 
-// explicit root -> public/index.html (prevents serving wrong file at "/")
+// Explicit root -> public/index.html
 app.get("/", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "public", "index.html"));
 });
 
-// tiny request logger so you can see traffic in Render logs
+// tiny logger
 app.use((req, _res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
 });
 
-// 🔒 kill caching on API responses (fixes phones serving stale/empty JSON)
+// Kill caching on API
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -57,10 +74,8 @@ app.use((req, res, next) => {
 // ======== HEALTH ========
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// ======== GAS PROXY ENDPOINTS FOR YOUR FRONTEND ========
-
-// Prefer getFightList; if your GAS still uses getFights, fallback automatically.
-app.get("/api/fights", async (_req, res) => {
+// ======== GAS PROXY (frontend) ========
+app.get("/api/fights", async (_req, res, next) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFightList`, {
       headers: { "Cache-Control": "no-cache" },
@@ -76,13 +91,12 @@ app.get("/api/fights", async (_req, res) => {
       return res.json(await r2.json());
     } catch (e2) {
       console.error("getFights error:", e1, e2);
-      return res.status(500).json({ error: "Failed to fetch fights" });
+      return next(e2);
     }
   }
 });
 
-// Keep your original POST, add GET alias for clients that request it via GET
-app.post("/api/leaderboard", async (_req, res) => {
+app.post("/api/leaderboard", async (_req, res, next) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
@@ -92,11 +106,11 @@ app.post("/api/leaderboard", async (_req, res) => {
     res.json(await r.json());
   } catch (e) {
     console.error("getLeaderboard (POST):", e);
-    res.status(500).json({ error: "Failed to fetch leaderboard" });
+    next(e);
   }
 });
 
-app.get("/api/leaderboard", async (_req, res) => {
+app.get("/api/leaderboard", async (_req, res, next) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLeaderboard`, {
       headers: { "Cache-Control": "no-cache" },
@@ -104,11 +118,11 @@ app.get("/api/leaderboard", async (_req, res) => {
     res.json(await r.json());
   } catch (e) {
     console.error("getLeaderboard (GET):", e);
-    res.status(500).json({ error: "Failed to fetch leaderboard" });
+    next(e);
   }
 });
 
-app.get("/api/hall", async (_req, res) => {
+app.get("/api/hall", async (_req, res, next) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
       headers: { "Cache-Control": "no-cache" },
@@ -117,12 +131,11 @@ app.get("/api/hall", async (_req, res) => {
     res.json(await r.json());
   } catch (e) {
     console.error("getHall:", e);
-    res.status(500).json([]);
+    next(e);
   }
 });
 
-// Champion banner
-app.get("/api/champion", async (_req, res) => {
+app.get("/api/champion", async (_req, res, next) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`, {
       headers: { "Cache-Control": "no-cache" },
@@ -130,11 +143,11 @@ app.get("/api/champion", async (_req, res) => {
     res.json(await r.json());
   } catch (e) {
     console.error("getChampionBanner:", e);
-    res.status(500).json({ message: "" });
+    next(e);
   }
 });
 
-app.get("/api/champion-banner", async (_req, res) => {
+app.get("/api/champion-banner", async (_req, res, next) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`, {
       headers: { "Cache-Control": "no-cache" },
@@ -142,12 +155,11 @@ app.get("/api/champion-banner", async (_req, res) => {
     res.json(await r.json());
   } catch (e) {
     console.error("getChampionBanner alias:", e);
-    res.status(500).json({ message: "" });
+    next(e);
   }
 });
 
-// ✅ Submit picks -> GAS
-app.post("/api/submit", async (req, res) => {
+app.post("/api/submit", async (req, res, next) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
@@ -158,12 +170,11 @@ app.post("/api/submit", async (req, res) => {
     res.json(j);
   } catch (e) {
     console.error("submitPicks:", e);
-    res.status(500).json({ success: false, error: "Failed to submit picks" });
+    next(e);
   }
 });
 
-// ✅ Get user picks -> GAS
-app.post("/api/picks", async (req, res) => {
+app.post("/api/picks", async (req, res, next) => {
   try {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
@@ -174,13 +185,13 @@ app.post("/api/picks", async (req, res) => {
     res.json(j);
   } catch (e) {
     console.error("getUserPicks:", e);
-    res.status(500).json({ success: false, error: "Failed to fetch picks" });
+    next(e);
   }
 });
 
 // ======== SCRAPER CORE (Cheerio) ========
 async function fetchHTML(url, ms = 15000) {
-  const controller = new AbortController();
+  const controller = new AC();
   const t = setTimeout(() => controller.abort(), ms);
   try {
     const r = await fetch(url, {
@@ -214,13 +225,11 @@ function normalizeMethod(txt) {
   return "";
 }
 
-// --- robust metadata readers (fixes Round 0 issue) ---
 function readMetaBlock($) {
-  const txt = $(".b-fight-details__content .b-fight-details__text")
+  return $(".b-fight-details__content .b-fight-details__text")
     .text()
     .replace(/\s+/g, " ")
     .trim();
-  return txt;
 }
 function parseMethodAndRound(metaText) {
   const m = metaText.match(/Method:\s*([A-Za-z/ \-]+?)(?=\s{2,}|Round:|Time:|Referee:|$)/i);
@@ -258,7 +267,7 @@ async function scrapeFightDetails(fightId) {
   const { methodRaw, roundRaw } = parseMethodAndRound(metaText);
 
   const method = normalizeMethod(methodRaw);
-  const round = method === "Decision" ? "N/A" : (roundRaw || "");
+  const round = method === "Decision" ? "N/A" : roundRaw || "";
   const finished = !!(winner && method && (method === "Decision" || round));
 
   return {
@@ -320,63 +329,61 @@ async function scrapeEvent(ref) {
   return { provider: "ufcstats", eventId, eventName, eventDate, fights: cleaned };
 }
 
-// ======== SCRAPER ROUTES (for debugging / GAS) ========
-app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
+// ======== SCRAPER ROUTES ========
+app.get("/api/scrape/ufcstats/event/:id", async (req, res, next) => {
   try {
     res.json(await scrapeEvent(req.params.id));
   } catch (e) {
     console.error("scrape by id:", e);
-    res.status(500).json({ error: String(e.message || e) });
+    next(e);
   }
 });
 
-app.get("/api/scrape/ufcstats/event", async (req, res) => {
+app.get("/api/scrape/ufcstats/event", async (req, res, next) => {
   try {
     const url = String(req.query.url || "").trim();
     if (!url) return res.status(400).json({ error: "Missing ?url" });
     res.json(await scrapeEvent(url));
   } catch (e) {
     console.error("scrape by url:", e);
-    res.status(500).json({ error: String(e.message || e) });
+    next(e);
   }
 });
 
-app.get("/api/scrape/ufcstats/latest-upcoming", async (_req, res) => {
+app.get("/api/scrape/ufcstats/latest-upcoming", async (_req, res, next) => {
   try {
     res.json(await scrapeEvent(await firstEventUrl("upcoming")));
   } catch (e) {
     console.error("latest-upcoming:", e);
-    res.status(500).json({ error: String(e.message || e) });
+    next(e);
   }
 });
 
-app.get("/api/scrape/ufcstats/latest-completed", async (_req, res) => {
+app.get("/api/scrape/ufcstats/latest-completed", async (_req, res, next) => {
   try {
     res.json(await scrapeEvent(await firstEventUrl("completed")));
   } catch (e) {
     console.error("latest-completed:", e);
-    res.status(500).json({ error: String(e.message || e) });
+    next(e);
   }
 });
 
-// ======== ADMIN: SYNC RESULTS INTO SHEETS (calls your GAS) ========
+// ======== ADMIN: SYNC RESULTS INTO SHEETS ========
 function publicBase(req) {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   return `${proto}://${host}`;
 }
 
-/**
- * GAS handler: action=syncFromScraper&ref=...&base=...&mode=resultsOnly
- * ref can be event ID or full UFCStats event URL
- */
-app.get("/api/admin/syncFromUFCStats", async (req, res) => {
+app.get("/api/admin/syncFromUFCStats", async (req, res, next) => {
   try {
     const refRaw = (req.query.ref || "").toString().trim();
     if (!refRaw) return res.status(400).json({ error: "Missing ?ref=<eventId|url|upcoming|completed>" });
 
     const base = publicBase(req);
-    const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromScraper&ref=${encodeURIComponent(refRaw)}&base=${encodeURIComponent(base)}&mode=resultsOnly`;
+    const gasUrl = `${GOOGLE_SCRIPT_URL}?action=syncFromScraper&ref=${encodeURIComponent(
+      refRaw
+    )}&base=${encodeURIComponent(base)}&mode=resultsOnly`;
 
     const r = await fetch(gasUrl, { headers: { "cache-control": "no-cache" } });
     const text = await r.text();
@@ -384,7 +391,18 @@ app.get("/api/admin/syncFromUFCStats", async (req, res) => {
     res.set("Cache-Control", "no-store").type("application/json").send(text);
   } catch (e) {
     console.error("syncFromUFCStats:", e);
-    res.status(500).json({ error: String(e.message || e) });
+    next(e);
+  }
+});
+
+// ======== ERROR HANDLER ========
+app.use((err, _req, res, _next) => {
+  const msg = (err && (err.message || err.toString())) || "Internal Server Error";
+  console.error("ERROR:", msg);
+  if (process.env.NODE_ENV !== "production") {
+    res.status(500).json({ error: msg, stack: err?.stack });
+  } else {
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
