@@ -22,46 +22,38 @@
   <link rel="manifest" href="/site.webmanifest?v=19">
   <meta name="theme-color" content="#0b0b0d">
   <link rel="mask-icon" href="/safari-pinned-tab.svg?v=19" color="#00F5FF">
+
   <meta name="msapplication-TileColor" content="#0b0b0d">
   <meta name="msapplication-TileImage" content="/mstile-150x150.png?v=19">
   <meta name="msapplication-config" content="/browserconfig.xml?v=19">
 
-  <!-- version bump so new CSS is fetched -->
   <link rel="stylesheet" href="style.css?v=21" />
   <script>
-    // If using GAS instead of Render, set this to your /exec URL:
-    // window.API_BASE = "https://script.google.com/macros/s/EXEC_ID/exec";
-    window.API_BASE = "/api";
-
-    // Service worker (versioned so it updates)
+    // Default to your proxy (/api)
+    window.API_BASE = window.API_BASE || "/api";
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=24').catch(console.error);
+        navigator.serviceWorker.register('/sw.js').catch(console.error);
       });
     }
   </script>
 </head>
 <body>
-  <!-- Logo -->
   <div class="banner-container">
     <img class="logo-banner" src="logo_fighter.png" alt="Logo" decoding="async" />
   </div>
 
-  <!-- Champion banner -->
   <div id="champBanner" class="champ-banner"></div>
 
   <div id="app">
-    <!-- Username prompt -->
     <div id="usernamePrompt" class="card center">
       <div class="prompt-title">Enter Your Name</div>
       <input id="usernameInput" type="text" placeholder="e.g. Alex" />
       <button type="button">Let’s Go</button>
     </div>
 
-    <!-- Welcome -->
     <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring (content injected by JS) -->
     <details id="scoringPanel" class="rules-collapsible">
       <summary>
         <span class="rules-toggle-label">🧠 Scoring</span>
@@ -70,33 +62,24 @@
       <section id="scoringRules" class="rules"></section>
     </details>
 
-    <!-- Fights -->
     <div id="fightList"></div>
-
-    <!-- FOTN -->
     <div id="fotnBlock" style="display:none;"></div>
 
-    <!-- Submit -->
     <button id="submitBtn" style="display:none;">Submit Picks</button>
 
-    <!-- My Picks -->
     <section id="myPicks" style="display:none;"></section>
 
-    <!-- Leaderboard title -->
     <h3 class="section-title section-title--leader" id="leaderboardTitle">LEADERBOARD</h3>
 
-    <!-- Tabs -->
     <div class="segmented">
       <button id="tabWeekly" aria-pressed="true">Weekly</button>
       <button id="tabAllTime" aria-pressed="false">All-Time</button>
     </div>
 
-    <!-- Leaderboards -->
     <ul id="leaderboard" class="board weekly"></ul>
     <ul id="allTimeBoard" class="board at-five" style="display:none;"></ul>
   </div>
 
-  <!-- Discord CTA -->
   <div class="cta-discord">
     <a class="btn-discord" href="https://discord.gg/azMMVrEB" target="_blank" rel="noopener">
       <span class="discord-icon" aria-hidden="true">
@@ -109,7 +92,7 @@
     </a>
   </div>
 
-  <!-- versioned so new JS loads even with SW -->
+  <!-- ⬅️ cache-busted -->
   <script src="script.js?v=24" defer></script>
 </body>
 </html>
