@@ -105,9 +105,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
 
+    // ✅ FIXED: respect mode for champion banner
     getChampionBanner() {
-      const sep = BASE.includes("?") ? "&" : "?";
-      return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
+      if (this.mode === "path") {
+        return fetch(`${BASE.replace(/\/$/,"")}/champion`).then(r => r.json());
+      } else {
+        const sep = BASE.includes("?") ? "&" : "?";
+        return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
+      }
     },
 
     getHall() {
