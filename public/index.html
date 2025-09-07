@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap" rel="stylesheet">
 
-  <!-- Icons / Manifest -->
+  <!-- Icons -->
   <link rel="icon" type="image/x-icon" href="./favicon.ico">
   <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
@@ -20,10 +20,7 @@
   <meta name="theme-color" content="#0b0b0d">
 
   <link rel="stylesheet" href="style.css" />
-  <script>
-    // App points at your Node proxy; Node proxies to GAS.
-    window.API_BASE = "/api";
-  </script>
+  <script>window.API_BASE = window.API_BASE || "/api";</script>
 </head>
 <body>
   <!-- Logo -->
@@ -38,14 +35,14 @@
     <!-- Username prompt -->
     <div id="usernamePrompt" class="card center">
       <div class="prompt-title">Enter Your Name</div>
-      <input id="usernameInput" type="text" placeholder="e.g. Alex" />
+      <input id="usernameInput" type="text" placeholder="e.g. Josh" />
       <button type="button">Let’s Go</button>
     </div>
 
     <!-- Welcome -->
     <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring -->
+    <!-- Scoring (collapsed by default) -->
     <details id="scoringPanel" class="rules-collapsible">
       <summary>
         <span class="rules-toggle-label">🧠 Scoring</span>
@@ -54,14 +51,14 @@
       <section id="scoringRules" class="rules"></section>
     </details>
 
-    <!-- Fights -->
+    <!-- Fights (picking) -->
     <div id="fightList"></div>
 
     <!-- Submit -->
     <button id="submitBtn" style="display:none;">Submit Picks</button>
 
     <!-- My Picks -->
-    <section id="myPicks" style="display:none;"></section>
+    <section id="myPicks" class="mypicks" style="display:none;"></section>
 
     <!-- Leaderboard title -->
     <h3 class="section-title section-title--leader" id="leaderboardTitle">LEADERBOARD</h3>
