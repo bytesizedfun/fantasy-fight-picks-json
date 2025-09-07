@@ -233,3 +233,10 @@ small,.muted{ color:var(--muted); }
   .board li{ grid-template-columns: 48px 48px 1fr 74px; padding:10px; }
   .logo-banner{ max-width:140px; }
 }
+
+/* === Orbitron lock for welcome line (keeps the rest of the site on your normal font) === */
+#welcome {
+  font-family: 'Orbitron', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
