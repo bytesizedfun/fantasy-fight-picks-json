@@ -1,4 +1,4 @@
-/* ===== Fantasy Fight Picks — UL-based layout theme (restored) ===== */
+/* ===== Fantasy Fight Picks — resilient UL/LI theme ===== */
 
 /* Palette */
 :root{
@@ -16,48 +16,30 @@
 /* Base */
 *{ box-sizing:border-box; }
 html,body{
-  margin:0;
-  padding:0;
-  background:var(--bg);
-  color:var(--bone);
+  margin:0; padding:0;
+  background:var(--bg); color:var(--bone);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
   line-height:1.35;
 }
 a{ color:var(--gold); text-decoration:none; }
 a:hover{ text-decoration:underline; }
-.muted, small{ color:var(--muted); }
+small,.muted{ color:var(--muted); }
 
-/* ---------- Layout containers ---------- */
 #app{ width:min(1100px,94vw); margin: 0 auto 28px; }
-.section-title{
-  width:min(1100px,94vw);
-  margin: 18px auto 8px;
-  letter-spacing:.18em;
-  color: var(--muted);
-  font-weight:900;
-}
-.section-title--leader{ text-align:center; }
 
-/* ---------- Banner / logo ---------- */
+/* ---------- Logo ---------- */
 .banner-container{
   width:min(1100px,94vw);
   margin: 18px auto 8px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display:flex; align-items:center; justify-content:center;
 }
 .logo-banner{
-  max-width: 220px;
-  width: auto;
-  height: auto;
-  display:block;
+  max-width: 200px; height:auto; width:auto; display:block;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,.45));
 }
-@media (max-width:560px){
-  .logo-banner{ max-width:160px; }
-}
+@media (max-width:560px){ .logo-banner{ max-width:150px; } }
 
-/* ---------- Card / prompt ---------- */
+/* ---------- Cards / Prompt ---------- */
 .card{
   background:var(--panel);
   border:1px solid rgba(255,255,255,.06);
@@ -67,53 +49,37 @@ a:hover{ text-decoration:underline; }
 .center{ text-align:center; }
 #usernamePrompt{
   width:min(680px, 94vw);
-  margin: 18px auto;
-  padding: 18px;
+  margin: 18px auto; padding: 18px;
 }
-.prompt-title{
-  font-weight:900;
-  font-size: 20px;
-  margin-bottom: 10px;
-}
+.prompt-title{ font-weight:900; font-size:20px; margin-bottom:10px; }
 #usernamePrompt input{
   width:min(360px, 90%);
-  background:var(--bg);
-  color:var(--bone);
+  background:var(--bg); color:var(--bone);
   border:1px solid rgba(255,255,255,.12);
-  border-radius:12px;
-  padding:10px 12px;
-  margin-right:8px;
+  border-radius:12px; padding:10px 12px; margin-right:8px;
 }
 #usernamePrompt button{
   background: linear-gradient(180deg, rgba(180,74,60,.85), rgba(180,74,60,.65));
   border:1px solid rgba(180,74,60,.45);
   color:var(--bone);
-  border-radius:12px;
-  padding:10px 14px;
-  font-weight:800;
-  cursor:pointer;
+  border-radius:12px; padding:10px 14px;
+  font-weight:800; cursor:pointer;
   box-shadow:0 6px 16px var(--shadow);
 }
 
-/* ---------- Scoring rules (details/summary) ---------- */
+/* ---------- Scoring (details) ---------- */
 .rules-collapsible{
   width:min(900px,94vw);
   margin: 8px auto 16px;
   background: var(--panel);
   border:1px solid rgba(255,255,255,.06);
-  border-radius: 14px;
-  overflow:hidden;
+  border-radius: 14px; overflow:hidden;
 }
 .rules-collapsible summary{
-  list-style:none;
-  cursor:pointer;
-  padding: 10px 14px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+  list-style:none; cursor:pointer; padding: 10px 14px;
+  display:flex; align-items:center; justify-content:space-between;
   background: rgba(255,255,255,.04);
-  color: var(--muted);
-  font-weight: 800;
+  color: var(--muted); font-weight: 800;
 }
 .rules-collapsible[open] .rules-caret{ transform: rotate(90deg); }
 .rules{ padding: 10px 14px; color:var(--muted); }
@@ -121,19 +87,15 @@ a:hover{ text-decoration:underline; }
 .tooltip{ display:none; margin-top:8px; font-size:13px; color:var(--muted);}
 .tooltip.show{ display:block; }
 
-/* ---------- Fights & picks ---------- */
+/* ---------- Fights & Picks ---------- */
 #fightList{ width:min(1100px,94vw); margin: 12px auto; }
 #submitBtn{
-  display:block;
-  margin: 10px auto 16px;
+  display:block; margin: 10px auto 16px;
   background: linear-gradient(180deg, rgba(180,74,60,.85), rgba(180,74,60,.65));
   border:1px solid rgba(180,74,60,.45);
   color:var(--bone);
-  border-radius:12px;
-  padding:12px 16px;
-  font-weight:900;
-  cursor:pointer;
-  box-shadow:0 6px 16px var(--shadow);
+  border-radius:12px; padding:12px 16px; font-weight:900;
+  cursor:pointer; box-shadow:0 6px 16px var(--shadow);
 }
 #myPicks{ width:min(1100px,94vw); margin: 8px auto; }
 .points-gold{ color:var(--gold); font-weight:900; }
@@ -143,25 +105,20 @@ a:hover{ text-decoration:underline; }
 .underdog-tag{ display:inline-flex; align-items:center; gap:6px; }
 .underdog-tag .dog{ transform: translateY(1px); }
 
-/* ---------- Champion of the Week banner ---------- */
+/* ---------- Champion Banner ---------- */
 #champBanner{
-  position:relative;
-  margin: 12px auto 16px;
-  width:min(1100px,94vw);
-  padding: 10px 14px;
-  border-radius: 999px;
+  position:relative; margin: 12px auto 16px; width:min(1100px,94vw);
+  padding: 10px 14px; border-radius: 999px;
   border:1px solid rgba(212,175,55,.55);
   background:
     radial-gradient(120% 120% at 10% 0%, rgba(212,175,55,.22), rgba(212,175,55,.08) 45%, rgba(0,0,0,0) 70%),
     linear-gradient(90deg, rgba(212,175,55,.20), rgba(212,175,55,.10));
   box-shadow: 0 6px 22px rgba(0,0,0,.35), inset 0 0 18px rgba(212,175,55,.12);
-  color: var(--bone);
-  overflow: hidden;
+  color: var(--bone); overflow: hidden;
 }
 #champBanner.hidden{ display:none; }
 #champBanner .champ-name{
-  color: var(--gold);
-  font-weight: 800;
+  color: var(--gold); font-weight: 800;
   text-shadow: 0 0 8px rgba(212,175,55,.6), 0 0 18px rgba(212,175,55,.3);
 }
 #champBanner .crown{ 
@@ -177,134 +134,102 @@ a:hover{ text-decoration:underline; }
 @keyframes champScroll{ 0%{transform:translateX(0);} 100%{transform:translateX(-50%);} }
 @keyframes crownBounce{ 0%,100%{transform:translateY(1px);} 50%{transform:translateY(-4px);} }
 
-/* ---------- Segmented tabs ---------- */
-.segmented{
-  width:min(460px, 94vw);
-  margin: 10px auto 8px;
-  background: var(--panel);
-  border:1px solid rgba(255,255,255,.08);
-  border-radius: 12px;
-  padding: 4px;
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:6px;
-}
-.segmented button{
-  background: transparent;
-  border: 1px solid rgba(255,255,255,.08);
-  color: var(--bone);
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-weight: 800;
-  cursor:pointer;
-}
-.segmented button[aria-pressed="true"]{
-  background: rgba(255,255,255,.06);
+/* ---------- Section title ---------- */
+.section-title{
+  width:min(1100px,94vw);
+  margin: 18px auto 8px;
+  letter-spacing:.18em; color: var(--muted);
+  font-weight:900; text-align:center;
 }
 
-/* ---------- Leaderboards (UL list) ---------- */
-.board{
-  list-style:none;
-  padding:0;
-  margin: 8px auto 18px;
-  width:min(1100px,94vw);
-  border:1px solid rgba(255,255,255,.06);
-  border-radius:14px;
-  overflow:hidden;
-  background:var(--panel);
+/* ---------- Segmented tabs ---------- */
+.segmented{
+  width:min(460px, 94vw); margin: 10px auto 8px;
+  background: var(--panel); border:1px solid rgba(255,255,255,.08);
+  border-radius: 12px; padding: 4px;
+  display:grid; grid-template-columns: 1fr 1fr; gap:6px;
 }
+.segmented button{
+  background: transparent; border: 1px solid rgba(255,255,255,.08);
+  color: var(--bone); border-radius: 10px; padding: 8px 10px;
+  font-weight: 800; cursor:pointer;
+}
+.segmented button[aria-pressed="true"]{ background: rgba(255,255,255,.06); }
+
+/* ---------- Leaderboards (UL/LI) ---------- */
+.board{
+  list-style:none; padding:0;
+  margin: 8px auto 18px; width:min(1100px,94vw);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:14px; overflow:hidden; background:var(--panel);
+}
+
+/* Each <li> expects five columns in order:
+   1) Rank  2) Crown  3) Username  4) Points  5) Events
+   If your script only outputs 4 items, the layout still holds (last col disappears). */
 .board li{
-  display:grid;
-  grid-template-columns: 64px 70px 1fr 100px 90px; /* rank | crown | user | points | events */
-  align-items:center;
-  gap: 10px;
-  padding: 12px;
-  border-bottom:1px solid rgba(255,255,255,.06);
+  display:grid; align-items:center; gap:10px;
+  grid-template-columns: 64px 70px 1fr 100px 90px;
+  padding:12px; border-bottom:1px solid rgba(255,255,255,.06);
 }
 .board li:last-child{ border-bottom:none; }
 .board li:hover{ background: rgba(255,255,255,.04); }
 
-/* Head-like row (if you inject one) */
+/* Head row styling (if you inject a header <li>) */
 .board .head{
   background: rgba(255,255,255,.05);
-  color: var(--muted);
-  font-weight: 800;
+  color: var(--muted); font-weight: 800;
 }
 
-/* Columns */
-.board .col-rank{
-  text-align:center; color:var(--muted); font-weight:800;
-}
+/* Column alignments by position (no class names needed) */
+.board li > *:nth-child(1){ text-align:center; color:var(--muted); font-weight:800; }       /* rank */
+.board li > *:nth-child(2){ text-align:center; }                                           /* crown */
+.board li > *:nth-child(3){ font-weight:700; }                                             /* username */
+.board li > *:nth-child(4){ text-align:right; font-variant-numeric: tabular-nums; }        /* points */
+.board li > *:nth-child(5){ text-align:right; color:var(--muted); }                         /* events */
+
+/* Nice badge if your rank element is plain text */
+.board li > *:nth-child(1).badge,
 .board .rank-badge{
-  display:inline-block;
-  min-width:40px;
-  padding:4px 8px;
-  border-radius:999px;
-  background: rgba(255,255,255,.06);
-  color:var(--bone);
-  font-weight:800;
-  text-align:center;
+  display:inline-block; min-width:40px; padding:4px 8px; border-radius:999px;
+  background: rgba(255,255,255,.06); color:var(--bone); font-weight:800; text-align:center;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
 }
-.board .col-crown{ text-align:center; }
-.board .crown{ font-size:20px; text-shadow:0 0 8px rgba(212,175,55,.5); animation: crownFloat 3s ease-in-out infinite; }
+
+/* Crowns & emphasis */
+.crown{ font-size:20px; text-shadow:0 0 8px rgba(212,175,55,.5); animation:crownFloat 3s ease-in-out infinite; }
 @keyframes crownFloat{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);} }
-
-.board .col-user .username{ font-weight:700; }
-.board .col-points{ text-align:right; font-feature-settings: "tnum"; }
-.board .col-events{ text-align:right; color:var(--muted); }
-
-/* Champion/current user emphasis */
-.is-champion .username{
+.is-champion :is(.username, .name, span, a){
   color: var(--gold);
   text-shadow: 0 0 10px rgba(212,175,55,.45), 0 0 22px rgba(212,175,55,.25);
 }
-.is-current-user .username{ font-weight: 900; letter-spacing:.2px; } /* no gold outline */
+.is-current-user :is(.username, .name, span, a){ font-weight:900; letter-spacing:.2px; } /* no gold outline */
 .points-gold{ color: var(--gold); font-weight:900; }
 
-/* All-time board variant can reuse the same row layout; tweak spacing if needed */
+/* All-time board can share the same layout */
 .board.at-five li{ grid-template-columns: 64px 70px 1fr 100px 90px; }
 
 /* ---------- Discord CTA ---------- */
-.cta-discord{
-  width:min(1100px,94vw);
-  margin: 22px auto 40px;
-  text-align:center;
-}
+.cta-discord{ width:min(1100px,94vw); margin: 22px auto 40px; text-align:center; }
 .btn-discord{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  background:#5865F2;
-  color:#fff;
-  padding:10px 14px;
-  border-radius:10px;
-  font-weight:800;
-  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+  display:inline-flex; align-items:center; gap:10px;
+  background:#5865F2; color:#fff; padding:10px 14px; border-radius:10px;
+  font-weight:800; box-shadow: 0 10px 24px rgba(0,0,0,.25);
 }
 .btn-discord .discord-icon{ line-height:0; }
 
-/* ---------- Utilities ---------- */
+/* ---------- Table utility (if used elsewhere) ---------- */
 .table{ width:100%; border-collapse:separate; border-spacing:0; border:1px solid rgba(255,255,255,.06); border-radius:12px; overflow:hidden; }
 .table thead th{ padding:10px 12px; background:rgba(255,255,255,.04); color:var(--muted); text-align:left; font-size:13px; }
 .table tbody td{ padding:12px; border-bottom:1px solid rgba(255,255,255,.06); }
 .table tbody tr:last-child td{ border-bottom:none; }
 
-.hr{ height:1px; background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.15), rgba(255,255,255,0)); margin:12px 0; }
-.footer{ width:min(1100px,94vw); margin: 22px auto 36px; color:var(--muted); font-size:12px; text-align:center; }
-
 /* ---------- Responsive ---------- */
 @media (max-width: 860px){
-  .board li{
-    grid-template-columns: 56px 56px 1fr 82px; /* hide events */
-  }
-  .board .col-events{ display:none; }
-  .board .col-points{ justify-self:end; }
+  .board li{ grid-template-columns: 56px 56px 1fr 82px; }
+  .board li > *:nth-child(5){ display:none; } /* hide events */
 }
 @media (max-width: 560px){
-  .board li{
-    grid-template-columns: 48px 48px 1fr 74px;
-    padding:10px;
-  }
-  .logo-banner{ max-width:150px; }
+  .board li{ grid-template-columns: 48px 48px 1fr 74px; padding:10px; }
+  .logo-banner{ max-width:140px; }
 }
