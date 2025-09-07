@@ -5,31 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fantasy Fight Picks</title>
 
-  <!-- Unregister any old service worker & clear caches -->
-  <script>
-    (async () => {
-      try {
-        if ('serviceWorker' in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const r of regs) { try { await r.unregister(); } catch {} }
-        }
-        if (window.caches?.keys) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map(k => caches.delete(k)));
-        }
-      } catch {}
-      window.API_BASE = "/api"; // path-only API
-    })();
-  </script>
-
   <!-- Orbitron font -->
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap" rel="stylesheet">
 
-  <!-- Icons / manifest -->
+  <!-- Icons / Manifest -->
   <link rel="icon" type="image/x-icon" href="./favicon.ico">
-  <link rel="icon" type="image/png" sizes="64x64" href="./favicon-64.png">
   <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png">
@@ -38,6 +20,10 @@
   <meta name="theme-color" content="#0b0b0d">
 
   <link rel="stylesheet" href="style.css" />
+  <script>
+    // App points at your Node proxy; Node proxies to GAS.
+    window.API_BASE = "/api";
+  </script>
 </head>
 <body>
   <!-- Logo -->
@@ -59,7 +45,7 @@
     <!-- Welcome -->
     <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring (collapsible) -->
+    <!-- Scoring -->
     <details id="scoringPanel" class="rules-collapsible">
       <summary>
         <span class="rules-toggle-label">🧠 Scoring</span>
@@ -70,9 +56,6 @@
 
     <!-- Fights -->
     <div id="fightList"></div>
-
-    <!-- FOTN -->
-    <div id="fotnBlock" style="display:none;"></div>
 
     <!-- Submit -->
     <button id="submitBtn" style="display:none;">Submit Picks</button>
