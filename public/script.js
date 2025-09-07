@@ -1,4 +1,4 @@
-/* ===== Fantasy Fight Picks — your structure preserved, tiny fixes applied ===== */
+/* ===== Fantasy Fight Picks — fixes: crowns/poop, sticky weekly, sticky banner, checks/Xs, centering ===== */
 
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---- Tiny helpers ----
   function $(sel){ return document.querySelector(sel); }
   function el(tag, cls, html){ const e = document.createElement(tag); if (cls) e.className = cls; if (html!=null) e.innerHTML = html; return e; }
+  const safeJSON = (s, d=null) => { try { return JSON.parse(s); } catch(_){ return d; } };
 
   function normalizeAmericanOdds(raw){
     if (raw == null) return null;
@@ -52,6 +53,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let leaderboardCache = null;
   let allTimeCache = null;
 
+  // sticky weekly + banner persistence
+  const KEY_PREV_WEEKLY = "prevWeeklyScoresV2";
+  const KEY_PREV_BANNER = "prevChampBannerV2";
+  const KEY_PREV_EVENTID = "prevEventIdV2";
+
   function buildFightMeta(rows){
     fightMeta.clear();
     (rows||[]).forEach(r => {
@@ -64,15 +70,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ---- Scoring rules ----
+  // ---- Scoring rules (kept compact) ----
   (function renderRules(){
     const elRules = $("#scoringRules");
     elRules.innerHTML = `
       <ul class="rules-list">
-        <li>+3 for correct winner</li>
-        <li>+2 for correct method <span class="muted">(only if winner is correct)</span></li>
-        <li>+1 for correct round <span class="muted">(only if winner & method correct and not Decision)</span></li>
-        <li>🐶 Underdog bonus if the underdog actually wins</li>
+        <li>+3 winner</li>
+        <li>+2 method <span class="muted">(only if winner correct)</span></li>
+        <li>+1 round <span class="muted">(only if winner & method correct and not Decision)</span></li>
+        <li>🐶 Underdog bonus if the underdog wins</li>
       </ul>
     `;
   })();
@@ -93,7 +99,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---- App start ----
   async function start(){
     usernamePrompt.style.display = "none";
-    // Keep your exact string; font is handled via CSS (Orbitron lock in style.css)
     welcome.textContent = `🎤 IIIIIIIIIIIIT'S ${username.toUpperCase()}!`;
     welcome.style.display = "block";
 
@@ -111,11 +116,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       await loadMyPicks();
-      await loadLeaderboard();
+      await loadLeaderboard();   // handles sticky weekly + banner
       preloadAllTime();
     } catch (e) {
       console.error(e);
-      fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base</div>`;
+      fightList.innerHTML = `<div class="board-hint">Server unavailable.</div>`;
       submitBtn.style.display = "none";
     }
   }
@@ -280,7 +285,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ? [
             `<span class="badge ${mWinner?'good':'bad'}">${checkIcon(mWinner)} Winner</span>`,
             `<span class="badge ${mMethod?'good':'bad'}">${checkIcon(mMethod)} ${method}</span>`,
-            method !== "Decision" ? `<span class="chip-round ${mRound?'good':'bad'}">${checkIcon(mRound)} R${round}</span>` : ""
+            method !== "Decision" ? `<span class="badge ${mRound?'good':'bad'}">${checkIcon(mRound)} R${round}</span>` : ""
           ].filter(Boolean).join(" ")
         : `<span class="badge">Pending</span>`;
 
@@ -308,7 +313,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wrap.style.display = "grid";
   }
 
-  // ---- Leaderboard (weekly; champ banner when complete) ----
+  // ---- Leaderboard (weekly sticky; champ banner sticky; 👑 + 💩) ----
   async function loadLeaderboard(){
     const [fights, lb] = await Promise.all([
       fightsCache ? Promise.resolve(fightsCache) : api.getFights(),
@@ -320,47 +325,104 @@ document.addEventListener("DOMContentLoaded", () => {
     const board = leaderboardEl;
     board.innerHTML = "";
 
+    // Event identity if provided; else derive from fights hash
+    const eventId = lb.eventId || (Array.isArray(fights) ? `${fights.length}:${(fights[0]?.fight||'')}` : 'unknown');
+
     const resultsArr = Object.values(lb.fightResults || {});
     const resultsStarted = resultsArr.some(r => r && r.winner && r.method);
 
-    // ✅ NEW: Render scores if present, even if results haven't "started" yet
-    const scores = Object.entries(lb.scores || {}).sort((a,b)=> b[1]-a[1]);
+    // Scores (may exist even before results started)
+    let scores = Object.entries(lb.scores || {}).sort((a,b)=> b[1]-a[1]);
 
-    if (!resultsStarted && scores.length === 0){
-      const hint = el("li","board-hint","Weekly standings will appear once results start.");
-      board.appendChild(hint);
-      champBanner.style.display = "none";
-      return;
+    // ---- Sticky weekly: if no scores yet for new event, show previous saved board
+    if (scores.length === 0 && !resultsStarted){
+      const prevEventId = localStorage.getItem(KEY_PREV_EVENTID);
+      const prevScores = safeJSON(localStorage.getItem(KEY_PREV_WEEKLY), null);
+      if (prevScores && prevScores.length){
+        scores = prevScores;
+      }
     }
 
-    let rank=1, prev=null, shown=1;
-    scores.forEach(([user, pts], idx) => {
-      if (pts !== prev) shown = rank;
-      const li = el("li","", `<span>#${shown}</span><span>${user}</span><span>${pts} pts</span>`);
-      if (lb.champs?.includes(user)) li.classList.add("champ-glow");
-      if (user === username) li.classList.add("current-user");
-      if (scores.length>=3 && idx===scores.length-1) li.classList.add("loser");
-      board.appendChild(li);
-      prev = pts; rank++;
-    });
+    if (scores.length === 0){
+      const hint = el("li","board-hint","Weekly standings will appear once results start.");
+      board.appendChild(hint);
+    } else {
+      let rank=1, prev=null, shown=1;
+      scores.forEach(([user, pts], idx) => {
+        if (pts !== prev) shown = rank;
 
+        // Crowns (support two possible keys from GAS)
+        const crownCount = (lb.crowns && lb.crowns[user]) || (lb.crownCounts && lb.crownCounts[user]) || 0;
+        const crowns = crownCount > 0 ? " " + "👑".repeat(Math.min(crownCount, 10)) : "";
+
+        // Poop emoji for last place (if at least 3 players)
+        const isLast = (scores.length >= 3 && idx === scores.length - 1);
+        const poop = isLast ? " 💩" : "";
+
+        const li = el("li","", `
+          <span>#${shown}</span>
+          <span>${user}${crowns}</span>
+          <span>${pts} pts${poop}</span>
+          <span></span>
+          <span></span>
+        `);
+
+        if (lb.champs?.includes(user)) li.classList.add("champ-glow");
+        if (user === username) li.classList.add("current-user");
+        if (isLast) li.classList.add("loser");
+
+        board.appendChild(li);
+        prev = pts; rank++;
+      });
+    }
+
+    // ---- Champ banner logic
     const totalFights = (fights || []).length;
     const completed = resultsArr.filter(r => r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
 
-    // ✅ NEW: show banner after all fights if we have champMessage OR champs[]
     const haveMsg = typeof lb.champMessage === "string" && lb.champMessage.trim() !== "";
     const haveChamps = Array.isArray(lb.champs) && lb.champs.length > 0;
 
+    // if just finished an event, save sticky weekly + banner
+    if (totalFights > 0 && completed === totalFights && (haveMsg || haveChamps) && scores.length){
+      localStorage.setItem(KEY_PREV_EVENTID, eventId);
+      localStorage.setItem(KEY_PREV_WEEKLY, JSON.stringify(scores));
+      const msg = haveMsg ? lb.champMessage.trim() : `Champion${lb.champs.length>1?'s':''}: ${lb.champs.join(', ')}`;
+      localStorage.setItem(KEY_PREV_BANNER, JSON.stringify({ msg }));
+    }
+
+    // Show banner:
+    // - If current event completed and we have champ info → show flashy marquee
+    // - Else, if new event not started yet (no scores + no results) → show previous banner
     if (totalFights > 0 && completed === totalFights && (haveMsg || haveChamps)){
       const msg = haveMsg ? lb.champMessage.trim() : `Champion${lb.champs.length>1?'s':''}: ${lb.champs.join(', ')}`;
-      // If you want the marquee effect with your CSS, use innerHTML + .scroll:
-      // champBanner.innerHTML = `<div class="scroll"><span class="crown">👑</span> <span class="champ-name">${msg}</span> &nbsp;&nbsp;—&nbsp;&nbsp; <span class="crown">👑</span> <span class="champ-name">${msg}</span></div>`;
-      // champBanner.style.display = "block";
-      champBanner.textContent = `🏆 ${msg}`;
+      champBanner.innerHTML = marqueeHTML(msg);
       champBanner.style.display = "block";
+    } else if (!resultsStarted && scores.length === 0) {
+      const prev = safeJSON(localStorage.getItem(KEY_PREV_BANNER), null);
+      if (prev && prev.msg){
+        champBanner.innerHTML = marqueeHTML(prev.msg);
+        champBanner.style.display = "block";
+      } else {
+        champBanner.style.display = "none";
+      }
     } else {
       champBanner.style.display = "none";
     }
+  }
+
+  function marqueeHTML(msg){
+    const safe = escapeHtml(msg);
+    // loop twice so it scrolls seamlessly
+    return `<div class="scroll" aria-label="Champion of the Week">
+      <span class="crown">👑</span> <span class="champ-name">${safe}</span>
+      &nbsp;&nbsp;—&nbsp;&nbsp;
+      <span class="crown">👑</span> <span class="champ-name">${safe}</span>
+      &nbsp;&nbsp;—&nbsp;&nbsp;
+      <span class="crown">👑</span> <span class="champ-name">${safe}</span>
+      &nbsp;&nbsp;—&nbsp;&nbsp;
+      <span class="crown">👑</span> <span class="champ-name">${safe}</span>
+    </div>`;
   }
 
   // ---- All-time ----
@@ -384,9 +446,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let shown=0, prev=null;
     data.forEach((r, idx)=>{
       shown = (!prev || r.rate!==prev.rate || r.crowns!==prev.crowns || r.events!==prev.events) ? (idx+1) : shown;
-      const li = el("li", "at-five" + (r.user===username?" current-user":"") + (shown===1?" tied-first":""), `
+      const li = el("li", "at-five" + (r.user===username?" current-user":""), `
         <span class="rank">${shown===1?"🥇":`#${shown}`}</span>
-        <span class="user" title="${r.user}">${r.user}</span>
+        <span class="user" title="${escapeHtml(r.user)}">${escapeHtml(r.user)}</span>
         <span class="num rate">${(r.rate*100).toFixed(1)}%</span>
         <span class="num crowns">${r.crowns}</span>
         <span class="num events">${r.events}</span>
@@ -399,6 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function preloadAllTime(){
     try{ allTimeCache = sortAllTime(await api.getHall()); }catch(_){}
   }
+
   weeklyTabBtn.addEventListener("click", e => {
     e.preventDefault();
     leaderboardEl.style.display = "block";
@@ -415,4 +478,9 @@ document.addEventListener("DOMContentLoaded", () => {
     weeklyTabBtn.setAttribute("aria-pressed","false");
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
+
+  // ---- utils ----
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
 });
