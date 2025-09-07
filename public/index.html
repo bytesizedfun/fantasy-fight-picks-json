@@ -20,16 +20,19 @@
   <meta name="theme-color" content="#0b0b0d">
 
   <link rel="stylesheet" href="style.css" />
-  <script>window.API_BASE = window.API_BASE || "/api";</script>
+  <script>
+    /* SAME-ORIGIN API */
+    window.API_BASE = "/api";
+  </script>
 </head>
 <body>
   <!-- Logo -->
   <div class="banner-container">
-    <img class="logo-banner" src="logo_fighter.png" alt="Logo" decoding="async" />
+    <img class="logo-banner" src="logo_fighter.png" alt="Fantasy Fight Picks" decoding="async" />
   </div>
 
   <!-- Champion banner -->
-  <div id="champBanner" class="champ-banner"></div>
+  <div id="champBanner" class="champ-banner" style="display:none;"></div>
 
   <div id="app">
     <!-- Username prompt -->
@@ -42,7 +45,7 @@
     <!-- Welcome -->
     <div id="welcome" style="display:none;"></div>
 
-    <!-- Scoring (collapsed by default) -->
+    <!-- Scoring -->
     <details id="scoringPanel" class="rules-collapsible">
       <summary>
         <span class="rules-toggle-label">🧠 Scoring</span>
@@ -51,14 +54,14 @@
       <section id="scoringRules" class="rules"></section>
     </details>
 
-    <!-- Fights (picking) -->
-    <div id="fightList"></div>
+    <!-- Fights -->
+    <div id="fightList" style="display:none;"></div>
 
     <!-- Submit -->
     <button id="submitBtn" style="display:none;">Submit Picks</button>
 
     <!-- My Picks -->
-    <section id="myPicks" class="mypicks" style="display:none;"></section>
+    <section id="myPicks" style="display:none;"></section>
 
     <!-- Leaderboard title -->
     <h3 class="section-title section-title--leader" id="leaderboardTitle">LEADERBOARD</h3>
