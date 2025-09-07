@@ -1,4 +1,4 @@
-/* ===== Fantasy Fight Picks — resilient UL/LI theme ===== */
+/* ===== Fantasy Fight Picks — Restored + Polished ===== */
 
 /* Palette */
 :root{
@@ -25,6 +25,7 @@ a{ color:var(--gold); text-decoration:none; }
 a:hover{ text-decoration:underline; }
 small,.muted{ color:var(--muted); }
 
+/* Layout */
 #app{ width:min(1100px,94vw); margin: 0 auto 28px; }
 
 /* ---------- Logo ---------- */
@@ -76,70 +77,106 @@ small,.muted{ color:var(--muted); }
   border-radius: 14px; overflow:hidden;
 }
 .rules-collapsible summary{
-  list-style:none; cursor:pointer; padding: 10px 14px;
+  list-style:none; cursor:pointer; padding: 8px 12px;   /* compact */
   display:flex; align-items:center; justify-content:space-between;
   background: rgba(255,255,255,.04);
-  color: var(--muted); font-weight: 800;
+  color: var(--muted); font-weight: 800; font-size: 14px; /* compact */
 }
+.rules-caret{ transition: transform .15s ease; }
 .rules-collapsible[open] .rules-caret{ transform: rotate(90deg); }
 .rules{ padding: 10px 14px; color:var(--muted); }
-.rules b{ color:var(--bone); cursor:pointer; padding:0 6px; }
-.tooltip{ display:none; margin-top:8px; font-size:13px; color:var(--muted);}
-.tooltip.show{ display:block; }
+.rules-list{ margin:0; padding-left: 18px; }
 
 /* ---------- Fights & Picks ---------- */
-#fightList{ width:min(1100px,94vw); margin: 12px auto; }
+#fightList{ width:min(1100px,94vw); margin: 12px auto; display:none; }
+.fight{
+  border:1px solid rgba(255,255,255,.08); border-radius:12px;
+  padding:12px; margin:10px 0; background:var(--panel);
+}
+.fight h3{ margin:0 0 8px 0; font-size:16px; }
+.options label{ display:block; padding:6px 0; cursor:pointer; }
+.pick-row{ display:inline-flex; align-items:center; gap:10px; }
+.fighter-name.is-underdog{ color:var(--gold); font-weight:800; }
+.dog-tag{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:2px 8px; }
+.pick-controls{ display:flex; gap:8px; margin-top:8px; }
+.pick-controls select{
+  background:var(--bg); color:var(--bone); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px 10px;
+}
+
 #submitBtn{
-  display:block; margin: 10px auto 16px;
+  display:none; margin: 10px auto 16px;
   background: linear-gradient(180deg, rgba(180,74,60,.85), rgba(180,74,60,.65));
   border:1px solid rgba(180,74,60,.45);
   color:var(--bone);
   border-radius:12px; padding:12px 16px; font-weight:900;
   cursor:pointer; box-shadow:0 6px 16px var(--shadow);
 }
-#myPicks{ width:min(1100px,94vw); margin: 8px auto; }
-.points-gold{ color:var(--gold); font-weight:900; }
-.has-results .pick-correct{ color:var(--green); font-weight:700; }
-.has-results .pick-wrong{ color:var(--red); font-weight:700; }
-.pick-neutral{ color:var(--muted); }
-.underdog-tag{ display:inline-flex; align-items:center; gap:6px; }
-.underdog-tag .dog{ transform: translateY(1px); }
 
-/* ---------- Champion Banner ---------- */
+/* ---------- Your Picks (✓ ✕ restored) ---------- */
+#myPicks{ width:min(1100px,94vw); margin: 8px auto; display:none; }
+#myPicks .header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.scored-pick{
+  display:flex; align-items:flex-start; justify-content:space-between;
+  border:1px solid rgba(255,255,255,.08); border-radius:12px;
+  padding:10px 12px; margin:8px 0; background:var(--panel);
+}
+.scored-pick .fight-name{ font-weight:800; margin-bottom:6px; }
+.scored-pick .meta{ color:var(--muted); margin:4px 0; }
+.badge{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:2px 8px; border-radius:999px; margin-right:6px;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+  font-weight:700;
+}
+.badge.good{ border-color: rgba(45,179,109,.6); background: rgba(45,179,109,.12); color:#9fe4bd; }
+.badge.bad{  border-color: rgba(224,82,82,.6); background: rgba(224,82,82,.12); color:#f2aaaa; }
+.check.good{ color: var(--green); font-weight:900; }
+.check.bad{  color: var(--red);   font-weight:900; }
+.points .points{ font-weight:900; }
+.points .points.zero{ color: var(--muted); }
+.points-gold{ color: var(--gold); font-weight:900; }
+
+/* ---------- Champion Banner (flashy marquee; stays centered) ---------- */
 #champBanner{
-  position:relative; margin: 12px auto 16px; width:min(1100px,94vw);
-  padding: 10px 14px; border-radius: 999px;
+  position:relative; margin: 14px auto 16px; width:min(1100px,94vw);
+  padding: 10px 14px; border-radius: 999px; text-align:center;
   border:1px solid rgba(212,175,55,.55);
   background:
     radial-gradient(120% 120% at 10% 0%, rgba(212,175,55,.22), rgba(212,175,55,.08) 45%, rgba(0,0,0,0) 70%),
     linear-gradient(90deg, rgba(212,175,55,.20), rgba(212,175,55,.10));
   box-shadow: 0 6px 22px rgba(0,0,0,.35), inset 0 0 18px rgba(212,175,55,.12);
-  color: var(--bone); overflow: hidden;
+  color: var(--bone); overflow: hidden; display:none;
 }
-#champBanner.hidden{ display:none; }
-#champBanner .champ-name{
-  color: var(--gold); font-weight: 800;
-  text-shadow: 0 0 8px rgba(212,175,55,.6), 0 0 18px rgba(212,175,55,.3);
+#champBanner .scroll{
+  display:flex; gap:36px; white-space:nowrap; align-items:center; justify-content:flex-start;
+  animation: champScroll 16s linear infinite;
+  font-weight:900; letter-spacing:.2px;
+  text-shadow: 0 0 10px rgba(212,175,55,.35), 0 0 22px rgba(212,175,55,.25);
 }
 #champBanner .crown{ 
-  display:inline-block; 
+  display:inline-block; font-size:20px;
   filter: drop-shadow(0 2px 8px rgba(212,175,55,.55)); 
   animation: crownBounce 1.8s ease-in-out infinite;
 }
-#champBanner .scroll{
-  display:flex; gap:32px; white-space:nowrap;
-  animation: champScroll 14s linear infinite;
-  font-weight:700; letter-spacing:.2px;
+#champBanner .champ-name{
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(212,175,55,.7), 0 0 28px rgba(212,175,55,.35);
 }
 @keyframes champScroll{ 0%{transform:translateX(0);} 100%{transform:translateX(-50%);} }
 @keyframes crownBounce{ 0%,100%{transform:translateY(1px);} 50%{transform:translateY(-4px);} }
 
-/* ---------- Section title ---------- */
+/* ---------- Section title & Orbitron for hero ---------- */
 .section-title{
   width:min(1100px,94vw);
   margin: 18px auto 8px;
   letter-spacing:.18em; color: var(--muted);
   font-weight:900; text-align:center;
+}
+#welcome{
+  font-family: 'Orbitron', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  font-weight: 900;
+  letter-spacing: .02em;
+  text-align:center;
 }
 
 /* ---------- Segmented tabs ---------- */
@@ -163,51 +200,35 @@ small,.muted{ color:var(--muted); }
   border:1px solid rgba(255,255,255,.06);
   border-radius:14px; overflow:hidden; background:var(--panel);
 }
-
-/* Each <li> expects five columns in order:
-   1) Rank  2) Crown  3) Username  4) Points  5) Events
-   If your script only outputs 4 items, the layout still holds (last col disappears). */
 .board li{
   display:grid; align-items:center; gap:10px;
-  grid-template-columns: 64px 70px 1fr 100px 90px;
+  grid-template-columns: 64px 70px 1fr 110px 90px; /* rank | crown | user | points | events */
   padding:12px; border-bottom:1px solid rgba(255,255,255,.06);
 }
 .board li:last-child{ border-bottom:none; }
 .board li:hover{ background: rgba(255,255,255,.04); }
 
-/* Head row styling (if you inject a header <li>) */
-.board .head{
+/* Head row (when used) */
+.board .board-header{
   background: rgba(255,255,255,.05);
   color: var(--muted); font-weight: 800;
 }
 
-/* Column alignments by position (no class names needed) */
+/* Column alignments by position */
 .board li > *:nth-child(1){ text-align:center; color:var(--muted); font-weight:800; }       /* rank */
 .board li > *:nth-child(2){ text-align:center; }                                           /* crown */
-.board li > *:nth-child(3){ font-weight:700; }                                             /* username */
-.board li > *:nth-child(4){ text-align:right; font-variant-numeric: tabular-nums; }        /* points */
+.board li > *:nth-child(3){ font-weight:700; }                                             /* username (+ 👑) */
+.board li > *:nth-child(4){ text-align:right; font-variant-numeric: tabular-nums; }        /* points (+ 💩) */
 .board li > *:nth-child(5){ text-align:right; color:var(--muted); }                         /* events */
 
-/* Nice badge if your rank element is plain text */
-.board li > *:nth-child(1).badge,
-.board .rank-badge{
-  display:inline-block; min-width:40px; padding:4px 8px; border-radius:999px;
-  background: rgba(255,255,255,.06); color:var(--bone); font-weight:800; text-align:center;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
-}
+/* Emphasis */
+.current-user span:nth-child(3){ font-weight:900; letter-spacing:.2px; } /* bold only */
+.champ-glow span:nth-child(3){ color: var(--gold); text-shadow: 0 0 10px rgba(212,175,55,.45), 0 0 22px rgba(212,175,55,.25); }
+.loser span:nth-child(4){ opacity:.85; }
 
-/* Crowns & emphasis */
-.crown{ font-size:20px; text-shadow:0 0 8px rgba(212,175,55,.5); animation:crownFloat 3s ease-in-out infinite; }
-@keyframes crownFloat{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);} }
-.is-champion :is(.username, .name, span, a){
-  color: var(--gold);
-  text-shadow: 0 0 10px rgba(212,175,55,.45), 0 0 22px rgba(212,175,55,.25);
-}
-.is-current-user :is(.username, .name, span, a){ font-weight:900; letter-spacing:.2px; } /* no gold outline */
-.points-gold{ color: var(--gold); font-weight:900; }
-
-/* All-time board can share the same layout */
-.board.at-five li{ grid-template-columns: 64px 70px 1fr 100px 90px; }
+/* All-time board share same layout */
+.board.at-five li{ grid-template-columns: 64px 70px 1fr 110px 90px; }
+.board .mobile-meta{ display:none; }
 
 /* ---------- Discord CTA ---------- */
 .cta-discord{ width:min(1100px,94vw); margin: 22px auto 40px; text-align:center; }
@@ -218,7 +239,7 @@ small,.muted{ color:var(--muted); }
 }
 .btn-discord .discord-icon{ line-height:0; }
 
-/* ---------- Table utility (if used elsewhere) ---------- */
+/* ---------- Generic table utility (optional) ---------- */
 .table{ width:100%; border-collapse:separate; border-spacing:0; border:1px solid rgba(255,255,255,.06); border-radius:12px; overflow:hidden; }
 .table thead th{ padding:10px 12px; background:rgba(255,255,255,.04); color:var(--muted); text-align:left; font-size:13px; }
 .table tbody td{ padding:12px; border-bottom:1px solid rgba(255,255,255,.06); }
@@ -226,17 +247,10 @@ small,.muted{ color:var(--muted); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 860px){
-  .board li{ grid-template-columns: 56px 56px 1fr 82px; }
-  .board li > *:nth-child(5){ display:none; } /* hide events */
+  .board li{ grid-template-columns: 56px 56px 1fr 92px; }
+  .board li > *:nth-child(5){ display:none; }
 }
 @media (max-width: 560px){
-  .board li{ grid-template-columns: 48px 48px 1fr 74px; padding:10px; }
+  .board li{ grid-template-columns: 48px 48px 1fr 84px; padding:10px; }
   .logo-banner{ max-width:140px; }
-}
-
-/* === Orbitron lock for welcome line (keeps the rest of the site on your normal font) === */
-#welcome {
-  font-family: 'Orbitron', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-  font-weight: 900;
-  letter-spacing: .02em;
 }
