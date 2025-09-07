@@ -1,3 +1,5 @@
+/* ===== Fantasy Fight Picks — your structure preserved, tiny fixes applied ===== */
+
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
 
@@ -91,6 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---- App start ----
   async function start(){
     usernamePrompt.style.display = "none";
+    // Keep your exact string; font is handled via CSS (Orbitron lock in style.css)
     welcome.textContent = `🎤 IIIIIIIIIIIIT'S ${username.toUpperCase()}!`;
     welcome.style.display = "block";
 
@@ -278,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `<span class="badge ${mWinner?'good':'bad'}">${checkIcon(mWinner)} Winner</span>`,
             `<span class="badge ${mMethod?'good':'bad'}">${checkIcon(mMethod)} ${method}</span>`,
             method !== "Decision" ? `<span class="chip-round ${mRound?'good':'bad'}">${checkIcon(mRound)} R${round}</span>` : ""
-          ].join(" ")
+          ].filter(Boolean).join(" ")
         : `<span class="badge">Pending</span>`;
 
       const dogChip = chosenIsUnderdog && dogTier>0
@@ -320,14 +323,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const resultsArr = Object.values(lb.fightResults || {});
     const resultsStarted = resultsArr.some(r => r && r.winner && r.method);
 
-    if (!resultsStarted){
+    // ✅ NEW: Render scores if present, even if results haven't "started" yet
+    const scores = Object.entries(lb.scores || {}).sort((a,b)=> b[1]-a[1]);
+
+    if (!resultsStarted && scores.length === 0){
       const hint = el("li","board-hint","Weekly standings will appear once results start.");
       board.appendChild(hint);
       champBanner.style.display = "none";
       return;
     }
-
-    const scores = Object.entries(lb.scores || {}).sort((a,b)=> b[1]-a[1]);
 
     let rank=1, prev=null, shown=1;
     scores.forEach(([user, pts], idx) => {
@@ -342,8 +346,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const totalFights = (fights || []).length;
     const completed = resultsArr.filter(r => r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
-    if (lb.champMessage && totalFights>0 && completed===totalFights){
-      champBanner.textContent = `🏆 ${lb.champMessage}`;
+
+    // ✅ NEW: show banner after all fights if we have champMessage OR champs[]
+    const haveMsg = typeof lb.champMessage === "string" && lb.champMessage.trim() !== "";
+    const haveChamps = Array.isArray(lb.champs) && lb.champs.length > 0;
+
+    if (totalFights > 0 && completed === totalFights && (haveMsg || haveChamps)){
+      const msg = haveMsg ? lb.champMessage.trim() : `Champion${lb.champs.length>1?'s':''}: ${lb.champs.join(', ')}`;
+      // If you want the marquee effect with your CSS, use innerHTML + .scroll:
+      // champBanner.innerHTML = `<div class="scroll"><span class="crown">👑</span> <span class="champ-name">${msg}</span> &nbsp;&nbsp;—&nbsp;&nbsp; <span class="crown">👑</span> <span class="champ-name">${msg}</span></div>`;
+      // champBanner.style.display = "block";
+      champBanner.textContent = `🏆 ${msg}`;
       champBanner.style.display = "block";
     } else {
       champBanner.style.display = "none";
