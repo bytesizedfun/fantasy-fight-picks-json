@@ -1,12 +1,12 @@
-/* ===== Fantasy Fight Picks — Neon Compact v5
-   - Centered fight cards & text
-   - Tabs + submit: base cyan, hover red
-   - Dropdowns: styled (appearance none), focus glow
-   - Kill dead space via narrower container + tighter grids
-   - Weekly LB: 1 crown LEFT of first place only; last place 💩; hint centered
-   - All-Time: centered headers, tight columns
-   - Your Picks: centered rows, dog emoji inline, tight points column
-===== */
+/* ===== Fantasy Fight Picks — Neon Compact v6 =====
+   - One 🐶 +X inline ONLY when bonus actually hits
+   - Removed "Total: … pts" from Your Picks header
+   - Bigger shimmering champ banner
+   - Centered Your Picks
+   - Leaderboard super tight (42 | 1fr | 70) + centered hint
+   - Two-button fighter picker (no duplicate rows/bubbles)
+   - Styled selects; submit centered; tabs cyan->red hover
+*/
 
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
@@ -48,8 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightMeta = new Map();
   let fightsCache=null, leaderboardCache=null, allTimeCache=null;
 
-  const KEY_PREV_WEEKLY="prevWeeklyScoresV7";
-  const KEY_PREV_BANNER="prevChampBannerV7";
+  const KEY_PREV_WEEKLY="prevWeeklyScoresV8";
+  const KEY_PREV_BANNER="prevChampBannerV8";
 
   function buildFightMeta(rows){
     fightMeta.clear();
@@ -58,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // scoring text only
+  // compact scoring text
   (function renderRules(){
     $("#scoringRules").innerHTML = `
       <ul class="rules-list"><li>+3 winner</li><li>+2 method</li><li>+1 round</li><li>🐶 underdog bonus</li></ul>
@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
         fightList.style.display="none"; submitBtn.style.display="none";
       } else {
         renderFightList(fightsCache);
-        submitBtn.style.display="block";   // ensure centered block
+        submitBtn.style.display="block";  // block centers with margin auto
       }
 
       await loadMyPicks();
@@ -102,6 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // ===== Fight picker (two compact buttons) =====
   function renderFightList(rows){
     fightList.innerHTML="";
     (rows||[]).forEach(({fight,fighter1,fighter2})=>{
@@ -112,17 +113,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const card=el("div","fight",`
         <h3>${esc(fight)}</h3>
         <div class="options">
-          <label><input type="radio" name="${esc(fight)}-winner" value="${esc(fighter1)}">
-            <span class="pick-row">
-              <span class="fighter-name ${dog1>0?'is-underdog':''}">${esc(fighter1)}</span>
-              ${dog1>0?`<span class="dog-tag">🐶 +${dog1} pts</span>`:""}
-            </span>
+          <label>
+            <input type="radio" name="${esc(fight)}-winner" value="${esc(fighter1)}">
+            <span class="pick-btn">${esc(fighter1)}${dog1>0?` <span class="pick-dog">🐶 +${dog1}</span>`:""}</span>
           </label>
-          <label><input type="radio" name="${esc(fight)}-winner" value="${esc(fighter2)}">
-            <span class="pick-row">
-              <span class="fighter-name ${dog2>0?'is-underdog':''}">${esc(fighter2)}</span>
-              ${dog2>0?`<span class="dog-tag">🐶 +${dog2} pts</span>`:""}
-            </span>
+          <label>
+            <input type="radio" name="${esc(fight)}-winner" value="${esc(fighter2)}">
+            <span class="pick-btn">${esc(fighter2)}${dog2>0?` <span class="pick-dog">🐶 +${dog2}</span>`:""}</span>
           </label>
         </div>
         <div class="pick-controls">
@@ -167,6 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // ===== My Picks (one 🐶 +X ONLY if cashed; centered) =====
   async function loadMyPicks(){
     const my=await api.getUserPicks(username);
     const wrap=$("#myPicks"); wrap.innerHTML="";
@@ -175,7 +173,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if(!leaderboardCache) leaderboardCache=await api.getLeaderboard();
     const fr=(leaderboardCache && leaderboardCache.fightResults)||{};
 
-    wrap.appendChild(el("div","header",`<div><strong>Your Picks</strong></div><div class="total-points" id="totalPoints">Total: 0 pts</div>`));
+    // header WITHOUT total points (declutter)
+    wrap.appendChild(el("div","header",`<div><strong>Your Picks</strong></div>`));
 
     let total=0;
     my.picks.forEach(({fight,winner,method,round})=>{
@@ -186,14 +185,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const dogSide=meta.underdogSide;
       const dogTier=underdogBonusFromOdds(meta.underdogOdds);
       const chosenIsUnderdog=(dogSide==="Fighter 1" && winner===meta.f1) || (dogSide==="Fighter 2" && winner===meta.f2);
-      const dogChipInline = chosenIsUnderdog ? " 🐶" : "";
+
+      // ONE dog with +X ONLY when it actually pays
+      const dogInline = (done && actual.underdog==='Y' && chosenIsUnderdog && dogTier>0) ? ` 🐶 +${dogTier}` : "";
 
       const mWinner=done && winner===actual.winner;
       const mMethod=done && mWinner && method===actual.method;
       const mRound =done && mWinner && mMethod && method!=="Decision" && String(round)===String(actual.round);
 
       let score=0;
-      if(mWinner){ score+=3; if(mMethod){score+=2; if(mRound) score+=1;} if(done && actual.underdog==="Y" && chosenIsUnderdog && dogTier>0){ score+=dogTier; } }
+      if(mWinner){ score+=3; if(mMethod){score+=2; if(mRound) score+=1;} if(dogInline) score+=dogTier; }
       total+=score;
 
       const line=done?[
@@ -202,12 +203,10 @@ document.addEventListener("DOMContentLoaded", () => {
         method!=="Decision"?`<span class="badge ${mRound?'good':'bad'}">${checkIcon(mRound)} R${esc(round||'')}</span>`:""
       ].filter(Boolean).join(" "):`<span class="badge">Pending</span>`;
 
-      const dogAward = (chosenIsUnderdog && dogTier>0) ? ` <span class="badge ${done && actual.underdog==='Y'?'good':''}">🐶 +${dogTier}</span>` : "";
-
       const row=el("div","scored-pick",`
         <div>
           <div class="fight-name">${esc(fight)}</div>
-          <div class="meta">Your pick: <strong>${esc(winner)}${dogChipInline}</strong> by <strong>${esc(method)}</strong>${(method!=="Decision"&&round)?` in <strong>R${esc(round)}</strong>`:""}${dogAward}</div>
+          <div class="meta">Your pick: <strong>${esc(winner)}${dogInline}</strong> by <strong>${esc(method)}</strong>${(method!=="Decision"&&round)?` in <strong>R${esc(round)}</strong>`:""}</div>
           <div class="meta">${line}</div>
         </div>
         <div class="points"><span class="points ${score===0?'zero':'points-cyan'}">+${score} pts</span></div>
@@ -215,10 +214,10 @@ document.addEventListener("DOMContentLoaded", () => {
       wrap.appendChild(row);
     });
 
-    const totalEl=$("#totalPoints"); if(totalEl) totalEl.textContent=`Total: ${total} pts`;
     wrap.style.display="grid";
   }
 
+  // ===== Weekly Leaderboard (tight columns; centered hint; first/last themes) =====
   async function loadLeaderboard(){
     if(!leaderboardCache) leaderboardCache = await api.getLeaderboard();
 
@@ -233,7 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // sticky weekly
     if(scores.length===0 && !resultsStarted){
-      const prev=jget(localStorage.getItem(KEY_PREV_WEEKLY),null);
+      const prev=jget(localStorage.getItem("prevWeeklyScoresV8"),null);
       if(Array.isArray(prev)&&prev.length) scores=prev;
     }
 
@@ -246,6 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const isFirst = (idx===0);
         const isLast  = (scores.length>=3 && idx===scores.length-1);
 
+        // exactly one crown LEFT of first place name
         const crown = isFirst ? `<span aria-hidden="true">👑</span>` : "";
         const poop  = isLast ? " 💩" : "";
         const rowCls = `${isFirst?'row-first ':''}${isLast?'row-last ':''}`;
@@ -262,7 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Banner control (seamless; persists)
+    // Champ banner (bigger, shimmer)
     const totalFights=(fights||[]).length;
     const completed=resultsArr.filter(r=>r && r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
     const haveMsg= typeof lb.champMessage==="string" && lb.champMessage.trim()!=="";
@@ -270,7 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if(totalFights>0 && completed===totalFights && (haveMsg||haveChamps) && (scores.length>0)){
       const msg = haveMsg ? lb.champMessage.trim() : `Champion${lb.champs.length>1?'s':''} of the Week: ${lb.champs.join(', ')}`;
-      localStorage.setItem(KEY_PREV_WEEKLY, JSON.stringify(scores));
+      localStorage.setItem("prevWeeklyScoresV8", JSON.stringify(scores));
       localStorage.setItem(KEY_PREV_BANNER, JSON.stringify({msg}));
       champBanner.innerHTML = marquee(msg);
       champBanner.style.display="block";
@@ -320,7 +320,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <span class="num rate">${(r.rate*100).toFixed(1)}%</span>
         <span class="num crowns">${r.crowns}</span>
         <span class="num events">${r.events}</span>
-        <span class="mobile-meta" aria-hidden="true">👑 ${r.crowns}/${r.events} • ${(r.rate*100).toFixed(1)}%</span>
       `);
       allTimeList.appendChild(li);
       prev=r;
