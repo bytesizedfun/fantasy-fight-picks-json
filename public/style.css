@@ -1,14 +1,14 @@
-/* ===== Fantasy Fight Picks — Neon Rebrand (matches logo) ===== */
+/* ===== Fantasy Fight Picks — Neon Compact v2 (logo match, tight spacing) ===== */
 
-/* Palette — tuned to your logo (neon cyan + hot red on near-black) */
+/* Palette (logo: neon cyan + hot red on near-black) */
 :root{
-  --bg:#05070a;              /* near black */
-  --panel:#0b0f14;           /* stacked panels */
-  --text:#e7faff;            /* cool white */
-  --muted:#8aa6b2;           /* desaturated blue-gray */
-  --neon:#00eaff;            /* cyan glow */
+  --bg:#06080c;            /* near black */
+  --panel:#0b0f14;         /* panels */
+  --text:#e6fbff;          /* cool white */
+  --muted:#8aa6b2;         /* blue-gray */
+  --neon:#00eaff;          /* cyan */
   --neon-dim:rgba(0,234,255,.18);
-  --accent:#ff3b57;          /* hot red (secondary) */
+  --accent:#ff3b57;        /* hot red */
   --accent-dim:rgba(255,59,87,.18);
   --shadow:rgba(0,0,0,.45);
 }
@@ -18,73 +18,74 @@
 html,body{
   margin:0; padding:0; background:var(--bg); color:var(--text);
   font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
-  line-height:1.35;
+  line-height:1.35; font-size:16px; /* scale up slightly */
 }
-a{color:var(--neon);text-decoration:none}
+a{color:var(--neon); text-decoration:none}
 a:hover{text-decoration:underline}
 small,.muted{color:var(--muted)}
 
-/* Layout — tighter to remove dead space */
-#app{width:min(1100px,94vw); margin:8px auto 20px}
+/* Layout — tighter stack, bigger content (less “zoomed out”) */
+#app{width:min(980px,94vw); margin:8px auto 16px}
 
-/* ---------- Logo / Banner ---------- */
+/* ---------- Logo ---------- */
 .banner-container{
-  width:min(1100px,94vw); margin:8px auto 6px;
+  width:min(980px,94vw); margin:8px auto 6px;
   display:flex; align-items:center; justify-content:center;
 }
 .logo-banner{
-  max-width:190px; height:auto; width:auto; display:block;
-  filter: drop-shadow(0 0 30px rgba(0,234,255,.25)) drop-shadow(0 0 22px rgba(255,59,87,.18));
+  max-width:220px; height:auto; width:auto; display:block;
+  filter: drop-shadow(0 0 34px rgba(0,234,255,.28)) drop-shadow(0 0 22px rgba(255,59,87,.18));
 }
-@media (max-width:560px){ .logo-banner{max-width:150px} }
+@media (max-width:560px){ .logo-banner{max-width:160px} }
 
 /* ---------- Card / Prompt ---------- */
 .card{
   background:var(--panel);
   border:1px solid rgba(255,255,255,.06);
-  border-radius:14px;
-  box-shadow:0 10px 24px var(--shadow);
+  border-radius:12px;
+  box-shadow:0 8px 20px var(--shadow);
 }
 .center{text-align:center}
-#usernamePrompt{width:min(620px,94vw); margin:12px auto; padding:14px}
+#usernamePrompt{width:min(560px,94vw); margin:10px auto; padding:12px}
 .prompt-title{font-weight:900; font-size:18px; margin:0 0 8px}
 #usernamePrompt input{
-  width:min(340px,90%); background:#071016; color:var(--text);
-  border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:9px 11px; margin-right:8px
+  width:min(320px,90%); background:#071016; color:var(--text);
+  border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px 10px; margin-right:6px
 }
 #usernamePrompt button{
   background:linear-gradient(180deg, rgba(255,59,87,.9), rgba(255,59,87,.7));
   border:1px solid rgba(255,59,87,.6); color:white; border-radius:10px;
-  padding:9px 12px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow);
+  padding:8px 11px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow);
 }
 
-/* ---------- Compact scoring (centered, short) ---------- */
+/* ---------- Compact scoring (short & centered) ---------- */
 .rules-collapsible{
-  width:min(900px,94vw); margin:8px auto 10px; background:var(--panel);
-  border:1px solid rgba(255,255,255,.06); border-radius:12px; overflow:hidden
+  width:min(560px,94vw);   /* << shorter box */
+  margin:6px auto; background:var(--panel);
+  border:1px solid rgba(255,255,255,.07); border-radius:10px; overflow:hidden
 }
 .rules-collapsible summary{
-  list-style:none; cursor:pointer; padding:8px 10px; display:flex; align-items:center; justify-content:center;
-  gap:10px; background:rgba(255,255,255,.04); color:var(--muted); font-weight:900; font-size:14px
+  list-style:none; cursor:pointer; padding:7px 9px; display:flex; align-items:center; justify-content:center;
+  gap:10px; background:rgba(255,255,255,.04); color:var(--muted); font-weight:900; font-size:13px
 }
 .rules-caret{transition:transform .15s ease}
 .rules-collapsible[open] .rules-caret{transform:rotate(90deg)}
-.rules{padding:8px 10px}
+.rules{padding:7px 9px}
 .rules-list{
   margin:0; padding:0; list-style:none;
-  display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center
+  display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center
 }
 .rules-list li{
   background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10);
-  border-radius:999px; padding:5px 8px; font-weight:800; font-size:12px; color:var(--muted)
+  border-radius:999px; padding:4px 7px; font-weight:800; font-size:12px; color:var(--muted)
 }
 
 /* ---------- Fights & Picks ---------- */
-#fightList{width:min(1100px,94vw); margin:8px auto; display:none}
-.fight{border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; margin:8px 0; background:var(--panel)}
+#fightList{width:min(980px,94vw); margin:6px auto; display:none; row-gap:6px}
+.fight{border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:8px 9px; background:var(--panel)}
 .fight h3{margin:0 0 6px 0; font-size:15px}
-.options label{display:block; padding:4px 0; cursor:pointer}
-.pick-row{display:inline-flex; align-items:center; gap:8px}
+.options label{display:block; padding:3px 0; cursor:pointer}
+.pick-row{display:inline-flex; align-items:center; gap:7px}
 .fighter-name.is-underdog{color:var(--accent); font-weight:900}
 .dog-tag{background:var(--accent-dim); border:1px solid rgba(255,59,87,.33); border-radius:999px; padding:2px 7px}
 .pick-controls{display:flex; gap:6px; margin-top:6px}
@@ -92,20 +93,20 @@ small,.muted{color:var(--muted)}
   background:#071016; color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:7px 9px
 }
 #submitBtn{
-  display:none; margin:8px auto 12px;
+  display:none; margin:8px auto 10px;
   background:linear-gradient(180deg, rgba(255,59,87,.9), rgba(255,59,87,.7));
   border:1px solid rgba(255,59,87,.6); color:white; border-radius:10px;
-  padding:10px 14px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow)
+  padding:9px 12px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow)
 }
 
-/* ---------- Your Picks (✓ ✕ restored) ---------- */
-#myPicks{width:min(1100px,94vw); margin:6px auto; display:none}
+/* ---------- Your Picks (✓ ✕ restored; tight) ---------- */
+#myPicks{width:min(980px,94vw); margin:6px auto; display:none}
 #myPicks .header{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px}
 .scored-pick{
-  display:flex; align-items:flex-start; justify-content:space-between;
-  border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:9px 10px; margin:6px 0; background:var(--panel)
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+  border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:8px 9px; margin:6px 0; background:var(--panel)
 }
-.scored-pick .fight-name{font-weight:900; margin-bottom:4px}
+.scored-pick .fight-name{font-weight:900; margin-bottom:3px}
 .scored-pick .meta{color:var(--muted); margin:3px 0}
 .badge{
   display:inline-flex; align-items:center; gap:6px; padding:2px 7px; border-radius:999px; margin-right:6px;
@@ -119,35 +120,34 @@ small,.muted{color:var(--muted)}
 .points .points.zero{color:var(--muted)}
 .points-cyan{color:var(--neon); font-weight:900}
 
-/* ---------- Champion Banner (neon cyan marquee; continuous; no dashes) ---------- */
+/* ---------- Champion Banner (bigger, flashy, seamless) ---------- */
 #champBanner{
-  position:relative; margin:10px auto; width:min(1100px,94vw); padding:10px 0; border-radius:14px;
+  position:relative; margin:8px auto; width:min(980px,94vw); padding:12px 0; border-radius:12px;
   background:
     radial-gradient(100% 150% at 10% 0%, var(--neon-dim), transparent 60%),
     radial-gradient(100% 150% at 90% 100%, var(--accent-dim), transparent 60%);
-  box-shadow:0 0 40px rgba(0,234,255,.16), inset 0 0 24px rgba(0,234,255,.14);
+  box-shadow:0 0 46px rgba(0,234,255,.22), inset 0 0 28px rgba(0,234,255,.18);
   display:none; overflow:hidden;
-  /* fade edges so you never see ends of the loop */
-  -webkit-mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
-          mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+          mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
 }
 #champBanner .scroll{
-  display:flex; gap:36px; white-space:nowrap; align-items:center;
-  animation: champScroll 15s linear infinite;
-  font-weight:900; letter-spacing:.02em;
-  color:var(--text); text-shadow:0 0 14px rgba(0,234,255,.55);
+  display:flex; gap:42px; white-space:nowrap; align-items:center;
+  animation: champScroll 12s linear infinite; /* slightly faster */
+  font-weight:900; letter-spacing:.02em; font-size:20px;
+  color:var(--text); text-shadow:0 0 16px rgba(0,234,255,.6);
 }
-#champBanner .crown{ filter:drop-shadow(0 0 10px rgba(0,234,255,.55)) }
+#champBanner .crown{ filter:drop-shadow(0 0 12px rgba(0,234,255,.6)) }
 #champBanner .champ-name{ color:var(--neon) }
 @keyframes champScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
-/* ---------- Section title & Welcome (Orbitron) ---------- */
+/* ---------- Section title & Welcome (bigger) ---------- */
 .section-title{
-  width:min(1100px,94vw); margin:12px auto 6px; text-align:center; letter-spacing:.16em; color:var(--muted); font-weight:900
+  width:min(980px,94vw); margin:10px auto 6px; text-align:center; letter-spacing:.16em; color:var(--muted); font-weight:900
 }
 #welcome{
   font-family:'Orbitron', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-  font-weight:900; letter-spacing:.02em; text-align:center; margin:6px 0
+  font-weight:900; letter-spacing:.02em; text-align:center; margin:6px 0; font-size:20px
 }
 
 /* ---------- Segmented tabs ---------- */
@@ -162,44 +162,51 @@ small,.muted{color:var(--muted)}
 }
 .segmented button[aria-pressed="true"]{background:rgba(0,234,255,.12); border-color:rgba(0,234,255,.35)}
 
-/* ---------- Leaderboards (UL/LI) — neon compact ---------- */
+/* ---------- Leaderboards (tight & flashy) ---------- */
 .board{
-  list-style:none; padding:0; margin:8px auto 14px; width:min(1100px,94vw);
-  border:1px solid rgba(255,255,255,.08); border-radius:12px; overflow:hidden; background:var(--panel);
+  list-style:none; padding:0; margin:6px auto 10px; width:min(980px,94vw);
+  border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden; background:var(--panel);
   box-shadow:0 0 26px rgba(0,234,255,.10)
 }
 .board li{
   display:grid; align-items:center; gap:8px;
-  grid-template-columns: 56px 74px 1fr 92px 74px; /* rank | crowns | user | points | events */
-  padding:9px 10px; border-bottom:1px solid rgba(255,255,255,.06)
+  grid-template-columns: 56px 1fr 120px 76px; /* rank | user(+crowns) | points | events */
+  padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.06)
 }
 .board li:nth-child(odd){ background:rgba(255,255,255,.02) }
 .board li:last-child{border-bottom:none}
 .board li:hover{background:rgba(0,234,255,.06)}
 
-/* Column alignments by position */
-.board li > *:nth-child(1){ text-align:center; color:var(--muted); font-weight:900; font-family:'Orbitron', ui-sans-serif }
-.board li > *:nth-child(2){ text-align:center; color:var(--neon) }               /* crowns here */
-.board li > *:nth-child(3){ font-weight:800 }                                  /* username */
-.board li > *:nth-child(4){ text-align:right; font-variant-numeric:tabular-nums; font-weight:900; color:var(--neon) }
-.board li > *:nth-child(5){ text-align:right; color:var(--muted) }
+/* columns by position */
+.board li > *:nth-child(1){ text-align:center; color:var(--muted); font-weight:900; font-family:'Orbitron', ui-sans-serif } /* rank */
+.board li > *:nth-child(2){ font-weight:800; display:flex; align-items:center; gap:8px } /* username + crowns */
+.board li > *:nth-child(3){ text-align:right; font-variant-numeric:tabular-nums; font-weight:900; color:var(--neon) } /* points */
+.board li > *:nth-child(4){ text-align:right; color:var(--muted) } /* events */
 
-/* Emphasis */
-.current-user span:nth-child(3){ font-weight:900; letter-spacing:.2px }
-.champ-glow span:nth-child(3){ color:var(--neon); text-shadow:0 0 12px rgba(0,234,255,.55) }
-.loser span:nth-child(4){ opacity:.9 }
+/* crowns inline */
+.crowns{ color:var(--neon); text-shadow:0 0 10px rgba(0,234,255,.55) }
 
-/* All-Time board (clean grid, no clashes) */
-.board.at-five li{
-  grid-template-columns: 60px 1fr 90px 70px 80px; /* rank | user | % | crowns | events */
+/* First / last place themes (flashy winner, subtle loser) */
+.first-place{
+  background:linear-gradient(90deg, rgba(0,234,255,.10), rgba(0,234,255,0));
+  box-shadow:inset 0 0 22px rgba(0,234,255,.22);
 }
+.first-place span:nth-child(2){ color:var(--neon); text-shadow:0 0 12px rgba(0,234,255,.65) }
+.last-place{
+  background:linear-gradient(90deg, rgba(255,59,87,.10), rgba(255,59,87,0));
+  box-shadow:inset 0 0 18px rgba(255,59,87,.18);
+}
+.last-place span:nth-child(3){ color:#ff8897 }
+
+/* All-Time board (no clashes, compact) */
+.board.at-five li{ grid-template-columns: 56px 1fr 86px 66px 70px }
 .board .rank{font-family:'Orbitron', ui-sans-serif}
 .board .num{font-variant-numeric:tabular-nums}
-.board .mobile-meta{display:none}
 .board .user{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.board .mobile-meta{display:none}
 
 /* ---------- Discord CTA ---------- */
-.cta-discord{width:min(1100px,94vw); margin:14px auto 26px; text-align:center}
+.cta-discord{width:min(980px,94vw); margin:12px auto 18px; text-align:center}
 .btn-discord{
   display:inline-flex; align-items:center; gap:8px; background:#5865F2; color:#fff;
   padding:8px 12px; border-radius:10px; font-weight:900; box-shadow:0 10px 24px rgba(0,0,0,.25)
@@ -208,12 +215,12 @@ small,.muted{color:var(--muted)}
 
 /* ---------- Responsive ---------- */
 @media (max-width:860px){
-  .board li{grid-template-columns: 52px 60px 1fr 86px}
-  .board li > *:nth-child(5){display:none}
-  .board.at-five li{grid-template-columns: 56px 1fr 80px 60px}
+  .board li{grid-template-columns: 52px 1fr 100px}
+  .board li > *:nth-child(4){display:none}
+  .board.at-five li{grid-template-columns: 52px 1fr 80px 58px}
 }
 @media (max-width:560px){
-  .board li{grid-template-columns: 48px 52px 1fr 78px; padding:8px}
-  .board.at-five li{grid-template-columns: 50px 1fr 70px 54px}
-  .logo-banner{max-width:136px}
+  .board li{grid-template-columns: 48px 1fr 92px; padding:7px 8px}
+  .board.at-five li{grid-template-columns: 48px 1fr 72px 54px}
+  .logo-banner{max-width:150px}
 }
