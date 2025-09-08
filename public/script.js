@@ -1,7 +1,10 @@
-/* ===== Fantasy Fight Picks — Neon Compact v3
-   - Ensures crowns on Weekly by loading /api/hall before rendering
-   - First/Last place theming always applied
-   - Sticky weekly + seamless neon banner preserved
+/* ===== Fantasy Fight Picks — Neon Compact v4
+   - Scoring fits text only
+   - Weekly LB: 1 crown BEFORE winner name; first/last themed; centered hint
+   - Your Picks centered points; underdog emoji next to underdog fighter in text
+   - Pick selection centered; no red underdog; nicer selects
+   - Old tab hover = red; active = red
+   - Crowns sourced from /api/hall if you ever want counts for All-Time only
 ===== */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -40,12 +43,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let username = localStorage.getItem("username") || "";
 
-  // caches / sticky
+  // caches
   const fightMeta = new Map();
   let fightsCache=null, leaderboardCache=null, allTimeCache=null;
 
-  const KEY_PREV_WEEKLY="prevWeeklyScoresV5";
-  const KEY_PREV_BANNER="prevChampBannerV5";
+  const KEY_PREV_WEEKLY="prevWeeklyScoresV6";
+  const KEY_PREV_BANNER="prevChampBannerV6";
 
   function buildFightMeta(rows){
     fightMeta.clear();
@@ -54,12 +57,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // compact scoring content
+  // scoring content fits summary only
   (function renderRules(){
     $("#scoringRules").innerHTML = `
-      <ul class="rules-list">
-        <li>+3 winner</li><li>+2 method</li><li>+1 round</li><li>🐶 underdog bonus</li>
-      </ul>
+      <ul class="rules-list"><li>+3 winner</li><li>+2 method</li><li>+1 round</li><li>🐶 underdog bonus</li></ul>
     `;
   })();
 
@@ -79,12 +80,10 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.style.display="block";
 
     try{
-      // Load fights + hall first so crowns are available before leaderboards render
       const [fights, hall] = await Promise.all([api.getFights(), api.getHall()]);
       fightsCache=fights||[]; allTimeCache = normalizeHall(hall||[]);
       buildFightMeta(fightsCache);
 
-      // Decide if picks UI shows
       const myPicks = await api.getUserPicks(username);
       if (myPicks?.success && Array.isArray(myPicks.picks) && myPicks.picks.length){
         fightList.style.display="none"; submitBtn.style.display="none";
@@ -93,12 +92,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       await loadMyPicks();
-      await loadLeaderboard();  // crowns guaranteed thanks to hall already loaded
-      // (Optional) refresh all-time if user taps the tab later
-      // no-op here; allTimeCache already set
+      await loadLeaderboard();
     }catch(e){
       console.error(e);
-      fightList.innerHTML = `<div class="board-hint">Server unavailable.</div>`;
+      fightList.innerHTML = `<li class="board-hint">Server unavailable.</li>`;
       submitBtn.style.display="none";
     }
   }
@@ -114,10 +111,16 @@ document.addEventListener("DOMContentLoaded", () => {
         <h3>${esc(fight)}</h3>
         <div class="options">
           <label><input type="radio" name="${esc(fight)}-winner" value="${esc(fighter1)}">
-            <span class="pick-row"><span class="fighter-name ${dog1>0?'is-underdog':''}">${esc(fighter1)}</span>${dog1>0?`<span class="dog-tag">🐶 +${dog1} pts</span>`:""}</span>
+            <span class="pick-row">
+              <span class="fighter-name ${dog1>0?'is-underdog':''}">${esc(fighter1)}</span>
+              ${dog1>0?`<span class="dog-tag">🐶 +${dog1} pts</span>`:""}
+            </span>
           </label>
           <label><input type="radio" name="${esc(fight)}-winner" value="${esc(fighter2)}">
-            <span class="pick-row"><span class="fighter-name ${dog2>0?'is-underdog':''}">${esc(fighter2)}</span>${dog2>0?`<span class="dog-tag">🐶 +${dog2} pts</span>`:""}</span>
+            <span class="pick-row">
+              <span class="fighter-name ${dog2>0?'is-underdog':''}">${esc(fighter2)}</span>
+              ${dog2>0?`<span class="dog-tag">🐶 +${dog2} pts</span>`:""}
+            </span>
           </label>
         </div>
         <div class="pick-controls">
@@ -132,17 +135,10 @@ document.addEventListener("DOMContentLoaded", () => {
       fightList.appendChild(card);
     });
 
-    fightList.querySelectorAll(".fight").forEach(card=>{
-      const mSel=card.querySelector(`select[name$="-method"]`);
-      const rSel=card.querySelector(`select[name$="-round"]`);
-      const sync=()=>{ const dec=mSel.value==="Decision"; rSel.disabled=dec; if(dec) rSel.value=""; else if(!rSel.value) rSel.value="1"; };
-      mSel.addEventListener("change", sync); sync();
-    });
-
     fightList.style.display="grid";
   }
 
-  async function submitPicks(){
+  submitBtn.addEventListener("click", async ()=>{
     submitBtn.disabled=true; submitBtn.textContent="Submitting…";
     const picks=[];
     fightList.querySelectorAll(".fight").forEach(card=>{
@@ -166,8 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }catch(e){
       alert("Network error submitting picks."); submitBtn.disabled=false; submitBtn.textContent="Submit Picks";
     }
-  }
-  submitBtn.addEventListener("click", submitPicks);
+  });
 
   async function loadMyPicks(){
     const my=await api.getUserPicks(username);
@@ -183,14 +178,16 @@ document.addEventListener("DOMContentLoaded", () => {
     my.picks.forEach(({fight,winner,method,round})=>{
       const actual=fr[fight]||{};
       const done=!!(actual.winner && actual.method);
-      const mWinner=done && winner===actual.winner;
-      const mMethod=done && mWinner && method===actual.method;
-      const mRound =done && mWinner && mMethod && method!=="Decision" && String(round)===String(actual.round);
 
       const meta=fightMeta.get(fight)||{};
       const dogSide=meta.underdogSide;
       const dogTier=underdogBonusFromOdds(meta.underdogOdds);
       const chosenIsUnderdog=(dogSide==="Fighter 1" && winner===meta.f1) || (dogSide==="Fighter 2" && winner===meta.f2);
+      const dogChipInline = chosenIsUnderdog ? " 🐶" : "";
+
+      const mWinner=done && winner===actual.winner;
+      const mMethod=done && mWinner && method===actual.method;
+      const mRound =done && mWinner && mMethod && method!=="Decision" && String(round)===String(actual.round);
 
       let score=0;
       if(mWinner){ score+=3; if(mMethod){score+=2; if(mRound) score+=1;} if(done && actual.underdog==="Y" && chosenIsUnderdog && dogTier>0){ score+=dogTier; } }
@@ -202,12 +199,12 @@ document.addEventListener("DOMContentLoaded", () => {
         method!=="Decision"?`<span class="badge ${mRound?'good':'bad'}">${checkIcon(mRound)} R${esc(round||'')}</span>`:""
       ].filter(Boolean).join(" "):`<span class="badge">Pending</span>`;
 
-      const dogChip=chosenIsUnderdog && dogTier>0?`<span class="badge ${done && actual.underdog==='Y'?'good':''}">🐶 +${dogTier}</span>`:"";
+      const dogAward = (chosenIsUnderdog && dogTier>0) ? ` <span class="badge ${done && actual.underdog==='Y'?'good':''}">🐶 +${dogTier}</span>` : "";
 
       const row=el("div","scored-pick",`
         <div>
           <div class="fight-name">${esc(fight)}</div>
-          <div class="meta">Your pick: <strong>${esc(winner)}</strong> by <strong>${esc(method)}</strong>${(method!=="Decision"&&round)?` in <strong>R${esc(round)}</strong>`:""} ${dogChip}</div>
+          <div class="meta">Your pick: <strong>${esc(winner)}${dogChipInline}</strong> by <strong>${esc(method)}</strong>${(method!=="Decision"&&round)?` in <strong>R${esc(round)}</strong>`:""}${dogAward}</div>
           <div class="meta">${line}</div>
         </div>
         <div class="points"><span class="points ${score===0?'zero':'points-cyan'}">+${score} pts</span></div>
@@ -220,28 +217,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadLeaderboard(){
-    // fetch leaderboard fresh every time; crowns come from allTimeCache (already loaded in start())
     if(!leaderboardCache) leaderboardCache = await api.getLeaderboard();
-
     const fights = fightsCache || (await api.getFights());
     const lb = leaderboardCache || {};
-    const hall = allTimeCache || normalizeHall(await api.getHall()); // fallback if not set
 
     leaderboardEl.innerHTML="";
-
-    // Build a quick crown map from hall
-    const crownMap = {};
-    (hall||[]).forEach(r=>{
-      const name = String(r.username || r.user || "").trim();
-      const crowns = +r.crowns || 0;
-      if(name) crownMap[name.toLowerCase()] = crowns;
-    });
 
     const resultsArr=Object.values(lb.fightResults||{});
     const resultsStarted=resultsArr.some(r=>r && r.winner && r.method);
     let scores=Object.entries(lb.scores||{}).sort((a,b)=> b[1]-a[1]);
 
-    // sticky weekly: if no current scores and results haven’t started, show previous saved board
+    // sticky weekly: show cached final until next starts
     if(scores.length===0 && !resultsStarted){
       const prev=jget(localStorage.getItem(KEY_PREV_WEEKLY),null);
       if(Array.isArray(prev)&&prev.length) scores=prev;
@@ -250,33 +236,31 @@ document.addEventListener("DOMContentLoaded", () => {
     if(scores.length===0){
       leaderboardEl.appendChild(el("li","board-hint","Weekly standings will appear once results start."));
     } else {
-      let rank=1, prev=null, shown=1;
+      let rank=1, prevPts=null, shown=1;
       scores.forEach(([user,pts],idx)=>{
-        if(pts!==prev) shown=rank;
-
-        const crownsCount = crownMap[user.toLowerCase()] || 0;
-        const crowns = crownsCount>0 ? `<span class="crowns">${"👑".repeat(Math.min(crownsCount,10))}</span>` : "";
-
+        if(pts!==prevPts) shown=rank;
         const isFirst = (idx===0);
         const isLast  = (scores.length>=3 && idx===scores.length-1);
-        const poop    = isLast ? " 💩" : "";
 
-        const li=el("li", `${isFirst?'first-place ':''}${isLast?'last-place ':''}`, `
+        // Exactly ONE crown, on the LEFT of the name, only for FIRST place
+        const crown = isFirst ? `<span aria-hidden="true">👑</span>` : "";
+
+        const poop  = isLast ? " 💩" : "";
+        const rowCls = `${isFirst?'row-first ':''}${isLast?'row-last ':''}`;
+
+        const li=el("li", rowCls, `
           <span>#${shown}</span>
-          <span>${esc(user)} ${crowns}</span>
-          <span>${pts} pts${poop}</span>
-          <span></span>
+          <span class="name">${crown} ${esc(user)}</span>
+          <span class="points">${pts} pts${poop}</span>
         `);
-
-        if(lb.champs?.includes(user)) li.classList.add("champ-glow");
         if(user===username) li.classList.add("current-user");
-
         leaderboardEl.appendChild(li);
-        prev=pts; rank++;
+
+        prevPts=pts; rank++;
       });
     }
 
-    // Banner (flashy, seamless; persist until next event starts)
+    // Banner control (seamless; persists until next event starts)
     const totalFights=(fights||[]).length;
     const completed=resultsArr.filter(r=>r && r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
     const haveMsg= typeof lb.champMessage==="string" && lb.champMessage.trim()!=="";
@@ -303,9 +287,8 @@ document.addEventListener("DOMContentLoaded", () => {
     return `<div class="scroll" aria-label="Champion of the Week">${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}</div>`;
   }
 
-  // ===== All-time helpers =====
+  // ===== All-time helpers (for All-Time tab only) =====
   function normalizeHall(rows){
-    // rows from GAS typically have: username, crowns, crown_rate, events_played
     if(!Array.isArray(rows)) return [];
     return rows.map(r=>({
       username: r.username || r.user || "",
@@ -314,7 +297,6 @@ document.addEventListener("DOMContentLoaded", () => {
       events_played: +r.events_played || 0
     }));
   }
-
   function sortAllTime(rows){
     const cleaned=(rows||[]).filter(r=>r && r.username && String(r.username).trim()!=="");
     return cleaned.map(r=>({user:r.username, crowns:+r.crowns||0, events:+r.events_played||0, rate:+r.crown_rate||0}))
@@ -325,7 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function drawAllTime(data){
     allTimeList.innerHTML="";
-    if(!data.length){ allTimeList.innerHTML="<li>No All-Time data yet.</li>"; return; }
+    if(!data.length){ allTimeList.innerHTML="<li class='board-hint'>No All-Time data yet.</li>"; return; }
     renderAllTimeHeader();
     let shown=0, prev=null;
     data.forEach((r,idx)=>{
@@ -343,7 +325,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // tabs
+  // tabs (with red hover already in CSS)
   weeklyTabBtn.addEventListener("click", e=>{
     e.preventDefault();
     leaderboardEl.style.display="block"; allTimeList.style.display="none";
@@ -352,9 +334,9 @@ document.addEventListener("DOMContentLoaded", () => {
   allTimeTabBtn.addEventListener("click", async e=>{
     e.preventDefault();
     if(!allTimeCache){ try{ allTimeCache = normalizeHall(await api.getHall()); }catch{} }
-    const data = sortAllTime(allTimeCache||[]);
-    drawAllTime(data);
+    drawAllTime(sortAllTime(allTimeCache||[]));
     leaderboardEl.style.display="none"; allTimeList.style.display="block";
     weeklyTabBtn.setAttribute("aria-pressed","false"); allTimeTabBtn.setAttribute("aria-pressed","true");
   });
+
 });
