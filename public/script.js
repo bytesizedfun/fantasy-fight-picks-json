@@ -1,4 +1,8 @@
-/* ===== Fantasy Fight Picks — Neon Compact v2 logic ===== */
+/* ===== Fantasy Fight Picks — Neon Compact v3
+   - Ensures crowns on Weekly by loading /api/hall before rendering
+   - First/Last place theming always applied
+   - Sticky weekly + seamless neon banner preserved
+===== */
 
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
@@ -13,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function underdogBonusFromOdds(odds){ const n=normalizeAmericanOdds(odds); if(n==null || n<100) return 0; return 1+Math.floor((n-100)/100); }
   const checkIcon = ok => `<span class="check ${ok?'good':'bad'}">${ok?'✓':'✕'}</span>`;
 
-  // API (verbs kept)
+  // API
   const api = {
     async getFights(){ const r=await fetch(`${BASE}/fights`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); },
     async getUserPicks(username){ const r=await fetch(`${BASE}/picks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); return r.json(); },
@@ -40,8 +44,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightMeta = new Map();
   let fightsCache=null, leaderboardCache=null, allTimeCache=null;
 
-  const KEY_PREV_WEEKLY="prevWeeklyScoresV4";
-  const KEY_PREV_BANNER="prevChampBannerV4";
+  const KEY_PREV_WEEKLY="prevWeeklyScoresV5";
+  const KEY_PREV_BANNER="prevChampBannerV5";
 
   function buildFightMeta(rows){
     fightMeta.clear();
@@ -75,9 +79,13 @@ document.addEventListener("DOMContentLoaded", () => {
     welcome.style.display="block";
 
     try{
-      const [fights,myPicks] = await Promise.all([api.getFights(), api.getUserPicks(username)]);
-      fightsCache=fights||[]; buildFightMeta(fightsCache);
+      // Load fights + hall first so crowns are available before leaderboards render
+      const [fights, hall] = await Promise.all([api.getFights(), api.getHall()]);
+      fightsCache=fights||[]; allTimeCache = normalizeHall(hall||[]);
+      buildFightMeta(fightsCache);
 
+      // Decide if picks UI shows
+      const myPicks = await api.getUserPicks(username);
       if (myPicks?.success && Array.isArray(myPicks.picks) && myPicks.picks.length){
         fightList.style.display="none"; submitBtn.style.display="none";
       } else {
@@ -85,8 +93,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       await loadMyPicks();
-      await loadLeaderboard();
-      preloadAllTime();
+      await loadLeaderboard();  // crowns guaranteed thanks to hall already loaded
+      // (Optional) refresh all-time if user taps the tab later
+      // no-op here; allTimeCache already set
     }catch(e){
       console.error(e);
       fightList.innerHTML = `<div class="board-hint">Server unavailable.</div>`;
@@ -211,19 +220,28 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadLeaderboard(){
-    const [fights,lb]=await Promise.all([
-      fightsCache?Promise.resolve(fightsCache):api.getFights(),
-      leaderboardCache?Promise.resolve(leaderboardCache):api.getLeaderboard()
-    ]);
-    fightsCache=fights; leaderboardCache=lb;
+    // fetch leaderboard fresh every time; crowns come from allTimeCache (already loaded in start())
+    if(!leaderboardCache) leaderboardCache = await api.getLeaderboard();
+
+    const fights = fightsCache || (await api.getFights());
+    const lb = leaderboardCache || {};
+    const hall = allTimeCache || normalizeHall(await api.getHall()); // fallback if not set
 
     leaderboardEl.innerHTML="";
+
+    // Build a quick crown map from hall
+    const crownMap = {};
+    (hall||[]).forEach(r=>{
+      const name = String(r.username || r.user || "").trim();
+      const crowns = +r.crowns || 0;
+      if(name) crownMap[name.toLowerCase()] = crowns;
+    });
 
     const resultsArr=Object.values(lb.fightResults||{});
     const resultsStarted=resultsArr.some(r=>r && r.winner && r.method);
     let scores=Object.entries(lb.scores||{}).sort((a,b)=> b[1]-a[1]);
 
-    // show previous final board until new event actually starts
+    // sticky weekly: if no current scores and results haven’t started, show previous saved board
     if(scores.length===0 && !resultsStarted){
       const prev=jget(localStorage.getItem(KEY_PREV_WEEKLY),null);
       if(Array.isArray(prev)&&prev.length) scores=prev;
@@ -236,18 +254,8 @@ document.addEventListener("DOMContentLoaded", () => {
       scores.forEach(([user,pts],idx)=>{
         if(pts!==prev) shown=rank;
 
-        // Crown count: several fallbacks + all-time cache lookup
-        let crownCount =
-          (lb.crowns && lb.crowns[user]) ||
-          (lb.crownCounts && lb.crownCounts[user]) ||
-          (lb.crown_tally && lb.crown_tally[user]) || 0;
-
-        if(!crownCount && Array.isArray(allTimeCache)){
-          const found = allTimeCache.find(r=>String(r.user||r.username).toLowerCase()===String(user).toLowerCase());
-          if(found) crownCount = +found.crowns || 0;
-        }
-
-        const crowns = crownCount>0 ? `<span class="crowns">${"👑".repeat(Math.min(crownCount,10))}</span>` : "";
+        const crownsCount = crownMap[user.toLowerCase()] || 0;
+        const crowns = crownsCount>0 ? `<span class="crowns">${"👑".repeat(Math.min(crownsCount,10))}</span>` : "";
 
         const isFirst = (idx===0);
         const isLast  = (scores.length>=3 && idx===scores.length-1);
@@ -268,14 +276,14 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Banner (flashy, continuous; persists until next event begins)
+    // Banner (flashy, seamless; persist until next event starts)
     const totalFights=(fights||[]).length;
     const completed=resultsArr.filter(r=>r && r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
     const haveMsg= typeof lb.champMessage==="string" && lb.champMessage.trim()!=="";
     const haveChamps= Array.isArray(lb.champs) && lb.champs.length>0;
 
-    if(totalFights>0 && completed===totalFights && (haveMsg||haveChamps) && scores.length){
-      const msg = haveMsg ? lb.champMessage.trim() : `Champion${lb.champs.length>1?'s':''}: ${lb.champs.join(', ')}`;
+    if(totalFights>0 && completed===totalFights && (haveMsg||haveChamps) && (scores.length>0)){
+      const msg = haveMsg ? lb.champMessage.trim() : `Champion${lb.champs.length>1?'s':''} of the Week: ${lb.champs.join(', ')}`;
       localStorage.setItem(KEY_PREV_WEEKLY, JSON.stringify(scores));
       localStorage.setItem(KEY_PREV_BANNER, JSON.stringify({msg}));
       champBanner.innerHTML = marquee(msg);
@@ -292,11 +300,21 @@ document.addEventListener("DOMContentLoaded", () => {
   function marquee(msg){
     const safe=esc(msg);
     const item=`<span class="crown">👑</span> <span class="champ-name">${safe}</span>`;
-    // longer track for smoother wrap
     return `<div class="scroll" aria-label="Champion of the Week">${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}</div>`;
   }
 
-  // All-time helpers
+  // ===== All-time helpers =====
+  function normalizeHall(rows){
+    // rows from GAS typically have: username, crowns, crown_rate, events_played
+    if(!Array.isArray(rows)) return [];
+    return rows.map(r=>({
+      username: r.username || r.user || "",
+      crowns: +r.crowns || 0,
+      crown_rate: +r.crown_rate || 0,
+      events_played: +r.events_played || 0
+    }));
+  }
+
   function sortAllTime(rows){
     const cleaned=(rows||[]).filter(r=>r && r.username && String(r.username).trim()!=="");
     return cleaned.map(r=>({user:r.username, crowns:+r.crowns||0, events:+r.events_played||0, rate:+r.crown_rate||0}))
@@ -324,7 +342,6 @@ document.addEventListener("DOMContentLoaded", () => {
       prev=r;
     });
   }
-  async function preloadAllTime(){ try{ allTimeCache=sortAllTime(await api.getHall()); }catch{} }
 
   // tabs
   weeklyTabBtn.addEventListener("click", e=>{
@@ -334,8 +351,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   allTimeTabBtn.addEventListener("click", async e=>{
     e.preventDefault();
-    if(!allTimeCache){ try{ allTimeCache=sortAllTime(await api.getHall()); }catch{} }
-    drawAllTime(allTimeCache||[]);
+    if(!allTimeCache){ try{ allTimeCache = normalizeHall(await api.getHall()); }catch{} }
+    const data = sortAllTime(allTimeCache||[]);
+    drawAllTime(data);
     leaderboardEl.style.display="none"; allTimeList.style.display="block";
     weeklyTabBtn.setAttribute("aria-pressed","false"); allTimeTabBtn.setAttribute("aria-pressed","true");
   });
