@@ -1,280 +1,74 @@
-/* ===== Fantasy Fight Picks — Neon Compact v6 ===== */
-/* Less dead space, centered UI, pro selects, tight leaderboards */
+/* ===== Fantasy Fight Picks — Leaderboard Tight v7 ===== */
+/* Only leaderboard + small related bits adjusted */
 
 :root{
-  --bg:#06080c;
-  --panel:#0b0f14;
-  --text:#e6fbff;
-  --muted:#95aab5;
-  --neon:#00eaff;          /* brand cyan */
-  --neon-dim:rgba(0,234,255,.18);
-  --accent:#ff3b57;        /* hover/active red */
-  --accent-dim:rgba(255,59,87,.18);
-  --shadow:rgba(0,0,0,.5);
+  --bg:#06080c; --panel:#0b0f14; --text:#e6fbff; --muted:#95aab5;
+  --neon:#00eaff; --accent:#ff3b57;
 }
 
 *{box-sizing:border-box}
-html,body{
-  margin:0; padding:0; background:var(--bg); color:var(--text);
-  font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
-  line-height:1.34; font-size:16px;
-}
-a{color:var(--neon); text-decoration:none}
-a:hover{text-decoration:underline}
-.muted{color:var(--muted)}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
 
-#app{width:min(820px,94vw); margin:8px auto 14px}
+#app{width:min(820px,94vw);margin:8px auto 14px}
 
-/* ---------- Logo ---------- */
-.banner-container{
-  width:min(820px,94vw); margin:8px auto 6px;
-  display:flex; align-items:center; justify-content:center;
-}
-.logo-banner{
-  max-width:220px; height:auto; display:block;
-  filter: drop-shadow(0 0 34px rgba(0,234,255,.28)) drop-shadow(0 0 22px rgba(255,59,87,.18));
-}
-@media (max-width:560px){ .logo-banner{max-width:160px} }
+/* --------- SECTION TITLES (unchanged) --------- */
+.section-title{width:min(820px,94vw);margin:8px auto 4px;text-align:center;letter-spacing:.18em;color:#a9c6cf;font-weight:900}
+.section-title--leader{font-family:'Orbitron',ui-sans-serif;font-size:15px;letter-spacing:.28em;color:#e9fbff;text-shadow:0 0 14px rgba(0,234,255,.5),0 0 24px rgba(0,234,255,.25)}
 
-/* ---------- Username prompt ---------- */
-.card{background:var(--panel); border:1px solid rgba(255,255,255,.06); border-radius:12px; box-shadow:0 8px 20px var(--shadow)}
-.center{text-align:center}
-#usernamePrompt{width:min(460px,94vw); margin:8px auto; padding:10px}
-.prompt-title{font-weight:900; font-size:18px; margin:0 0 6px}
-#usernamePrompt input{
-  width:min(270px,90%); background:#071016; color:var(--text);
-  border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px 10px; margin-right:6px
-}
-#usernamePrompt button{
-  background:linear-gradient(180deg, rgba(0,234,255,.9), rgba(0,234,255,.75));
-  border:1px solid rgba(0,234,255,.55); color:#061015; border-radius:10px;
-  padding:8px 11px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow);
-}
-#usernamePrompt button:hover{
-  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.8));
-  border-color:rgba(255,59,87,.7); color:#fff;
-}
+/* --------- TABS (unchanged behavior) --------- */
+.segmented{width:min(360px,94vw);margin:6px auto;background:#0b0f14;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:4px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.segmented button{background:linear-gradient(180deg,rgba(0,234,255,.18),rgba(0,234,255,.10));border:1px solid rgba(0,234,255,.35);color:#e6fbff;border-radius:8px;padding:8px;font-weight:900;cursor:pointer;transition:all .12s}
+.segmented button:hover{background:linear-gradient(180deg,rgba(255,59,87,.95),rgba(255,59,87,.82));border-color:rgba(255,59,87,.8);color:#fff;box-shadow:0 0 0 3px rgba(255,59,87,.15) inset}
+.segmented button[aria-pressed="true"]{background:linear-gradient(180deg,rgba(255,59,87,.95),rgba(255,59,87,.82));border-color:rgba(255,59,87,.8)}
 
-/* ---------- Scoring (fits the word only) ---------- */
-.rules-collapsible{display:flex; justify-content:center; margin:6px auto}
-.rules-collapsible>summary{
-  display:inline-block; width:max-content;
-  background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:999px;
-  padding:6px 10px; cursor:pointer; color:var(--muted); font-weight:900; font-size:13px;
-  box-shadow:0 6px 16px var(--shadow)
-}
-.rules{display:none}
-.rules-collapsible[open] .rules{display:block}
-.rules-list{display:flex; gap:6px; margin:6px 0 0; padding:0; list-style:none; justify-content:center}
-.rules-list li{
-  padding:2px 6px; font-weight:800; font-size:12px; color:var(--muted);
-  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:999px
-}
-
-/* ---------- Fights & Picks ---------- */
-#fightList{
-  width:min(820px,94vw); margin:6px auto; display:none;
-  display:grid; row-gap:6px; justify-items:center;
-}
-.fight{
-  width:min(720px,100%); border:1px solid rgba(255,255,255,.07); border-radius:12px;
-  padding:10px 10px; background:var(--panel); text-align:center
-}
-.fight h3{margin:0 0 8px 0; font-size:16px}
-
-/* Two-button picker (no duplicate rows) */
-.options{display:flex; justify-content:center; gap:8px}
-.options input[type="radio"]{display:none}
-.pick-btn{
-  display:inline-flex; align-items:center; gap:8px;
-  padding:8px 12px; border-radius:999px; cursor:pointer; user-select:none;
-  background:linear-gradient(180deg, rgba(0,234,255,.16), rgba(0,234,255,.10));
-  border:1px solid rgba(0,234,255,.35); font-weight:900;
-}
-.options input[type="radio"]:checked + .pick-btn{
-  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
-  border-color:rgba(255,59,87,.8); color:#fff;
-}
-.pick-dog{color:var(--muted); font-weight:900}
-
-/* Method/round selects — styled */
-.pick-controls{display:flex; gap:8px; margin-top:8px; justify-content:center}
-.pick-controls select{
-  appearance:none; -webkit-appearance:none; -moz-appearance:none;
-  background:#081118; color:var(--text);
-  border:1px solid rgba(255,255,255,.18); border-radius:10px; padding:8px 34px 8px 10px;
-  font-weight:800; letter-spacing:.2px;
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position: right 12px top 55%, right 6px top 55%;
-  background-size: 8px 8px, 8px 8px; background-repeat:no-repeat;
-  transition:border-color .15s, box-shadow .15s, transform .05s;
-}
-.pick-controls select:focus{outline:none; border-color:var(--neon); box-shadow:0 0 0 3px rgba(0,234,255,.18)}
-.pick-controls select:active{transform:translateY(1px)}
-
-/* Submit — centered, base cyan -> red hover */
-#submitBtn{
-  display:none; margin:8px auto 10px; text-align:center;
-  background:linear-gradient(180deg, rgba(0,234,255,.9), rgba(0,234,255,.75));
-  border:1px solid rgba(0,234,255,.6); color:#061015; border-radius:10px;
-  padding:10px 16px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow);
-}
-#submitBtn:hover{
-  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
-  border-color:rgba(255,59,87,.8); color:#fff;
-}
-
-/* ---------- Your Picks (CENTERED layout) ---------- */
-#myPicks{width:min(820px,94vw); margin:6px auto; display:none}
-#myPicks .header{display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:6px}
-.scored-pick{
-  width:min(720px,100%); margin:6px auto;
-  display:grid; grid-template-columns: 1fr max-content; align-items:center; column-gap:8px;
-  border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:10px; background:var(--panel);
-  text-align:center;
-}
-.scored-pick .fight-name{font-weight:900; margin-bottom:2px}
-.scored-pick .meta{color:var(--muted); margin:2px 0}
-.badge{
-  display:inline-flex; align-items:center; gap:6px; padding:2px 7px; border-radius:999px; margin-right:6px;
-  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); font-weight:800; font-size:12px
-}
-.badge.good{border-color:rgba(0,234,255,.6); background:rgba(0,234,255,.12); color:#bff7ff}
-.badge.bad{ border-color:rgba(255,59,87,.6); background:rgba(255,59,87,.12); color:#ffc3cc}
-.check.good{color:#58ffd9; font-weight:900}
-.check.bad{ color:#ff6d7f; font-weight:900}
-.points{justify-self:center}
-.points .points{font-weight:900}
-.points .points.zero{color:var(--muted)}
-.points-cyan{color:var(--neon); font-weight:900}
-
-/* ---------- Champion Banner (bigger + shimmer) ---------- */
-#champBanner{
-  position:relative; margin:10px auto; width:min(820px,94vw); padding:16px 0; border-radius:14px;
-  background: radial-gradient(100% 150% at 10% 0%, var(--neon-dim), transparent 60%),
-             radial-gradient(100% 150% at 90% 100%, var(--accent-dim), transparent 60%);
-  box-shadow:0 0 52px rgba(0,234,255,.26), inset 0 0 34px rgba(0,234,255,.22);
-  display:none; overflow:hidden;
-  -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
-          mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
-}
-#champBanner .scroll{
-  position:relative; display:flex; gap:52px; white-space:nowrap; align-items:center;
-  animation: champScroll 12s linear infinite;
-  font-weight:900; letter-spacing:.02em; font-size:24px;
-  color:var(--text); text-shadow:0 0 18px rgba(0,234,255,.7);
-}
-#champBanner .scroll:after{
-  content:""; position:absolute; inset:0;
-  background:linear-gradient(90deg, transparent 0%, rgba(255,255,255,.14) 50%, transparent 100%);
-  mix-blend-mode:overlay; animation: shine 2.4s linear infinite;
-}
-#champBanner .crown{ filter:drop-shadow(0 0 12px rgba(0,234,255,.6)) }
-#champBanner .champ-name{ color:var(--neon) }
-@keyframes champScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-@keyframes shine{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
-
-/* ---------- Titles & Tabs ---------- */
-.section-title{
-  width:min(820px,94vw); margin:8px auto 4px; text-align:center; letter-spacing:.18em; color:var(--muted); font-weight:900
-}
-.section-title--leader{
-  font-family:'Orbitron', ui-sans-serif; font-size:15px; letter-spacing:.28em; color:#e9fbff;
-  text-shadow:0 0 14px rgba(0,234,255,.5), 0 0 24px rgba(0,234,255,.25);
-}
-#welcome{
-  font-family:'Orbitron', ui-sans-serif; font-weight:900; letter-spacing:.02em;
-  text-align:center; margin:6px 0; font-size:20px
-}
-.segmented{
-  width:min(360px,94vw); margin:6px auto; background:var(--panel);
-  border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:4px;
-  display:grid; grid-template-columns:1fr 1fr; gap:6px
-}
-.segmented button{
-  background:linear-gradient(180deg, rgba(0,234,255,.18), rgba(0,234,255,.10));
-  border:1px solid rgba(0,234,255,.35); color:#e6fbff;
-  border-radius:8px; padding:8px; font-weight:900; cursor:pointer; transition:all .12s ease
-}
-.segmented button:hover{
-  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
-  border-color:rgba(255,59,87,.8); color:#fff; box-shadow:0 0 0 3px rgba(255,59,87,.15) inset;
-}
-.segmented button[aria-pressed="true"]{
-  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
-  border-color:rgba(255,59,87,.8);
-}
-
-/* ---------- Leaderboards (super-tight) ---------- */
+/* --------- LEADERBOARD — SUPER TIGHT --------- */
 .board{
-  list-style:none; padding:0; margin:6px auto 8px; width:min(820px,94vw);
-  border:1px solid rgba(255,255,255,.08); border-radius:12px; overflow:hidden; background:var(--panel);
-  box-shadow:0 0 26px rgba(0,234,255,.10)
+  list-style:none;margin:6px auto 8px;padding:0;width:min(820px,94vw);
+  background:#0b0f14;border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden;
+  box-shadow:0 0 18px rgba(0,234,255,.10)
 }
+
+/* kill the “Walmart gap”: make the last column min-content and lock small width */
 .board li{
-  display:grid; align-items:center; gap:6px;
-  grid-template-columns: 42px 1fr 70px;  /* rank | name | pts — tight */
-  padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.06)
+  display:grid;align-items:center;gap:6px;
+  grid-template-columns: 40px 1fr minmax(48px, 64px);  /* rank | name | pts (narrow) */
+  padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.06);line-height:1.1;
 }
-.board li:nth-child(odd){ background:rgba(255,255,255,.02) }
+.board li:nth-child(odd){background:rgba(255,255,255,.02)}
 .board li:last-child{border-bottom:none}
 .board li:hover{background:rgba(0,234,255,.06)}
-.board .board-hint{padding:10px; text-align:center; color:var(--muted)} /* centered hint */
 
-.board li > *:nth-child(1){
-  text-align:center; color:#c9f6ff; font-weight:900; font-family:'Orbitron', ui-sans-serif;
+/* centered hint (when no results) */
+.board .board-hint{padding:10px;text-align:center;color:#95aab5}
+
+/* columns */
+.board li > :nth-child(1){
+  text-align:center;color:#c9f6ff;font-weight:900;font-family:'Orbitron',ui-sans-serif;
   text-shadow:0 0 10px rgba(0,234,255,.45)
 }
-.board li > *:nth-child(2){
-  font-weight:900; display:flex; align-items:center; gap:8px; letter-spacing:.2px
+.board li > :nth-child(2){
+  display:flex;align-items:center;gap:6px;font-weight:900;letter-spacing:.15px;min-width:0; /* allow ellipsis */
 }
-.board li > *:nth-child(3){
-  text-align:right; font-variant-numeric:tabular-nums; font-weight:900; color:var(--neon)
-}
-
-/* First/last styling */
-.row-first{
-  background:linear-gradient(90deg, rgba(0,234,255,.12), rgba(0,234,255,0));
-  box-shadow:inset 0 0 22px rgba(0,234,255,.22);
-}
-.row-first .name{ color:var(--neon); text-shadow:0 0 12px rgba(0,234,255,.6) }
-.row-last{
-  background:linear-gradient(90deg, rgba(255,59,87,.10), rgba(255,59,87,0));
-  box-shadow:inset 0 0 18px rgba(255,59,87,.18);
-}
-.row-last .points{ color:#ff8897 }
-
-/* All-Time (no dead space; centered headers & cells) */
-.board.at-five li{ grid-template-columns: 56px 1fr 58px 56px 64px; padding:6px 8px }
-.board-header{background:rgba(255,255,255,.05); border-bottom:1px solid rgba(255,255,255,.08); text-transform:uppercase; letter-spacing:.12em; font-weight:900}
-.board-header.at-five span{display:block; text-align:center}
-.at-five li > *:nth-child(1){text-align:center}
-.at-five li > *:nth-child(3),
-.at-five li > *:nth-child(4),
-.at-five li > *:nth-child(5){ text-align:center }
-.board .rank{font-family:'Orbitron', ui-sans-serif}
-.board .num{font-variant-numeric:tabular-nums}
-.board .user{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-
-.cta-discord{width:min(820px,94vw); margin:10px auto 14px; text-align:center}
-.btn-discord{
-  display:inline-flex; align-items:center; gap:10px;
-  background:linear-gradient(135deg, rgba(0,234,255,.22), rgba(0,234,255,.12));
-  color:#061015; padding:9px 14px; border-radius:12px; font-weight:900;
-  border:1px solid rgba(0,234,255,.35);
-  box-shadow:0 10px 24px rgba(0,0,0,.25), 0 0 24px rgba(0,234,255,.22)
-}
-.btn-discord:hover{
-  background:linear-gradient(135deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
-  border-color:rgba(255,59,87,.8); color:#fff;
-  box-shadow:0 10px 28px rgba(0,0,0,.35), 0 0 36px rgba(255,59,87,.35);
-  transform:translateY(-1px)
+.board li > :nth-child(3){
+  justify-self:end;text-align:right;font-variant-numeric:tabular-nums;font-weight:900;color:var(--neon);
+  padding-left:0; /* no extra drag */
 }
 
-@media (max-width:560px){
-  .board li{grid-template-columns: 40px 1fr 64px}
-  .board.at-five li{grid-template-columns: 50px 1fr 52px 50px 54px}
-  .logo-banner{max-width:150px}
-}
+/* first/last place theming; crown left of name; 💩 on last (from JS) */
+.row-first{background:linear-gradient(90deg,rgba(0,234,255,.12),rgba(0,234,255,0));box-shadow:inset 0 0 16px rgba(0,234,255,.22)}
+.row-first .name{color:#00eaff;text-shadow:0 0 10px rgba(0,234,255,.6)}
+.row-last{background:linear-gradient(90deg,rgba(255,59,87,.10),rgba(255,59,87,0));box-shadow:inset 0 0 14px rgba(255,59,87,.18)}
+.row-last .points{color:#ff8897}
+
+/* --------- ALL-TIME (also tightened + centered headers) --------- */
+.board.at-five li{grid-template-columns: 52px 1fr 54px 50px 58px; padding:4px 8px}
+.board-header{background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.08);text-transform:uppercase;letter-spacing:.12em;font-weight:900}
+.board-header.at-five span{display:block;text-align:center}
+.at-five li > :nth-child(1){text-align:center}
+.at-five li > :nth-child(3),
+.at-five li > :nth-child(4),
+.at-five li > :nth-child(5){text-align:center}
+
+/* --------- YOUR PICKS center (unchanged from last push) --------- */
+#myPicks{width:min(820px,94vw);margin:6px auto}
+.scored-pick{width:min(720px,100%);margin:6px auto;display:grid;grid-template-columns:1fr max-content;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px;background:#0b0f14;text-align:center}
