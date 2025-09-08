@@ -1,10 +1,11 @@
-/* ===== Fantasy Fight Picks — Neon Compact v4
-   - Scoring fits text only
-   - Weekly LB: 1 crown BEFORE winner name; first/last themed; centered hint
-   - Your Picks centered points; underdog emoji next to underdog fighter in text
-   - Pick selection centered; no red underdog; nicer selects
-   - Old tab hover = red; active = red
-   - Crowns sourced from /api/hall if you ever want counts for All-Time only
+/* ===== Fantasy Fight Picks — Neon Compact v5
+   - Centered fight cards & text
+   - Tabs + submit: base cyan, hover red
+   - Dropdowns: styled (appearance none), focus glow
+   - Kill dead space via narrower container + tighter grids
+   - Weekly LB: 1 crown LEFT of first place only; last place 💩; hint centered
+   - All-Time: centered headers, tight columns
+   - Your Picks: centered rows, dog emoji inline, tight points column
 ===== */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -47,8 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const fightMeta = new Map();
   let fightsCache=null, leaderboardCache=null, allTimeCache=null;
 
-  const KEY_PREV_WEEKLY="prevWeeklyScoresV6";
-  const KEY_PREV_BANNER="prevChampBannerV6";
+  const KEY_PREV_WEEKLY="prevWeeklyScoresV7";
+  const KEY_PREV_BANNER="prevChampBannerV7";
 
   function buildFightMeta(rows){
     fightMeta.clear();
@@ -57,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // scoring content fits summary only
+  // scoring text only
   (function renderRules(){
     $("#scoringRules").innerHTML = `
       <ul class="rules-list"><li>+3 winner</li><li>+2 method</li><li>+1 round</li><li>🐶 underdog bonus</li></ul>
@@ -88,7 +89,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (myPicks?.success && Array.isArray(myPicks.picks) && myPicks.picks.length){
         fightList.style.display="none"; submitBtn.style.display="none";
       } else {
-        renderFightList(fightsCache); submitBtn.style.display="inline-block";
+        renderFightList(fightsCache);
+        submitBtn.style.display="block";   // ensure centered block
       }
 
       await loadMyPicks();
@@ -138,6 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fightList.style.display="grid";
   }
 
+  // submit
   submitBtn.addEventListener("click", async ()=>{
     submitBtn.disabled=true; submitBtn.textContent="Submitting…";
     const picks=[];
@@ -218,6 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function loadLeaderboard(){
     if(!leaderboardCache) leaderboardCache = await api.getLeaderboard();
+
     const fights = fightsCache || (await api.getFights());
     const lb = leaderboardCache || {};
 
@@ -227,7 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const resultsStarted=resultsArr.some(r=>r && r.winner && r.method);
     let scores=Object.entries(lb.scores||{}).sort((a,b)=> b[1]-a[1]);
 
-    // sticky weekly: show cached final until next starts
+    // sticky weekly
     if(scores.length===0 && !resultsStarted){
       const prev=jget(localStorage.getItem(KEY_PREV_WEEKLY),null);
       if(Array.isArray(prev)&&prev.length) scores=prev;
@@ -242,9 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const isFirst = (idx===0);
         const isLast  = (scores.length>=3 && idx===scores.length-1);
 
-        // Exactly ONE crown, on the LEFT of the name, only for FIRST place
         const crown = isFirst ? `<span aria-hidden="true">👑</span>` : "";
-
         const poop  = isLast ? " 💩" : "";
         const rowCls = `${isFirst?'row-first ':''}${isLast?'row-last ':''}`;
 
@@ -260,7 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Banner control (seamless; persists until next event starts)
+    // Banner control (seamless; persists)
     const totalFights=(fights||[]).length;
     const completed=resultsArr.filter(r=>r && r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
     const haveMsg= typeof lb.champMessage==="string" && lb.champMessage.trim()!=="";
@@ -287,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return `<div class="scroll" aria-label="Champion of the Week">${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}</div>`;
   }
 
-  // ===== All-time helpers (for All-Time tab only) =====
+  // ===== All-time helpers =====
   function normalizeHall(rows){
     if(!Array.isArray(rows)) return [];
     return rows.map(r=>({
@@ -325,7 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // tabs (with red hover already in CSS)
+  // tabs
   weeklyTabBtn.addEventListener("click", e=>{
     e.preventDefault();
     leaderboardEl.style.display="block"; allTimeList.style.display="none";
