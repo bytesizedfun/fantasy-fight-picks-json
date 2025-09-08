@@ -1,13 +1,18 @@
+/* Fix Pass: keep HTML the same; restore checks, centering, tight leaderboard */
+
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
+
+  // helpers
   const $ = s => document.querySelector(s);
   const el = (t,c,h) => { const e=document.createElement(t); if(c) e.className=c; if(h!=null) e.innerHTML=h; return e; };
   const esc = s => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const jget = (s,d=null) => { try{return JSON.parse(s)}catch{ return d } };
+
   function normalizeAmericanOdds(raw){ const m=String(raw??"").trim().match(/[+-]?\d+/); if(!m) return null; const n=+m[0]; return Number.isFinite(n)?n:null; }
-  function underdogBonusFromOdds(odds){ const n=normalizeAmericanOdds(odds); if(n==null||n<100) return 0; return 1+Math.floor((n-100)/100); }
+  function underdogBonusFromOdds(odds){ const n=normalizeAmericanOdds(odds); if(n==null || n<100) return 0; return 1+Math.floor((n-100)/100); }
   const checkIcon = ok => `<span class="check ${ok?'good':'bad'}">${ok?'✓':'✕'}</span>`;
 
+  // API
   const api = {
     async getFights(){ const r=await fetch(`${BASE}/fights`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); },
     async getUserPicks(username){ const r=await fetch(`${BASE}/picks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); return r.json(); },
@@ -16,39 +21,75 @@ document.addEventListener("DOMContentLoaded", () => {
     async getHall(){ const r=await fetch(`${BASE}/hall`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); }
   };
 
-  const welcome=$("#welcome"), fightList=$("#fightList"), submitBtn=$("#submitBtn"),
-        usernamePrompt=$("#usernamePrompt"), usernameInput=$("#usernameInput"),
-        champBanner=$("#champBanner"), leaderboardEl=$("#leaderboard"),
-        allTimeList=$("#allTimeBoard"), weeklyTabBtn=$("#tabWeekly"), allTimeTabBtn=$("#tabAllTime");
+  // DOM
+  const welcome = $("#welcome");
+  const fightList = $("#fightList");
+  const submitBtn = $("#submitBtn");
+  const usernamePrompt = $("#usernamePrompt");
+  const usernameInput = $("#usernameInput");
+  const champBanner = $("#champBanner");
+  const leaderboardEl = $("#leaderboard");
+  const allTimeList = $("#allTimeBoard");
+  const weeklyTabBtn = $("#tabWeekly");
+  const allTimeTabBtn = $("#tabAllTime");
 
-  let username=localStorage.getItem("username")||"";
-  const fightMeta=new Map(); let fightsCache=null, leaderboardCache=null, allTimeCache=null;
+  let username = localStorage.getItem("username") || "";
 
-  function buildFightMeta(rows){ fightMeta.clear(); (rows||[]).forEach(r=>fightMeta.set(r.fight,{f1:r.fighter1,f2:r.fighter2,underdogSide:r.underdog||"",underdogOdds:r.underdogOdds||""})); }
+  // caches
+  const fightMeta = new Map();
+  let fightsCache=null, leaderboardCache=null, allTimeCache=null;
 
-  // minimal scoring text
-  $("#scoringRules") && ($("#scoringRules").innerHTML=`<ul class="rules-list"><li>+3 winner</li><li>+2 method</li><li>+1 round</li><li>🐶 underdog bonus</li></ul>`);
-
-  function doLogin(){ const v=usernameInput.value.trim(); if(!v) return alert("Please enter your name."); username=v; localStorage.setItem("username",username); start(); }
-  $("#usernamePrompt button")?.addEventListener("click",doLogin);
-  usernameInput?.addEventListener("keydown",e=>{ if(e.key==="Enter") doLogin(); });
-  if(username){ usernameInput.value=username; start(); }
-
-  async function start(){
-    usernamePrompt.style.display="none";
-    welcome.textContent=`🎤 IIIIIIIIIIIIT'S ${username.toUpperCase()}!`; welcome.style.display="block";
-    try{
-      const [fights] = await Promise.all([api.getFights()]);
-      fightsCache=fights||[]; buildFightMeta(fightsCache);
-
-      const my=await api.getUserPicks(username);
-      if(my?.success && my.picks?.length){ fightList.style.display="none"; submitBtn.style.display="none"; }
-      else { renderFightList(fightsCache); submitBtn.style.display="block"; }
-
-      await loadMyPicks(); await loadLeaderboard();
-    }catch(e){ console.error(e); }
+  function buildFightMeta(rows){
+    fightMeta.clear();
+    (rows||[]).forEach(r=>{
+      fightMeta.set(r.fight,{ f1:r.fighter1, f2:r.fighter2, underdogSide:r.underdog||"", underdogOdds:r.underdogOdds||"" });
+    });
   }
 
+  // compact scoring text
+  (function renderRules(){
+    const t=$("#scoringRules");
+    if(t) t.innerHTML = `<ul class="rules-list"><li>+3 winner</li><li>+2 method</li><li>+1 round</li><li>🐶 underdog bonus</li></ul>`;
+  })();
+
+  // login
+  function doLogin(){
+    const v=usernameInput.value.trim(); if(!v) return alert("Please enter your name.");
+    username=v; localStorage.setItem("username", username); start();
+  }
+  $("#usernamePrompt button")?.addEventListener("click", doLogin);
+  usernameInput?.addEventListener("keydown", e=>{ if (e.key==="Enter") doLogin(); });
+  if (username){ usernameInput.value=username; start(); }
+
+  // start
+  async function start(){
+    usernamePrompt.style.display="none";
+    welcome.textContent = `🎤 IIIIIIIIIIIIT'S ${username.toUpperCase()}!`;
+    welcome.style.display="block";
+
+    try{
+      const fights = await api.getFights();
+      fightsCache=fights||[];
+      buildFightMeta(fightsCache);
+
+      const myPicks = await api.getUserPicks(username);
+      if (myPicks?.success && Array.isArray(myPicks.picks) && myPicks.picks.length){
+        fightList.style.display="none"; submitBtn.style.display="none";
+      } else {
+        renderFightList(fightsCache);
+        submitBtn.style.display="block";   // block centers with margin auto
+      }
+
+      await loadMyPicks();
+      await loadLeaderboard();
+    }catch(e){
+      console.error(e);
+      fightList.innerHTML = `<li class="board-hint">Server unavailable.</li>`;
+      submitBtn.style.display="none";
+    }
+  }
+
+  // ===== Fight picker (two buttons) =====
   function renderFightList(rows){
     fightList.innerHTML="";
     (rows||[]).forEach(({fight,fighter1,fighter2})=>{
@@ -75,12 +116,15 @@ document.addEventListener("DOMContentLoaded", () => {
           <select name="${esc(fight)}-round">
             <option value="1">R1</option><option value="2">R2</option><option value="3">R3</option><option value="4">R4</option><option value="5">R5</option>
           </select>
-        </div>`);
+        </div>
+      `);
       fightList.appendChild(card);
     });
+
     fightList.style.display="grid";
   }
 
+  // submit
   submitBtn?.addEventListener("click", async ()=>{
     submitBtn.disabled=true; submitBtn.textContent="Submitting…";
     const picks=[];
@@ -94,30 +138,45 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     try{
       const res=await api.submitPicks({username,picks});
-      if(res?.success){ fightList.style.display="none"; submitBtn.style.display="none"; await loadMyPicks(); await loadLeaderboard(); }
-      else { alert(res?.error||"Submit failed."); }
-    }finally{ submitBtn.disabled=false; submitBtn.textContent="Submit Picks"; }
+      if(res?.success){
+        fightList.style.display="none"; submitBtn.style.display="none";
+        await loadMyPicks(); await loadLeaderboard();
+      }else{
+        alert(res?.error || "Submit failed.");
+      }
+    }finally{
+      submitBtn.disabled=false; submitBtn.textContent="Submit Picks";
+    }
   });
 
+  // ===== My Picks (✓ / ✕ visible; one 🐶 +X only if it cashed) =====
   async function loadMyPicks(){
-    const my=await api.getUserPicks(username); const wrap=$("#myPicks"); wrap.innerHTML="";
-    if(!my?.success || !my.picks?.length){ wrap.style.display="none"; return; }
+    const my=await api.getUserPicks(username);
+    const wrap=$("#myPicks"); wrap.innerHTML="";
+    if(!my?.success || !Array.isArray(my.picks) || !my.picks.length){ wrap.style.display="none"; return; }
+
     if(!leaderboardCache) leaderboardCache=await api.getLeaderboard();
     const fr=(leaderboardCache && leaderboardCache.fightResults)||{};
+
     wrap.appendChild(el("div","header",`<div><strong>Your Picks</strong></div>`));
 
     my.picks.forEach(({fight,winner,method,round})=>{
-      const actual=fr[fight]||{}; const done=!!(actual.winner && actual.method);
-      const meta=fightMeta.get(fight)||{}; const dogSide=meta.underdogSide;
-      const dogTier=(dogSide&&meta.underdogOdds)?(function(n){n=String(n).match(/[+-]?\d+/);n=n?+n[0]:null;return(n==null||n<100)?0:1+Math.floor((n-100)/100)})(meta.underdogOdds):0;
-      const chosenIsUnderdog=(dogSide==="Fighter 1" && winner===meta.f1)||(dogSide==="Fighter 2" && winner===meta.f2);
-      const dogInline=(done && actual.underdog==='Y' && chosenIsUnderdog && dogTier>0)?` 🐶 +${dogTier}`:"";
+      const actual=fr[fight]||{};
+      const done=!!(actual.winner && actual.method);
+
+      const meta=fightMeta.get(fight)||{};
+      const dogSide=meta.underdogSide;
+      const dogTier=underdogBonusFromOdds(meta.underdogOdds);
+      const chosenIsUnderdog=(dogSide==="Fighter 1" && winner===meta.f1) || (dogSide==="Fighter 2" && winner===meta.f2);
 
       const mWinner=done && winner===actual.winner;
       const mMethod=done && mWinner && method===actual.method;
       const mRound =done && mWinner && mMethod && method!=="Decision" && String(round)===String(actual.round);
 
-      let score=0; if(mWinner){score+=3;if(mMethod){score+=2;if(mRound)score+=1;} if(dogInline) score+=dogTier;}
+      const dogInline = (done && actual.underdog==='Y' && chosenIsUnderdog && dogTier>0) ? ` 🐶 +${dogTier}` : "";
+
+      let score=0;
+      if(mWinner){ score+=3; if(mMethod){score+=2; if(mRound) score+=1;} if(dogInline) score+=dogTier; }
 
       const line=done?[
         `<span class="badge ${mWinner?'good':'bad'}">${checkIcon(mWinner)} Winner</span>`,
@@ -139,9 +198,11 @@ document.addEventListener("DOMContentLoaded", () => {
     wrap.style.display="grid";
   }
 
+  // ===== Leaderboard (tight & centered hint) =====
   async function loadLeaderboard(){
     if(!leaderboardCache) leaderboardCache = await api.getLeaderboard();
     const lb = leaderboardCache || {};
+
     leaderboardEl.innerHTML="";
 
     const resultsArr=Object.values(lb.fightResults||{});
@@ -150,26 +211,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if(scores.length===0){
       leaderboardEl.appendChild(el("li","board-hint","Weekly standings will appear once results start."));
-      return;
+    } else {
+      let rank=1, prevPts=null, shown=1;
+      scores.forEach(([user,pts],idx)=>{
+        if(pts!==prevPts) shown=rank;
+        const isFirst=(idx===0), isLast=(scores.length>=3 && idx===scores.length-1);
+        const crown=isFirst?`<span aria-hidden="true">👑</span>`:"";
+        const poop=isLast?" 💩":"";
+        const li=el("li",`${isFirst?'row-first ':''}${isLast?'row-last ':''}`,`
+          <span>#${shown}</span>
+          <span class="name">${crown} ${esc(user)}</span>
+          <span class="points">${pts} pts${poop}</span>
+        `);
+        leaderboardEl.appendChild(li);
+        prevPts=pts; rank++;
+      });
     }
 
-    let rank=1, prevPts=null, shown=1;
-    scores.forEach(([user,pts],idx)=>{
-      if(pts!==prevPts) shown=rank;
-      const isFirst=(idx===0), isLast=(scores.length>=3 && idx===scores.length-1);
-      const crown=isFirst?`<span aria-hidden="true">👑</span>`:"";
-      const poop=isLast?" 💩":"";
-      const li=el("li",`${isFirst?'row-first ':''}${isLast?'row-last ':''}`,`
-        <span>#${shown}</span>
-        <span class="name">${crown} ${esc(user)}</span>
-        <span class="points">${pts} pts${poop}</span>
-      `);
-      leaderboardEl.appendChild(li);
-      prevPts=pts; rank++;
-    });
+    // Banner (keep)
+    const totalFights=(fightsCache||[]).length;
+    const completed=resultsArr.filter(r=>r && r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
+    if(totalFights>0 && completed===totalFights && (lb.champMessage||"").trim()){
+      champBanner.innerHTML = marquee(lb.champMessage.trim());
+      champBanner.style.display="block";
+    } else if(!resultsStarted){
+      champBanner.style.display="block"; // will be replaced by cached banner if you have that logic; otherwise safe to show none
+    } else {
+      champBanner.style.display="none";
+    }
   }
 
-  // tabs
-  $("#tabWeekly")?.addEventListener("click",e=>{e.preventDefault();leaderboardEl.style.display="block";allTimeList.style.display="none";$("#tabWeekly").setAttribute("aria-pressed","true");$("#tabAllTime").setAttribute("aria-pressed","false");});
-  $("#tabAllTime")?.addEventListener("click",e=>{e.preventDefault();leaderboardEl.style.display="none";allTimeList.style.display="block";$("#tabWeekly").setAttribute("aria-pressed","false");$("#tabAllTime").setAttribute("aria-pressed","true");});
+  function marquee(msg){
+    const safe=esc(msg);
+    const item=`<span class="crown">👑</span> <span class="champ-name">${safe}</span>`;
+    return `<div class="scroll" aria-label="Champion of the Week">${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}</div>`;
+  }
+
+  // Tabs
+  weeklyTabBtn?.addEventListener("click", e=>{
+    e.preventDefault();
+    leaderboardEl.style.display="block";
+    allTimeList.style.display="none";
+    weeklyTabBtn.setAttribute("aria-pressed","true");
+    allTimeTabBtn.setAttribute("aria-pressed","false");
+  });
+  allTimeTabBtn?.addEventListener("click", e=>{
+    e.preventDefault();
+    leaderboardEl.style.display="none";
+    allTimeList.style.display="block";
+    weeklyTabBtn.setAttribute("aria-pressed","false");
+    allTimeTabBtn.setAttribute("aria-pressed","true");
+  });
 });
