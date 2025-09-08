@@ -1,4 +1,4 @@
-/* ===== Fantasy Fight Picks — Neon Compact v4 (zero dead space, flashy LB, centered UI) ===== */
+/* ===== Fantasy Fight Picks — Neon Compact v5 (tight spacing, centered UI, pro selects) ===== */
 
 /* Palette (logo: neon cyan + hot red on near-black) */
 :root{
@@ -6,9 +6,9 @@
   --panel:#0b0f14;
   --text:#e6fbff;
   --muted:#95aab5;
-  --neon:#00eaff;
+  --neon:#00eaff;         /* base futuristic cyan */
   --neon-dim:rgba(0,234,255,.18);
-  --accent:#ff3b57;
+  --accent:#ff3b57;       /* hover/active red */
   --accent-dim:rgba(255,59,87,.18);
   --shadow:rgba(0,0,0,.5);
 }
@@ -23,38 +23,41 @@ a{color:var(--neon); text-decoration:none}
 a:hover{text-decoration:underline}
 small,.muted{color:var(--muted)}
 
-#app{width:min(960px,94vw); margin:8px auto 16px}
+/* Narrower app to KILL dead space */
+#app{width:min(840px,94vw); margin:8px auto 16px}
 
 /* ---------- Logo ---------- */
 .banner-container{
-  width:min(960px,94vw); margin:8px auto 6px;
+  width:min(840px,94vw); margin:8px auto 6px;
   display:flex; align-items:center; justify-content:center;
 }
 .logo-banner{
-  max-width:230px; height:auto; display:block;
+  max-width:220px; height:auto; display:block;
   filter: drop-shadow(0 0 34px rgba(0,234,255,.28)) drop-shadow(0 0 22px rgba(255,59,87,.18));
 }
-@media (max-width:560px){ .logo-banner{max-width:170px} }
+@media (max-width:560px){ .logo-banner{max-width:160px} }
 
 /* ---------- Username prompt ---------- */
 .card{background:var(--panel); border:1px solid rgba(255,255,255,.06); border-radius:12px; box-shadow:0 8px 20px var(--shadow)}
 .center{text-align:center}
-#usernamePrompt{width:min(520px,94vw); margin:8px auto; padding:10px}
+#usernamePrompt{width:min(480px,94vw); margin:8px auto; padding:10px}
 .prompt-title{font-weight:900; font-size:18px; margin:0 0 6px}
 #usernamePrompt input{
-  width:min(300px,90%); background:#071016; color:var(--text);
+  width:min(280px,90%); background:#071016; color:var(--text);
   border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px 10px; margin-right:6px
 }
 #usernamePrompt button{
-  background:linear-gradient(180deg, rgba(255,59,87,.92), rgba(255,59,87,.78));
-  border:1px solid rgba(255,59,87,.65); color:#fff; border-radius:10px;
-  padding:8px 11px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow)
+  background:linear-gradient(180deg, rgba(0,234,255,.9), rgba(0,234,255,.75));
+  border:1px solid rgba(0,234,255,.55); color:#061015; border-radius:10px;
+  padding:8px 11px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow);
+}
+#usernamePrompt button:hover{
+  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.8));
+  border-color:rgba(255,59,87,.7); color:#fff;
 }
 
-/* ---------- Scoring (fit to text ONLY) ---------- */
-.rules-collapsible{
-  display:flex; justify-content:center; margin:6px auto;
-}
+/* ---------- Scoring (fits the word only) ---------- */
+.rules-collapsible{display:flex; justify-content:center; margin:6px auto}
 .rules-collapsible > summary{
   display:inline-block; width:max-content; max-width:100%;
   background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:999px;
@@ -68,50 +71,69 @@ small,.muted{color:var(--muted)}
   padding:2px 6px; font-weight:800; font-size:12px; color:var(--muted);
   background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:999px
 }
-.rules-caret{display:none} /* no chevron to keep it compact */
+.rules-caret{display:none}
 
-/* ---------- Fights & Picks ---------- */
-#fightList{width:min(960px,94vw); margin:6px auto; display:none; row-gap:6px; justify-items:center}
-.fight{width:100%; border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:8px 9px; background:var(--panel)}
+/* ---------- Fights & Picks (center EVERYTHING) ---------- */
+#fightList{
+  width:min(840px,94vw); margin:6px auto; display:none;
+  row-gap:6px; display:grid; justify-items:center;
+}
+.fight{
+  width:min(720px,100%); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:8px 10px; background:var(--panel);
+  text-align:center; /* center card text */
+}
 .fight h3{margin:0 0 6px 0; font-size:15px}
-
-.options label{display:block; padding:3px 0; cursor:pointer}
+.options{
+  display:flex; flex-direction:column; align-items:center; gap:4px; /* center radio rows */
+}
+.options label{display:flex; justify-content:center; padding:2px 0; cursor:pointer}
 .pick-row{display:inline-flex; align-items:center; gap:7px}
 
-/* Underdog in selection = just dog emoji and +points (no red/bubble) */
-.fighter-name.is-underdog{font-weight:900} /* no color change */
+/* Underdog selection = dog emoji + points (no red/bubble) */
+.fighter-name.is-underdog{font-weight:900}
 .dog-tag{padding:0; border:none; background:transparent; color:var(--muted); font-weight:900}
 
-/* Method/round selects — nicer look */
-.pick-controls{display:flex; gap:6px; margin-top:6px}
+/* Method/round selects — pro look, guaranteed overrides */
+.pick-controls{display:flex; gap:8px; margin-top:6px; justify-content:center}
 .pick-controls select{
-  appearance:none; background:#081118; color:var(--text);
-  border:1px solid rgba(255,255,255,.16); border-radius:10px; padding:8px 28px 8px 10px;
-  background-image:linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position: right 10px top 55%, right 5px top 55%;
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background:#081118; color:var(--text);
+  border:1px solid rgba(255,255,255,.18); border-radius:10px; padding:8px 34px 8px 10px;
+  font-weight:800; letter-spacing:.2px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: right 12px top 55%, right 6px top 55%;
   background-size: 8px 8px, 8px 8px; background-repeat:no-repeat;
-  transition:border-color .15s, box-shadow .15s;
+  transition:border-color .15s, box-shadow .15s, transform .05s;
 }
 .pick-controls select:focus{outline:none; border-color:var(--neon); box-shadow:0 0 0 3px rgba(0,234,255,.18)}
+.pick-controls select:active{transform:translateY(1px)}
 
-/* Submit centered */
+/* Submit — centered, base cyan, hover red */
 #submitBtn{
-  display:none; margin:8px auto 10px;
-  background:linear-gradient(180deg, rgba(255,59,87,.92), rgba(255,59,87,.78));
-  border:1px solid rgba(255,59,87,.65); color:#fff; border-radius:10px;
-  padding:9px 12px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow)
+  display:none; /* script toggles to block */
+  margin:8px auto 10px; display:block;
+  background:linear-gradient(180deg, rgba(0,234,255,.9), rgba(0,234,255,.75));
+  border:1px solid rgba(0,234,255,.6); color:#061015; border-radius:10px;
+  padding:9px 14px; font-weight:900; cursor:pointer; box-shadow:0 6px 16px var(--shadow); text-align:center
+}
+#submitBtn:hover{
+  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
+  border-color:rgba(255,59,87,.8); color:#fff;
 }
 
-/* ---------- Your Picks (tight, points centered) ---------- */
-#myPicks{width:min(960px,94vw); margin:6px auto; display:none}
-#myPicks .header{display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:6px}
+/* ---------- Your Picks (centered rows, minimal gap) ---------- */
+#myPicks{width:min(840px,94vw); margin:6px auto; display:none}
+#myPicks .header{display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:6px}
 #totalPoints{font-weight:900; color:var(--neon)}
 .scored-pick{
-  display:grid; grid-template-columns: 1fr auto; align-items:center;
-  border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:8px 10px; margin:6px 0; background:var(--panel)
+  width:min(720px,100%); margin:6px auto; /* center the row and reduce span */
+  display:grid; grid-template-columns: 1fr max-content; align-items:center; column-gap:8px;
+  border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:8px 10px; background:var(--panel)
 }
-.scored-pick .fight-name{font-weight:900; margin-bottom:2px}
-.scored-pick .meta{color:var(--muted); margin:2px 0}
+.scored-pick .fight-name{font-weight:900; margin-bottom:2px; text-align:left}
+.scored-pick .meta{color:var(--muted); margin:2px 0; text-align:left}
 .badge{
   display:inline-flex; align-items:center; gap:6px; padding:2px 7px; border-radius:999px; margin-right:6px;
   background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); font-weight:800; font-size:12px
@@ -127,7 +149,7 @@ small,.muted{color:var(--muted)}
 
 /* ---------- Champion Banner (flashy, seamless) ---------- */
 #champBanner{
-  position:relative; margin:8px auto; width:min(960px,94vw); padding:12px 0; border-radius:12px;
+  position:relative; margin:8px auto; width:min(840px,94vw); padding:12px 0; border-radius:12px;
   background: radial-gradient(100% 150% at 10% 0%, var(--neon-dim), transparent 60%),
              radial-gradient(100% 150% at 90% 100%, var(--accent-dim), transparent 60%);
   box-shadow:0 0 46px rgba(0,234,255,.22), inset 0 0 28px rgba(0,234,255,.18);
@@ -147,55 +169,55 @@ small,.muted{color:var(--muted)}
 
 /* ---------- Titles & Greeting ---------- */
 .section-title{
-  width:min(960px,94vw); margin:8px auto 4px; text-align:center; letter-spacing:.18em; color:var(--muted); font-weight:900
+  width:min(840px,94vw); margin:8px auto 4px; text-align:center; letter-spacing:.18em; color:var(--muted); font-weight:900
 }
-#welcome{
-  font-family:'Orbitron', ui-sans-serif, system-ui; font-weight:900; letter-spacing:.02em;
-  text-align:center; margin:6px 0; font-size:20px
-}
-
-/* ---------- Segmented tabs (reactive red hover) ---------- */
-.segmented{
-  width:min(380px,94vw); margin:6px auto; background:var(--panel);
-  border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:4px;
-  display:grid; grid-template-columns:1fr 1fr; gap:6px
-}
-.segmented button{
-  background:transparent; border:1px solid rgba(255,255,255,.12); color:var(--text);
-  border-radius:8px; padding:7px 8px; font-weight:900; cursor:pointer; transition:all .12s ease
-}
-.segmented button:hover{
-  border-color:rgba(255,59,87,.6); box-shadow:0 0 0 3px rgba(255,59,87,.18) inset; color:#fff;
-}
-.segmented button[aria-pressed="true"]{
-  background:linear-gradient(180deg, rgba(255,59,87,.92), rgba(255,59,87,.78));
-  border-color:rgba(255,59,87,.7);
-}
-
-/* ---------- Leaderboards ---------- */
-/* Flashy leaderboard title look */
 .section-title--leader{
   font-family:'Orbitron', ui-sans-serif;
   font-size:15px; letter-spacing:.28em; color:#e9fbff;
   text-shadow:0 0 14px rgba(0,234,255,.5), 0 0 24px rgba(0,234,255,.25);
 }
+#welcome{
+  font-family:'Orbitron', ui-sans-serif; font-weight:900; letter-spacing:.02em;
+  text-align:center; margin:6px 0; font-size:20px
+}
 
+/* ---------- Segmented tabs (base cyan, hover red, active red) ---------- */
+.segmented{
+  width:min(360px,94vw); margin:6px auto; background:var(--panel);
+  border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:4px;
+  display:grid; grid-template-columns:1fr 1fr; gap:6px
+}
+.segmented button{
+  background:linear-gradient(180deg, rgba(0,234,255,.18), rgba(0,234,255,.10));
+  border:1px solid rgba(0,234,255,.35); color:#e6fbff;
+  border-radius:8px; padding:7px 8px; font-weight:900; cursor:pointer; transition:all .12s ease
+}
+.segmented button:hover{
+  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
+  border-color:rgba(255,59,87,.8); color:#fff; box-shadow:0 0 0 3px rgba(255,59,87,.15) inset;
+}
+.segmented button[aria-pressed="true"]{
+  background:linear-gradient(180deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
+  border-color:rgba(255,59,87,.8);
+}
+
+/* ---------- Leaderboards (super tight; centered hint) ---------- */
 .board{
-  list-style:none; padding:0; margin:6px auto 10px; width:min(960px,94vw);
+  list-style:none; padding:0; margin:6px auto 8px; width:min(840px,94vw);
   border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden; background:var(--panel);
   box-shadow:0 0 26px rgba(0,234,255,.10)
 }
 .board li{
-  display:grid; align-items:center; gap:8px;
-  grid-template-columns: 60px 1fr 110px; /* rank | name | points */
-  padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.06)
+  display:grid; align-items:center; gap:6px;
+  grid-template-columns: 46px 1fr 84px; /* rank | name | points (tight) */
+  padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.06)
 }
 .board li:nth-child(odd){ background:rgba(255,255,255,.02) }
 .board li:last-child{border-bottom:none}
 .board li:hover{background:rgba(0,234,255,.06)}
 .board .board-hint{padding:10px; text-align:center; color:var(--muted)}
 
-/* Flashier row text */
+/* Flashier text */
 .board li > *:nth-child(1){
   text-align:center; color:#c9f6ff; font-weight:900; font-family:'Orbitron', ui-sans-serif;
   text-shadow:0 0 10px rgba(0,234,255,.45)
@@ -207,7 +229,7 @@ small,.muted{color:var(--muted)}
   text-align:right; font-variant-numeric:tabular-nums; font-weight:900; color:var(--neon)
 }
 
-/* One crown BEFORE the winner's name; last place highlight + 💩 */
+/* First / last highlight; crown BEFORE the name for first; 💩 on last via script */
 .row-first{
   background:linear-gradient(90deg, rgba(0,234,255,.12), rgba(0,234,255,0));
   box-shadow:inset 0 0 22px rgba(0,234,255,.22);
@@ -219,39 +241,43 @@ small,.muted{color:var(--muted)}
 }
 .row-last .points{ color:#ff8897 }
 
-/* All-Time board (balanced spacing; no clashes) */
-.board.at-five li{ grid-template-columns: 70px 1fr 80px 70px 80px } /* Rank | Player | % | 👑 | Events */
+/* All-Time board (no dead space, centered header) */
+.board.at-five{width:min(840px,94vw)}
+.board.at-five li{
+  grid-template-columns: 58px 1fr 60px 56px 62px;  /* Rank | Player | % | 👑 | Events */
+  padding:6px 8px;
+}
+.board-header{background:rgba(255,255,255,.05); border-bottom:1px solid rgba(255,255,255,.08); text-transform:uppercase; letter-spacing:.12em; font-weight:900}
+.board-header.at-five span{text-align:center; display:block}
+.at-five li > *:nth-child(1){text-align:center}
+.at-five li > *:nth-child(3),
+.at-five li > *:nth-child(4),
+.at-five li > *:nth-child(5){ text-align:center }  /* center headers & cells for balance */
 .board .rank{font-family:'Orbitron', ui-sans-serif}
 .board .num{font-variant-numeric:tabular-nums}
 .board .user{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .board .mobile-meta{display:none}
-.at-five li > *:nth-child(1){text-align:center}
-.at-five li > *:nth-child(3),
-.at-five li > *:nth-child(4),
-.at-five li > *:nth-child(5){ text-align:right }
 
-/* ---------- Discord CTA (on-brand) ---------- */
-.cta-discord{width:min(960px,94vw); margin:10px auto 16px; text-align:center}
+/* ---------- Discord CTA (on-brand: base cyan → hover red) ---------- */
+.cta-discord{width:min(840px,94vw); margin:10px auto 14px; text-align:center}
 .btn-discord{
   display:inline-flex; align-items:center; gap:10px;
-  background:linear-gradient(135deg, rgba(0,234,255,.22), rgba(255,59,87,.24));
-  color:#fff; padding:9px 14px; border-radius:12px; font-weight:900;
-  border:1px solid rgba(255,255,255,.10);
-  box-shadow:0 10px 24px rgba(0,0,0,.25), 0 0 24px rgba(0,234,255,.22);
+  background:linear-gradient(135deg, rgba(0,234,255,.22), rgba(0,234,255,.12));
+  color:#061015; padding:9px 14px; border-radius:12px; font-weight:900;
+  border:1px solid rgba(0,234,255,.35);
+  box-shadow:0 10px 24px rgba(0,0,0,.25), 0 0 24px rgba(0,234,255,.22)
 }
 .btn-discord:hover{
-  box-shadow:0 10px 28px rgba(0,0,0,.35), 0 0 36px rgba(0,234,255,.35);
+  background:linear-gradient(135deg, rgba(255,59,87,.95), rgba(255,59,87,.82));
+  border-color:rgba(255,59,87,.8); color:#fff;
+  box-shadow:0 10px 28px rgba(0,0,0,.35), 0 0 36px rgba(255,59,87,.35);
   transform:translateY(-1px)
 }
 .btn-discord .discord-icon{line-height:0}
 
 /* ---------- Responsive ---------- */
-@media (max-width:860px){
-  .board li{grid-template-columns: 54px 1fr 100px}
-  .board.at-five li{grid-template-columns: 60px 1fr 74px 60px 70px}
-}
 @media (max-width:560px){
-  .board li{grid-template-columns: 50px 1fr 92px; padding:7px 8px}
-  .board.at-five li{grid-template-columns: 54px 1fr 68px 56px 64px}
   .logo-banner{max-width:150px}
+  .board li{grid-template-columns: 44px 1fr 78px}
+  .board.at-five li{grid-template-columns: 52px 1fr 56px 52px 56px}
 }
