@@ -1,12 +1,16 @@
 const express = require("express");
 const fetch = require("node-fetch");
 const path = require("path");
+const compression = require("compression");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // GAS web app URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+
+// --- PERFORMANCE ---
+app.use(compression({ level: 6 })); // gzip/brotli where supported
 
 // Hard no-cache for API
 app.use((req, res, next) => {
@@ -20,9 +24,20 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
-app.use(express.static("public"));
 
-// Lockout (kept, you can ignore; GS LOCKOUT_ET is primary)
+// Aggressive caching for static assets
+app.use(express.static(path.join(__dirname, "public"), {
+  etag: true,
+  lastModified: true,
+  maxAge: "7d",                // browser cache (safe for your static)
+  setHeaders: (res, filePath) => {
+    if (/\.(css|js|png|jpg|jpeg|gif|svg|woff2?)$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+    }
+  }
+}));
+
+// Lockout (kept)
 const lockoutTime = new Date("2025-08-16T18:00:00-04:00");
 app.get("/api/lockout", (req, res) => {
   res.json({ locked: new Date() >= lockoutTime });
@@ -77,6 +92,8 @@ app.post("/api/leaderboard", async (_req, res) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "getLeaderboard" })
     });
+    // prevent edge caches from serving stale
+    res.set("Cache-Control", "no-store");
     res.json(await r.json());
   } catch (e) {
     console.error("getLeaderboard error:", e);
@@ -96,7 +113,7 @@ app.get("/api/hall", async (_req, res) => {
   }
 });
 
-// Scraper passthrough (your existing routes)
+// Scraper passthrough (kept as-is)
 app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
   try {
     const r = await fetch(`${req.protocol}://${req.get("host")}/api/scrape/ufcstats/event/${encodeURIComponent(req.params.id)}`);
