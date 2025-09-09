@@ -1,9 +1,12 @@
-/* Fix Pass: keep HTML the same; restore checks, centering, tight leaderboard */
-
+/* Tight/clean fixes:
+   - Round dropdown disables when Decision is chosen (and re-enables otherwise)
+   - Your Picks always uses fresh leaderboard results (no stale cache)
+   - Banner fills container width with continuous scroll
+   - No HTML changes required
+*/
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
 
-  // helpers
   const $ = s => document.querySelector(s);
   const el = (t,c,h) => { const e=document.createElement(t); if(c) e.className=c; if(h!=null) e.innerHTML=h; return e; };
   const esc = s => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -12,32 +15,34 @@ document.addEventListener("DOMContentLoaded", () => {
   function underdogBonusFromOdds(odds){ const n=normalizeAmericanOdds(odds); if(n==null || n<100) return 0; return 1+Math.floor((n-100)/100); }
   const checkIcon = ok => `<span class="check ${ok?'good':'bad'}">${ok?'✓':'✕'}</span>`;
 
-  // API
   const api = {
     async getFights(){ const r=await fetch(`${BASE}/fights`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); },
     async getUserPicks(username){ const r=await fetch(`${BASE}/picks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); return r.json(); },
     async submitPicks(payload){ const r=await fetch(`${BASE}/submit`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); return r.json(); },
-    async getLeaderboard(){ const r=await fetch(`${BASE}/leaderboard`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})}); return r.json(); },
+    async getLeaderboardFresh(){ const r=await fetch(`${BASE}/leaderboard`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})}); return r.json(); },
     async getHall(){ const r=await fetch(`${BASE}/hall`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); }
   };
 
-  // DOM
-  const welcome = $("#welcome");
-  const fightList = $("#fightList");
-  const submitBtn = $("#submitBtn");
-  const usernamePrompt = $("#usernamePrompt");
-  const usernameInput = $("#usernameInput");
-  const champBanner = $("#champBanner");
-  const leaderboardEl = $("#leaderboard");
-  const allTimeList = $("#allTimeBoard");
-  const weeklyTabBtn = $("#tabWeekly");
-  const allTimeTabBtn = $("#tabAllTime");
+  const welcome=$("#welcome");
+  const fightList=$("#fightList");
+  const submitBtn=$("#submitBtn");
+  const usernamePrompt=$("#usernamePrompt");
+  const usernameInput=$("#usernameInput");
+  const champBanner=$("#champBanner");
+  const leaderboardEl=$("#leaderboard");
+  const allTimeList=$("#allTimeBoard");
+  const weeklyTabBtn=$("#tabWeekly");
+  const allTimeTabBtn=$("#tabAllTime");
 
   let username = localStorage.getItem("username") || "";
-
-  // caches
   const fightMeta = new Map();
-  let fightsCache=null, leaderboardCache=null, allTimeCache=null;
+  let fightsCache=null;
+
+  // compact scoring text
+  (function renderRules(){
+    const t=$("#scoringRules");
+    if(t) t.innerHTML = `<ul class="rules-list"><li>+3 winner</li><li>+2 method</li><li>+1 round</li><li>🐶 underdog bonus</li></ul>`;
+  })();
 
   function buildFightMeta(rows){
     fightMeta.clear();
@@ -46,22 +51,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // compact scoring text
-  (function renderRules(){
-    const t=$("#scoringRules");
-    if(t) t.innerHTML = `<ul class="rules-list"><li>+3 winner</li><li>+2 method</li><li>+1 round</li><li>🐶 underdog bonus</li></ul>`;
-  })();
-
-  // login
   function doLogin(){
     const v=usernameInput.value.trim(); if(!v) return alert("Please enter your name.");
     username=v; localStorage.setItem("username", username); start();
   }
   $("#usernamePrompt button")?.addEventListener("click", doLogin);
-  usernameInput?.addEventListener("keydown", e=>{ if (e.key==="Enter") doLogin(); });
-  if (username){ usernameInput.value=username; start(); }
+  usernameInput?.addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+  if(username){ usernameInput.value=username; start(); }
 
-  // start
   async function start(){
     usernamePrompt.style.display="none";
     welcome.textContent = `🎤 IIIIIIIIIIIIT'S ${username.toUpperCase()}!`;
@@ -69,19 +66,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try{
       const fights = await api.getFights();
-      fightsCache=fights||[];
+      fightsCache = fights || [];
       buildFightMeta(fightsCache);
 
-      const myPicks = await api.getUserPicks(username);
-      if (myPicks?.success && Array.isArray(myPicks.picks) && myPicks.picks.length){
+      const my = await api.getUserPicks(username);
+      if (my?.success && Array.isArray(my.picks) && my.picks.length){
         fightList.style.display="none"; submitBtn.style.display="none";
       } else {
         renderFightList(fightsCache);
-        submitBtn.style.display="block";   // block centers with margin auto
+        submitBtn.style.display="block";
       }
 
-      await loadMyPicks();
-      await loadLeaderboard();
+      await loadMyPicks();           // pulls fresh results
+      await loadLeaderboard();       // builds banner + weekly
     }catch(e){
       console.error(e);
       fightList.innerHTML = `<li class="board-hint">Server unavailable.</li>`;
@@ -89,7 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ===== Fight picker (two buttons) =====
+  // Fight picker (NO bubbles, flat text). Also: disable round when Decision selected.
   function renderFightList(rows){
     fightList.innerHTML="";
     (rows||[]).forEach(({fight,fighter1,fighter2})=>{
@@ -111,7 +108,9 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <div class="pick-controls">
           <select name="${esc(fight)}-method">
-            <option value="Decision">Decision</option><option value="KO/TKO">KO/TKO</option><option value="Submission">Submission</option>
+            <option value="Decision">Decision</option>
+            <option value="KO/TKO">KO/TKO</option>
+            <option value="Submission">Submission</option>
           </select>
           <select name="${esc(fight)}-round">
             <option value="1">R1</option><option value="2">R2</option><option value="3">R3</option><option value="4">R4</option><option value="5">R5</option>
@@ -121,10 +120,23 @@ document.addEventListener("DOMContentLoaded", () => {
       fightList.appendChild(card);
     });
 
+    // Hook up Decision => disable round
+    fightList.querySelectorAll(".fight").forEach(card=>{
+      const mSel = card.querySelector(`select[name$="-method"]`);
+      const rSel = card.querySelector(`select[name$="-round"]`);
+      const sync = () => {
+        const dec = mSel.value === "Decision";
+        rSel.disabled = dec;
+        if (dec) { rSel.value = ""; }
+        else if (!rSel.value) { rSel.value = "1"; }
+      };
+      mSel.addEventListener("change", sync);
+      sync();
+    });
+
     fightList.style.display="grid";
   }
 
-  // submit
   submitBtn?.addEventListener("click", async ()=>{
     submitBtn.disabled=true; submitBtn.textContent="Submitting…";
     const picks=[];
@@ -149,14 +161,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ===== My Picks (✓ / ✕ visible; one 🐶 +X only if it cashed) =====
+  // Your Picks — always get FRESH leaderboard so points and ✓/✕ match
   async function loadMyPicks(){
     const my=await api.getUserPicks(username);
     const wrap=$("#myPicks"); wrap.innerHTML="";
     if(!my?.success || !Array.isArray(my.picks) || !my.picks.length){ wrap.style.display="none"; return; }
 
-    if(!leaderboardCache) leaderboardCache=await api.getLeaderboard();
-    const fr=(leaderboardCache && leaderboardCache.fightResults)||{};
+    const lb = await api.getLeaderboardFresh();                // <-- fresh every time
+    const fr = (lb && lb.fightResults) || {};
 
     wrap.appendChild(el("div","header",`<div><strong>Your Picks</strong></div>`));
 
@@ -198,20 +210,19 @@ document.addEventListener("DOMContentLoaded", () => {
     wrap.style.display="grid";
   }
 
-  // ===== Leaderboard (tight & centered hint) =====
+  // Weekly leaderboard + banner
   async function loadLeaderboard(){
-    if(!leaderboardCache) leaderboardCache = await api.getLeaderboard();
-    const lb = leaderboardCache || {};
-
+    const lb = await api.getLeaderboardFresh();
     leaderboardEl.innerHTML="";
 
     const resultsArr=Object.values(lb.fightResults||{});
     const resultsStarted=resultsArr.some(r=>r && r.winner && r.method);
-    let scores=Object.entries(lb.scores||{}).sort((a,b)=> b[1]-a[1]);
+    const scores=Object.entries(lb.scores||{}).sort((a,b)=> b[1]-a[1]);
 
     if(scores.length===0){
+      // centered via CSS
       leaderboardEl.appendChild(el("li","board-hint","Weekly standings will appear once results start."));
-    } else {
+    }else{
       let rank=1, prevPts=null, shown=1;
       scores.forEach(([user,pts],idx)=>{
         if(pts!==prevPts) shown=rank;
@@ -228,14 +239,15 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Banner (keep)
+    // Banner: full width scroll across container
     const totalFights=(fightsCache||[]).length;
     const completed=resultsArr.filter(r=>r && r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
-    if(totalFights>0 && completed===totalFights && (lb.champMessage||"").trim()){
+    const haveMsg= typeof lb.champMessage==="string" && lb.champMessage.trim()!=="";
+    if(totalFights>0 && completed===totalFights && haveMsg){
       champBanner.innerHTML = marquee(lb.champMessage.trim());
       champBanner.style.display="block";
     } else if(!resultsStarted){
-      champBanner.style.display="block"; // will be replaced by cached banner if you have that logic; otherwise safe to show none
+      champBanner.style.display="none"; // keep clean pre-results
     } else {
       champBanner.style.display="none";
     }
@@ -243,8 +255,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function marquee(msg){
     const safe=esc(msg);
+    // repeat enough to guarantee continuous scroll across container width
     const item=`<span class="crown">👑</span> <span class="champ-name">${safe}</span>`;
-    return `<div class="scroll" aria-label="Champion of the Week">${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}</div>`;
+    return `<div class="scroll" aria-label="Champion of the Week">
+      ${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}
+    </div>`;
   }
 
   // Tabs
