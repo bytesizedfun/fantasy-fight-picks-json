@@ -1,16 +1,26 @@
 const express = require("express");
 const fetch = require("node-fetch");
 const path = require("path");
-const compression = require("compression");
+
+// Try to load compression, but don’t crash if it’s missing
+let compression = null;
+try {
+  compression = require("compression");
+} catch (e) {
+  console.warn("[warn] compression package not installed; continuing without it");
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // GAS web app URL
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
 // --- PERFORMANCE ---
-app.use(compression({ level: 6 })); // gzip/brotli where supported
+if (compression) {
+  app.use(compression({ level: 6 }));
+}
 
 // Hard no-cache for API
 app.use((req, res, next) => {
@@ -26,16 +36,18 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // Aggressive caching for static assets
-app.use(express.static(path.join(__dirname, "public"), {
-  etag: true,
-  lastModified: true,
-  maxAge: "7d",                // browser cache (safe for your static)
-  setHeaders: (res, filePath) => {
-    if (/\.(css|js|png|jpg|jpeg|gif|svg|woff2?)$/i.test(filePath)) {
-      res.setHeader("Cache-Control", "public, max-age=604800, immutable");
-    }
-  }
-}));
+app.use(
+  express.static(path.join(__dirname, "public"), {
+    etag: true,
+    lastModified: true,
+    maxAge: "7d",
+    setHeaders: (res, filePath) => {
+      if (/\.(css|js|png|jpg|jpeg|gif|svg|woff2?)$/i.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+      }
+    },
+  })
+);
 
 // Lockout (kept)
 const lockoutTime = new Date("2025-08-16T18:00:00-04:00");
@@ -46,7 +58,9 @@ app.get("/api/lockout", (req, res) => {
 // Fights
 app.get("/api/fights", async (_req, res) => {
   try {
-    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`, { headers: { "Cache-Control": "no-cache" }});
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`, {
+      headers: { "Cache-Control": "no-cache" },
+    });
     res.json(await r.json());
   } catch (e) {
     console.error("getFights error:", e);
@@ -60,7 +74,7 @@ app.post("/api/submit", async (req, res) => {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "submitPicks", ...req.body })
+      body: JSON.stringify({ action: "submitPicks", ...req.body }),
     });
     res.json(await r.json());
   } catch (e) {
@@ -75,7 +89,7 @@ app.post("/api/picks", async (req, res) => {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getUserPicks", ...req.body })
+      body: JSON.stringify({ action: "getUserPicks", ...req.body }),
     });
     res.json(await r.json());
   } catch (e) {
@@ -90,9 +104,8 @@ app.post("/api/leaderboard", async (_req, res) => {
     const r = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getLeaderboard" })
+      body: JSON.stringify({ action: "getLeaderboard" }),
     });
-    // prevent edge caches from serving stale
     res.set("Cache-Control", "no-store");
     res.json(await r.json());
   } catch (e) {
@@ -104,7 +117,9 @@ app.post("/api/leaderboard", async (_req, res) => {
 // All-time
 app.get("/api/hall", async (_req, res) => {
   try {
-    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, { headers: { "Cache-Control": "no-cache" }});
+    const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
+      headers: { "Cache-Control": "no-cache" },
+    });
     res.set("Cache-Control", "no-store");
     res.json(await r.json());
   } catch (e) {
@@ -116,7 +131,11 @@ app.get("/api/hall", async (_req, res) => {
 // Scraper passthrough (kept as-is)
 app.get("/api/scrape/ufcstats/event/:id", async (req, res) => {
   try {
-    const r = await fetch(`${req.protocol}://${req.get("host")}/api/scrape/ufcstats/event/${encodeURIComponent(req.params.id)}`);
+    const r = await fetch(
+      `${req.protocol}://${req.get("host")}/api/scrape/ufcstats/event/${encodeURIComponent(
+        req.params.id
+      )}`
+    );
     res.json(await r.json());
   } catch (e) {
     res.status(500).json({ error: "Scraper passthrough failed" });
