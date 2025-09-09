@@ -1,20 +1,18 @@
-/* Tight/clean fixes:
-   - Round dropdown disables when Decision is chosen (and re-enables otherwise)
-   - Your Picks always uses fresh leaderboard results (no stale cache)
-   - Banner fills container width with continuous scroll
-   - No HTML changes required
-*/
+/* App script — all-time leaderboard restored + solid ✓/✕ in Your Picks */
+
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
 
+  // helpers
   const $ = s => document.querySelector(s);
   const el = (t,c,h) => { const e=document.createElement(t); if(c) e.className=c; if(h!=null) e.innerHTML=h; return e; };
   const esc = s => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
   function normalizeAmericanOdds(raw){ const m=String(raw??"").trim().match(/[+-]?\d+/); if(!m) return null; const n=+m[0]; return Number.isFinite(n)?n:null; }
   function underdogBonusFromOdds(odds){ const n=normalizeAmericanOdds(odds); if(n==null || n<100) return 0; return 1+Math.floor((n-100)/100); }
-  const checkIcon = ok => `<span class="check ${ok?'good':'bad'}">${ok?'✓':'✕'}</span>`;
+  const checkIcon = ok => `<span class="check ${ok?'good':'bad'}" aria-hidden="true">${ok?'✓':'✕'}</span>`;
 
+  // API (fresh leaderboard call ensures latest results)
   const api = {
     async getFights(){ const r=await fetch(`${BASE}/fights`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); },
     async getUserPicks(username){ const r=await fetch(`${BASE}/picks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); return r.json(); },
@@ -23,20 +21,22 @@ document.addEventListener("DOMContentLoaded", () => {
     async getHall(){ const r=await fetch(`${BASE}/hall`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); }
   };
 
-  const welcome=$("#welcome");
-  const fightList=$("#fightList");
-  const submitBtn=$("#submitBtn");
-  const usernamePrompt=$("#usernamePrompt");
-  const usernameInput=$("#usernameInput");
-  const champBanner=$("#champBanner");
-  const leaderboardEl=$("#leaderboard");
-  const allTimeList=$("#allTimeBoard");
-  const weeklyTabBtn=$("#tabWeekly");
-  const allTimeTabBtn=$("#tabAllTime");
+  // DOM
+  const welcome = $("#welcome");
+  const fightList = $("#fightList");
+  const submitBtn = $("#submitBtn");
+  const usernamePrompt = $("#usernamePrompt");
+  const usernameInput = $("#usernameInput");
+  const champBanner = $("#champBanner");
+  const leaderboardEl = $("#leaderboard");
+  const allTimeList = $("#allTimeBoard");
+  const weeklyTabBtn = $("#tabWeekly");
+  const allTimeTabBtn = $("#tabAllTime");
 
   let username = localStorage.getItem("username") || "";
   const fightMeta = new Map();
   let fightsCache=null;
+  let allTimeCache=null; // for All-Time
 
   // compact scoring text
   (function renderRules(){
@@ -77,8 +77,9 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.style.display="block";
       }
 
-      await loadMyPicks();           // pulls fresh results
-      await loadLeaderboard();       // builds banner + weekly
+      await loadMyPicks();      // pulls fresh results (✓ / ✕)
+      await loadLeaderboard();  // weekly board + banner
+      preloadAllTime();         // warm all-time data
     }catch(e){
       console.error(e);
       fightList.innerHTML = `<li class="board-hint">Server unavailable.</li>`;
@@ -86,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Fight picker (NO bubbles, flat text). Also: disable round when Decision selected.
+  // ===== Fight picker (flat text options). Decision => disable round. =====
   function renderFightList(rows){
     fightList.innerHTML="";
     (rows||[]).forEach(({fight,fighter1,fighter2})=>{
@@ -120,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
       fightList.appendChild(card);
     });
 
-    // Hook up Decision => disable round
+    // Decision disables round
     fightList.querySelectorAll(".fight").forEach(card=>{
       const mSel = card.querySelector(`select[name$="-method"]`);
       const rSel = card.querySelector(`select[name$="-round"]`);
@@ -137,6 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fightList.style.display="grid";
   }
 
+  // submit
   submitBtn?.addEventListener("click", async ()=>{
     submitBtn.disabled=true; submitBtn.textContent="Submitting…";
     const picks=[];
@@ -161,46 +163,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Your Picks — always get FRESH leaderboard so points and ✓/✕ match
+  // ===== Your Picks — uses FRESH fightResults so ✓/✕ always reflect reality =====
   async function loadMyPicks(){
     const my=await api.getUserPicks(username);
     const wrap=$("#myPicks"); wrap.innerHTML="";
     if(!my?.success || !Array.isArray(my.picks) || !my.picks.length){ wrap.style.display="none"; return; }
 
-    const lb = await api.getLeaderboardFresh();                // <-- fresh every time
+    const lb = await api.getLeaderboardFresh();         // <-- fresh every time
     const fr = (lb && lb.fightResults) || {};
 
     wrap.appendChild(el("div","header",`<div><strong>Your Picks</strong></div>`));
 
     my.picks.forEach(({fight,winner,method,round})=>{
       const actual=fr[fight]||{};
-      const done=!!(actual.winner && actual.method);
-
+      const resultExists = !!(actual.winner && actual.method);
       const meta=fightMeta.get(fight)||{};
       const dogSide=meta.underdogSide;
       const dogTier=underdogBonusFromOdds(meta.underdogOdds);
       const chosenIsUnderdog=(dogSide==="Fighter 1" && winner===meta.f1) || (dogSide==="Fighter 2" && winner===meta.f2);
 
-      const mWinner=done && winner===actual.winner;
-      const mMethod=done && mWinner && method===actual.method;
-      const mRound =done && mWinner && mMethod && method!=="Decision" && String(round)===String(actual.round);
+      const mWinner=resultExists && winner===actual.winner;
+      const mMethod=resultExists && mWinner && method===actual.method;
+      const mRound =resultExists && mWinner && mMethod && method!=="Decision" && String(round)===String(actual.round);
 
-      const dogInline = (done && actual.underdog==='Y' && chosenIsUnderdog && dogTier>0) ? ` 🐶 +${dogTier}` : "";
+      const dogInline = (resultExists && actual.underdog==='Y' && chosenIsUnderdog && dogTier>0) ? ` 🐶 +${dogTier}` : "";
 
       let score=0;
       if(mWinner){ score+=3; if(mMethod){score+=2; if(mRound) score+=1;} if(dogInline) score+=dogTier; }
 
-      const line=done?[
-        `<span class="badge ${mWinner?'good':'bad'}">${checkIcon(mWinner)} Winner</span>`,
-        `<span class="badge ${mMethod?'good':'bad'}">${checkIcon(mMethod)} ${esc(method)}</span>`,
-        method!=="Decision"?`<span class="badge ${mRound?'good':'bad'}">${checkIcon(mRound)} R${esc(round||'')}</span>`:""
-      ].filter(Boolean).join(" "):`<span class="badge">Pending</span>`;
+      const statusLine = resultExists
+        ? [
+            `<span class="badge ${mWinner?'good':'bad'}">${checkIcon(mWinner)} Winner</span>`,
+            `<span class="badge ${mMethod?'good':'bad'}">${checkIcon(mMethod)} ${esc(method)}</span>`,
+            method!=="Decision" ? `<span class="badge ${mRound?'good':'bad'}">${checkIcon(mRound)} R${esc(round||'')}</span>` : ""
+          ].filter(Boolean).join(" ")
+        : `<span class="badge">Pending</span>`;
 
       const row=el("div","scored-pick",`
         <div>
           <div class="fight-name">${esc(fight)}</div>
           <div class="meta">Your pick: <strong>${esc(winner)}${dogInline}</strong> by <strong>${esc(method)}</strong>${(method!=="Decision"&&round)?` in <strong>R${esc(round)}</strong>`:""}</div>
-          <div class="meta">${line}</div>
+          <div class="meta">${statusLine}</div>
         </div>
         <div class="points"><span class="points ${score===0?'zero':'points-cyan'}">+${score} pts</span></div>
       `);
@@ -210,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wrap.style.display="grid";
   }
 
-  // Weekly leaderboard + banner
+  // ===== Weekly leaderboard + banner =====
   async function loadLeaderboard(){
     const lb = await api.getLeaderboardFresh();
     leaderboardEl.innerHTML="";
@@ -220,7 +223,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const scores=Object.entries(lb.scores||{}).sort((a,b)=> b[1]-a[1]);
 
     if(scores.length===0){
-      // centered via CSS
       leaderboardEl.appendChild(el("li","board-hint","Weekly standings will appear once results start."));
     }else{
       let rank=1, prevPts=null, shown=1;
@@ -239,15 +241,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Banner: full width scroll across container
+    // Banner (scroll across container)
     const totalFights=(fightsCache||[]).length;
     const completed=resultsArr.filter(r=>r && r.winner && r.method && (r.method==="Decision" || (r.round && r.round!=="N/A"))).length;
     const haveMsg= typeof lb.champMessage==="string" && lb.champMessage.trim()!=="";
     if(totalFights>0 && completed===totalFights && haveMsg){
       champBanner.innerHTML = marquee(lb.champMessage.trim());
       champBanner.style.display="block";
-    } else if(!resultsStarted){
-      champBanner.style.display="none"; // keep clean pre-results
     } else {
       champBanner.style.display="none";
     }
@@ -255,11 +255,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function marquee(msg){
     const safe=esc(msg);
-    // repeat enough to guarantee continuous scroll across container width
     const item=`<span class="crown">👑</span> <span class="champ-name">${safe}</span>`;
     return `<div class="scroll" aria-label="Champion of the Week">
       ${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}&nbsp;&nbsp;${item}
     </div>`;
+  }
+
+  // ===== All-Time leaderboard (restored) =====
+  function sortAllTime(rows){
+    const cleaned = (rows||[]).filter(r=>r && r.username && String(r.username).trim()!=="");
+    return cleaned.map(r => ({
+      user:r.username,
+      crowns:+r.crowns||0,
+      events:+r.events_played||0,
+      rate:+r.crown_rate||0
+    })).sort((a,b)=> (b.rate-a.rate)||(b.crowns-a.crowns)||(b.events-a.events)||a.user.localeCompare(b.user));
+  }
+  function renderAllTimeHeader(){
+    const li = el("li","board-header at-five", `
+      <span>Rank</span><span>Player</span><span>%</span><span>👑</span><span>Events</span>
+    `);
+    allTimeList.appendChild(li);
+  }
+  function drawAllTime(data){
+    allTimeList.innerHTML = "";
+    if (!data.length){ allTimeList.innerHTML = "<li class='board-hint'>No All-Time data yet.</li>"; return; }
+    renderAllTimeHeader();
+    let shown=0, prev=null;
+    data.forEach((r, idx)=>{
+      shown = (!prev || r.rate!==prev.rate || r.crowns!==prev.crowns || r.events!==prev.events) ? (idx+1) : shown;
+      const li = el("li", "at-five" + (r.user===username?" current-user":""), `
+        <span class="rank">${shown===1?"🥇":`#${shown}`}</span>
+        <span class="user" title="${esc(r.user)}">${esc(r.user)}</span>
+        <span class="num rate">${(r.rate*100).toFixed(1)}%</span>
+        <span class="num crowns">${r.crowns}</span>
+        <span class="num events">${r.events}</span>
+      `);
+      allTimeList.appendChild(li);
+      prev = r;
+    });
+  }
+  async function preloadAllTime(){
+    try{
+      const hall = await api.getHall();
+      allTimeCache = sortAllTime(hall||[]);
+    }catch(_){}
   }
 
   // Tabs
@@ -270,8 +310,10 @@ document.addEventListener("DOMContentLoaded", () => {
     weeklyTabBtn.setAttribute("aria-pressed","true");
     allTimeTabBtn.setAttribute("aria-pressed","false");
   });
-  allTimeTabBtn?.addEventListener("click", e=>{
+  allTimeTabBtn?.addEventListener("click", async e=>{
     e.preventDefault();
+    if (!allTimeCache){ await preloadAllTime(); }
+    drawAllTime(allTimeCache || []);
     leaderboardEl.style.display="none";
     allTimeList.style.display="block";
     weeklyTabBtn.setAttribute("aria-pressed","false");
