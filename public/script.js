@@ -1,9 +1,9 @@
-/* App script — all-time leaderboard restored + solid ✓/✕ in Your Picks */
+/* App script — normalized fight matching (✓ / ✕ now show), all-time works, decisions disable round */
 
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
 
-  // helpers
+  // ---------- helpers
   const $ = s => document.querySelector(s);
   const el = (t,c,h) => { const e=document.createElement(t); if(c) e.className=c; if(h!=null) e.innerHTML=h; return e; };
   const esc = s => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -12,7 +12,15 @@ document.addEventListener("DOMContentLoaded", () => {
   function underdogBonusFromOdds(odds){ const n=normalizeAmericanOdds(odds); if(n==null || n<100) return 0; return 1+Math.floor((n-100)/100); }
   const checkIcon = ok => `<span class="check ${ok?'good':'bad'}" aria-hidden="true">${ok?'✓':'✕'}</span>`;
 
-  // API (fresh leaderboard call ensures latest results)
+  // *** EXACTLY the same normalization as server (GAS) ***
+  const normKey = (s) => String(s||"")
+    .toLowerCase()
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9\s]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+  // ---------- API
   const api = {
     async getFights(){ const r=await fetch(`${BASE}/fights`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); },
     async getUserPicks(username){ const r=await fetch(`${BASE}/picks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); return r.json(); },
@@ -21,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async getHall(){ const r=await fetch(`${BASE}/hall`,{headers:{'Cache-Control':'no-cache'}}); return r.json(); }
   };
 
-  // DOM
+  // ---------- DOM
   const welcome = $("#welcome");
   const fightList = $("#fightList");
   const submitBtn = $("#submitBtn");
@@ -34,9 +42,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const allTimeTabBtn = $("#tabAllTime");
 
   let username = localStorage.getItem("username") || "";
-  const fightMeta = new Map();
-  let fightsCache=null;
-  let allTimeCache=null; // for All-Time
+  let fightsCache = null;
+
+  // meta maps (exact + normalized)
+  const metaByExact = new Map();
+  const metaByNorm = new Map();
 
   // compact scoring text
   (function renderRules(){
@@ -45,9 +55,11 @@ document.addEventListener("DOMContentLoaded", () => {
   })();
 
   function buildFightMeta(rows){
-    fightMeta.clear();
+    metaByExact.clear(); metaByNorm.clear();
     (rows||[]).forEach(r=>{
-      fightMeta.set(r.fight,{ f1:r.fighter1, f2:r.fighter2, underdogSide:r.underdog||"", underdogOdds:r.underdogOdds||"" });
+      const m = { f1:r.fighter1, f2:r.fighter2, underdogSide:r.underdog||"", underdogOdds:r.underdogOdds||"" };
+      metaByExact.set(r.fight, m);
+      metaByNorm.set(normKey(r.fight), m);
     });
   }
 
@@ -77,12 +89,14 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.style.display="block";
       }
 
-      await loadMyPicks();      // pulls fresh results (✓ / ✕)
+      await loadMyPicks();      // ✓ / ✕ now normalized
       await loadLeaderboard();  // weekly board + banner
       preloadAllTime();         // warm all-time data
     }catch(e){
       console.error(e);
-      fightList.innerHTML = `<li class="board-hint">Server unavailable.</li>`;
+      const li = el("li","board-hint","Server unavailable.");
+      li.style.textAlign="center";
+      fightList.innerHTML = ""; fightList.appendChild(li);
       submitBtn.style.display="none";
     }
   }
@@ -91,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderFightList(rows){
     fightList.innerHTML="";
     (rows||[]).forEach(({fight,fighter1,fighter2})=>{
-      const meta=fightMeta.get(fight)||{};
+      const meta=metaByExact.get(fight)||{};
       const dog1=(meta.underdogSide==="Fighter 1")?underdogBonusFromOdds(meta.underdogOdds):0;
       const dog2=(meta.underdogSide==="Fighter 2")?underdogBonusFromOdds(meta.underdogOdds):0;
 
@@ -163,34 +177,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ===== Your Picks — uses FRESH fightResults so ✓/✕ always reflect reality =====
+  // ===== Your Picks — uses FRESH results and NORMALIZED keys (✓/✕ fixed) =====
   async function loadMyPicks(){
     const my=await api.getUserPicks(username);
     const wrap=$("#myPicks"); wrap.innerHTML="";
     if(!my?.success || !Array.isArray(my.picks) || !my.picks.length){ wrap.style.display="none"; return; }
 
-    const lb = await api.getLeaderboardFresh();         // <-- fresh every time
+    const lb = await api.getLeaderboardFresh();         // always fresh
     const fr = (lb && lb.fightResults) || {};
+    // build normalized map of fightResults
+    const frByNorm = {};
+    Object.keys(fr).forEach(k => { frByNorm[normKey(k)] = fr[k]; });
 
     wrap.appendChild(el("div","header",`<div><strong>Your Picks</strong></div>`));
 
     my.picks.forEach(({fight,winner,method,round})=>{
-      const actual=fr[fight]||{};
+      const n = normKey(fight);
+      const actual = fr[fight] || frByNorm[n] || {};          // exact or normalized
       const resultExists = !!(actual.winner && actual.method);
-      const meta=fightMeta.get(fight)||{};
-      const dogSide=meta.underdogSide;
-      const dogTier=underdogBonusFromOdds(meta.underdogOdds);
+
+      const meta = metaByExact.get(fight) || metaByNorm.get(n) || {};
+      const dogSide = meta.underdogSide;
+      const dogTier = underdogBonusFromOdds(meta.underdogOdds);
       const chosenIsUnderdog=(dogSide==="Fighter 1" && winner===meta.f1) || (dogSide==="Fighter 2" && winner===meta.f2);
 
-      const mWinner=resultExists && winner===actual.winner;
-      const mMethod=resultExists && mWinner && method===actual.method;
-      const mRound =resultExists && mWinner && mMethod && method!=="Decision" && String(round)===String(actual.round);
+      const mWinner = resultExists && winner===actual.winner;
+      const mMethod = resultExists && mWinner && method===actual.method;
+      const mRound  = resultExists && mWinner && mMethod && method!=="Decision" && String(round)===String(actual.round);
 
       const dogInline = (resultExists && actual.underdog==='Y' && chosenIsUnderdog && dogTier>0) ? ` 🐶 +${dogTier}` : "";
 
-      let score=0;
-      if(mWinner){ score+=3; if(mMethod){score+=2; if(mRound) score+=1;} if(dogInline) score+=dogTier; }
-
+      // display row (status chips show ✓/✕ via checkIcon)
       const statusLine = resultExists
         ? [
             `<span class="badge ${mWinner?'good':'bad'}">${checkIcon(mWinner)} Winner</span>`,
@@ -198,6 +215,10 @@ document.addEventListener("DOMContentLoaded", () => {
             method!=="Decision" ? `<span class="badge ${mRound?'good':'bad'}">${checkIcon(mRound)} R${esc(round||'')}</span>` : ""
           ].filter(Boolean).join(" ")
         : `<span class="badge">Pending</span>`;
+
+      // Compute same score breakdown client-side for the “+X pts” tag (not used in totals)
+      let score=0;
+      if(mWinner){ score+=3; if(mMethod){score+=2; if(mRound) score+=1;} if(dogInline) score+=dogTier; }
 
       const row=el("div","scored-pick",`
         <div>
@@ -223,7 +244,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const scores=Object.entries(lb.scores||{}).sort((a,b)=> b[1]-a[1]);
 
     if(scores.length===0){
-      leaderboardEl.appendChild(el("li","board-hint","Weekly standings will appear once results start."));
+      const hint = el("li","board-hint","Weekly standings will appear once results start.");
+      hint.style.textAlign = "center";         // ensure centered even without CSS
+      leaderboardEl.appendChild(hint);
     }else{
       let rank=1, prevPts=null, shown=1;
       scores.forEach(([user,pts],idx)=>{
@@ -261,7 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>`;
   }
 
-  // ===== All-Time leaderboard (restored) =====
+  // ===== All-Time leaderboard (unchanged server schema) =====
   function sortAllTime(rows){
     const cleaned = (rows||[]).filter(r=>r && r.username && String(r.username).trim()!=="");
     return cleaned.map(r => ({
@@ -279,12 +302,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function drawAllTime(data){
     allTimeList.innerHTML = "";
-    if (!data.length){ allTimeList.innerHTML = "<li class='board-hint'>No All-Time data yet.</li>"; return; }
+    if (!data.length){ const hint=el("li","board-hint","No All-Time data yet."); hint.style.textAlign="center"; allTimeList.appendChild(hint); return; }
     renderAllTimeHeader();
     let shown=0, prev=null;
     data.forEach((r, idx)=>{
       shown = (!prev || r.rate!==prev.rate || r.crowns!==prev.crowns || r.events!==prev.events) ? (idx+1) : shown;
-      const li = el("li", "at-five" + (r.user===username?" current-user":""), `
+      const li = el("li", "at-five", `
         <span class="rank">${shown===1?"🥇":`#${shown}`}</span>
         <span class="user" title="${esc(r.user)}">${esc(r.user)}</span>
         <span class="num rate">${(r.rate*100).toFixed(1)}%</span>
@@ -298,7 +321,9 @@ document.addEventListener("DOMContentLoaded", () => {
   async function preloadAllTime(){
     try{
       const hall = await api.getHall();
-      allTimeCache = sortAllTime(hall||[]);
+      const data = sortAllTime(hall||[]);
+      // don't render yet; render when tab is clicked
+      window.__hall = data;
     }catch(_){}
   }
 
@@ -312,8 +337,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   allTimeTabBtn?.addEventListener("click", async e=>{
     e.preventDefault();
-    if (!allTimeCache){ await preloadAllTime(); }
-    drawAllTime(allTimeCache || []);
+    if (!window.__hall){ await preloadAllTime(); }
+    drawAllTime(window.__hall || []);
     leaderboardEl.style.display="none";
     allTimeList.style.display="block";
     weeklyTabBtn.setAttribute("aria-pressed","false");
