@@ -1,4 +1,4 @@
-/* App script — normalized fight matching (✓ / ✕ now show), all-time works, decisions disable round */
+/* App script — robust fight matching so ✓ / ✕ show reliably */
 
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
@@ -12,13 +12,33 @@ document.addEventListener("DOMContentLoaded", () => {
   function underdogBonusFromOdds(odds){ const n=normalizeAmericanOdds(odds); if(n==null || n<100) return 0; return 1+Math.floor((n-100)/100); }
   const checkIcon = ok => `<span class="check ${ok?'good':'bad'}" aria-hidden="true">${ok?'✓':'✕'}</span>`;
 
-  // *** EXACTLY the same normalization as server (GAS) ***
+  // *** SAME normalization as server (GAS) ***
   const normKey = (s) => String(s||"")
     .toLowerCase()
     .normalize("NFKD").replace(/[\u0300-\u036f]/g,"")
     .replace(/[^a-z0-9\s]/g," ")
     .replace(/\s+/g," ")
     .trim();
+
+  // Parse "A vs B" → ["a","b"] sorted, resilient to punctuation/extra words
+  function fighterPairKey(label){
+    const s = normKey(label);
+    // try to split on " vs " variants
+    const parts = s.split(/\bvs\b/i).map(x=>x.trim()).filter(Boolean);
+    if (parts.length === 2) {
+      const a = parts[0].replace(/\s+/g," ");
+      const b = parts[1].replace(/\s+/g," ");
+      return [a,b].sort().join(" | ");
+    }
+    // fallback: attempt to extract two longest name-like chunks
+    const tokens = s.split(/\s+/).filter(Boolean);
+    if (tokens.length >= 2) {
+      const a = tokens.slice(0, Math.ceil(tokens.length/2)).join(" ");
+      const b = tokens.slice(Math.ceil(tokens.length/2)).join(" ");
+      return [a,b].sort().join(" | ");
+    }
+    return "";
+  }
 
   // ---------- API
   const api = {
@@ -44,9 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let username = localStorage.getItem("username") || "";
   let fightsCache = null;
 
-  // meta maps (exact + normalized)
+  // meta maps for fights
   const metaByExact = new Map();
   const metaByNorm = new Map();
+  const metaByPair = new Map();
+  const fightNameByNorm = new Map(); // canonical fight label lookup
 
   // compact scoring text
   (function renderRules(){
@@ -55,11 +77,15 @@ document.addEventListener("DOMContentLoaded", () => {
   })();
 
   function buildFightMeta(rows){
-    metaByExact.clear(); metaByNorm.clear();
+    metaByExact.clear(); metaByNorm.clear(); metaByPair.clear(); fightNameByNorm.clear();
     (rows||[]).forEach(r=>{
       const m = { f1:r.fighter1, f2:r.fighter2, underdogSide:r.underdog||"", underdogOdds:r.underdogOdds||"" };
+      const nk = normKey(r.fight);
+      const pk = fighterPairKey(`${r.fighter1} vs ${r.fighter2}`);
       metaByExact.set(r.fight, m);
-      metaByNorm.set(normKey(r.fight), m);
+      metaByNorm.set(nk, m);
+      if (pk) metaByPair.set(pk, m);
+      fightNameByNorm.set(nk, r.fight);
     });
   }
 
@@ -89,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.style.display="block";
       }
 
-      await loadMyPicks();      // ✓ / ✕ now normalized
+      await loadMyPicks();      // ✓ / ✕ now robust
       await loadLeaderboard();  // weekly board + banner
       preloadAllTime();         // warm all-time data
     }catch(e){
@@ -177,25 +203,64 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ===== Your Picks — uses FRESH results and NORMALIZED keys (✓/✕ fixed) =====
+  // ---------- Resolve result for a pick using multiple matching strategies
+  function buildResultLookups(lb){
+    const fr = (lb && lb.fightResults) || {};
+    const byExact = fr;                     // as returned
+    const byNorm = {};
+    const byPair = {};
+    Object.keys(fr).forEach(k=>{
+      const nk = normKey(k);
+      byNorm[nk] = fr[k];
+      const pk = fighterPairKey(k);
+      if (pk) byPair[pk] = fr[k];
+    });
+    return { byExact, byNorm, byPair };
+  }
+
+  function resolveResultForPick(pickFight, lookups){
+    // 1) exact
+    if (lookups.byExact[pickFight]) return lookups.byExact[pickFight];
+
+    // 2) normalized
+    const n = normKey(pickFight);
+    if (lookups.byNorm[n]) return lookups.byNorm[n];
+
+    // 3) fighter pair from pick label
+    const pair = fighterPairKey(pickFight);
+    if (pair && lookups.byPair[pair]) return lookups.byPair[pair];
+
+    // 4) map pick to canonical fight on the current card, then look up by that name
+    const canonicalFight = fightNameByNorm.get(n);
+    if (canonicalFight && lookups.byExact[canonicalFight]) return lookups.byExact[canonicalFight];
+
+    // 5) last resort: try fighter pair built from canonical fight (f1/f2) meta
+    const meta = metaByNorm.get(n) || metaByExact.get(pickFight);
+    if (meta && meta.f1 && meta.f2) {
+      const p2 = fighterPairKey(`${meta.f1} vs ${meta.f2}`);
+      if (p2 && lookups.byPair[p2]) return lookups.byPair[p2];
+    }
+
+    return null;
+  }
+
+  // ===== Your Picks — uses FRESH results + robust matching (✓/✕ fixed) =====
   async function loadMyPicks(){
     const my=await api.getUserPicks(username);
     const wrap=$("#myPicks"); wrap.innerHTML="";
     if(!my?.success || !Array.isArray(my.picks) || !my.picks.length){ wrap.style.display="none"; return; }
 
     const lb = await api.getLeaderboardFresh();         // always fresh
-    const fr = (lb && lb.fightResults) || {};
-    // build normalized map of fightResults
-    const frByNorm = {};
-    Object.keys(fr).forEach(k => { frByNorm[normKey(k)] = fr[k]; });
+    const lookups = buildResultLookups(lb);
 
     wrap.appendChild(el("div","header",`<div><strong>Your Picks</strong></div>`));
 
     my.picks.forEach(({fight,winner,method,round})=>{
-      const n = normKey(fight);
-      const actual = fr[fight] || frByNorm[n] || {};          // exact or normalized
+      const actual = resolveResultForPick(fight, lookups) || {};
       const resultExists = !!(actual.winner && actual.method);
 
+      // meta for underdog & dog pts
+      const n = normKey(fight);
       const meta = metaByExact.get(fight) || metaByNorm.get(n) || {};
       const dogSide = meta.underdogSide;
       const dogTier = underdogBonusFromOdds(meta.underdogOdds);
@@ -216,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ].filter(Boolean).join(" ")
         : `<span class="badge">Pending</span>`;
 
-      // Compute same score breakdown client-side for the “+X pts” tag (not used in totals)
+      // client-side score tag for this row
       let score=0;
       if(mWinner){ score+=3; if(mMethod){score+=2; if(mRound) score+=1;} if(dogInline) score+=dogTier; }
 
@@ -245,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if(scores.length===0){
       const hint = el("li","board-hint","Weekly standings will appear once results start.");
-      hint.style.textAlign = "center";         // ensure centered even without CSS
+      hint.style.textAlign = "center";         // ensure centered even if CSS misses
       leaderboardEl.appendChild(hint);
     }else{
       let rank=1, prevPts=null, shown=1;
@@ -322,7 +387,6 @@ document.addEventListener("DOMContentLoaded", () => {
     try{
       const hall = await api.getHall();
       const data = sortAllTime(hall||[]);
-      // don't render yet; render when tab is clicked
       window.__hall = data;
     }catch(_){}
   }
