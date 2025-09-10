@@ -1,133 +1,482 @@
-/* ===== Fantasy Fight Picks — Tight, Clean, Fast ===== */
-
+/* =========================
+   Base / Theme
+   ========================= */
 :root{
-  --bg:#06080c; --panel:#0b0f14; --text:#e6fbff; --muted:#95aab5;
-  --neon:#00eaff; --accent:#ff3b57;
+  --bg:#0b0b0d;
+  --panel:#111216;
+  --panel-2:#151722;
+  --text:#e8e8ee;
+  --muted:#9aa0ad;
+  --brand:#36e1ff;     /* futurist cyan (logo hue) */
+  --brand-2:#ff3b3b;   /* neon red for hover/alert */
+  --accent:#8a2be2;    /* neon violet accent */
+  --good:#3ddc97;      /* green checks */
+  --bad:#ff5b5b;       /* red x */
+  --line:#20222b;
 }
 
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;line-height:1.34;font-size:16px}
-a{color:var(--neon);text-decoration:none}
-.muted{color:var(--muted)}
-
-#app{width:min(800px,94vw);margin:10px auto 14px}
-
-/* ---------- Logo (sane) ---------- */
-.banner-container{display:flex;justify-content:center;width:100%;margin:8px auto 6px}
-.logo-banner{max-width:150px;height:auto;display:block;filter:drop-shadow(0 0 14px rgba(0,234,255,.18))}
-@media (max-width:560px){.logo-banner{max-width:120px}}
-
-/* ---------- Welcome ---------- */
-#welcome{font-family:'Orbitron',ui-sans-serif;font-weight:900;text-align:center;margin:6px 0 8px;font-size:20px;letter-spacing:.02em}
-
-/* ---------- Scoring (short pill) ---------- */
-.rules-collapsible{display:flex;justify-content:center;margin:6px auto}
-.rules-collapsible>summary{display:inline-block;width:max-content;cursor:pointer;background:var(--panel);border:1px solid rgba(255,255,255,.10);border-radius:999px;padding:6px 10px;color:var(--muted);font-weight:900;font-size:13px}
-.rules{display:none}
-.rules-collapsible[open] .rules{display:block}
-.rules-list{display:flex;gap:6px;margin:6px 0 0;padding:0;list-style:none;justify-content:center}
-.rules-list li{padding:2px 6px;font-weight:800;font-size:12px;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:999px}
-
-/* ---------- Fight picker (NO BUBBLES on choices) ---------- */
-#fightList{width:min(800px,94vw);margin:8px auto;display:grid;row-gap:8px;justify-items:center}
-.fight{width:min(720px,100%);padding:10px;background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:12px;text-align:center}
-.fight h3{margin:0 0 8px;font-size:16px}
-
-.options{display:flex;justify-content:center;gap:10px}
-.options input[type=radio]{display:none}
-
-/* flat, text-only choice (no pill/bubble) */
-.pick-btn{
-  display:inline-flex;align-items:center;gap:8px;padding:2px 4px;border:0;background:transparent;
-  font-weight:900;cursor:pointer;border-bottom:2px solid transparent;
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  line-height:1.35;
 }
-.options label:hover .pick-btn{border-bottom-color:var(--neon);color:#d6fbff}
-.options input[type=radio]:checked + .pick-btn{
-  color:#fff;border-bottom-color:var(--accent);
-}
-.pick-dog{color:var(--muted);font-weight:900}
 
-/* Method/round selects */
-.pick-controls{display:flex;gap:8px;margin-top:8px;justify-content:center}
+/* Centered app column, tighter than before (removes the “zoomed-out” look) */
+#app{
+  width:min(820px, 94vw);
+  margin:16px auto 84px auto;
+}
+
+/* Logo container (keep logo sane) */
+.banner-container{
+  display:flex;
+  justify-content:center;
+  padding:14px 0 6px 0;
+}
+.logo-banner{
+  height:60px;
+  width:auto;
+  object-fit:contain;
+}
+
+/* =========================
+   Champion Banner (edge-to-edge)
+   ========================= */
+.champ-banner{
+  position:relative;
+  width:100vw;
+  left:50%;
+  transform:translateX(-50%);
+  overflow:hidden;
+  background:
+    radial-gradient(1200px 80px at 50% -10%, rgba(54,225,255,0.25), transparent 60%),
+    radial-gradient(1200px 80px at 50% 110%, rgba(138,43,226,0.20), transparent 60%),
+    linear-gradient(90deg, #0f1117 0%, #141724 100%);
+  border-top:1px solid #182032;
+  border-bottom:1px solid #182032;
+  padding:0;
+  margin:0 0 14px 0;
+  height:56px;
+}
+.champ-banner .scroll{
+  display:inline-block;
+  white-space:nowrap;
+  will-change:transform;
+  padding-block:14px;
+  font-family:"Orbitron",system-ui;
+  font-weight:900;
+  letter-spacing:0.6px;
+  font-size:22px;
+  text-transform:uppercase;
+  text-shadow:0 0 8px rgba(54,225,255,0.25);
+  animation:marq 18s linear infinite;
+}
+.champ-banner .crown{ margin:0 8px 0 0; }
+.champ-banner .champ-name{ color:var(--brand); }
+@keyframes marq{ 0%{ transform:translateX(0);} 100%{ transform:translateX(-50%);} }
+
+/* =========================
+   Headings / Titles
+   ========================= */
+.section-title{
+  text-align:center;
+  font-family:"Orbitron",system-ui;
+  font-weight:900;
+  letter-spacing:1px;
+  margin:18px 0 10px 0;
+  text-transform:uppercase;
+}
+.section-title--leader{
+  font-size:20px;
+  color:#fff;
+  text-shadow:0 0 14px rgba(54,225,255,0.35);
+}
+
+/* =========================
+   Username prompt
+   ========================= */
+.card.center{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:16px;
+  width:min(560px, 94vw);
+  margin:12px auto;
+  text-align:center;
+}
+.prompt-title{
+  font-family:"Orbitron";
+  font-size:16px;
+  margin-bottom:10px;
+}
+#usernameInput{
+  width:220px;
+  padding:10px 12px;
+  border:1px solid #1d2230;
+  border-radius:10px;
+  background:#0d0f15;
+  color:var(--text);
+  outline:none;
+}
+#usernamePrompt button{
+  margin-left:10px;
+}
+
+/* =========================
+   Buttons (brand default → red on hover)
+   ========================= */
+button, .btn-discord{
+  appearance:none;
+  border:1px solid #1d2230;
+  background:linear-gradient(180deg, #0f1320 0%, #121629 100%);
+  color:#dff8ff;
+  font-weight:700;
+  letter-spacing:.35px;
+  padding:10px 14px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:transform .05s ease, background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+  box-shadow:0 0 0 rgba(0,0,0,0);
+}
+button:hover, .btn-discord:hover{
+  background:linear-gradient(180deg, #2b0d11 0%, #3a0e12 100%);
+  border-color:#5a1118;
+  color:#fff;
+  box-shadow:0 0 16px rgba(255,59,59,0.25);
+}
+button:active, .btn-discord:active{
+  transform:translateY(1px) scale(0.99);
+}
+
+/* Submit centered */
+#submitBtn{
+  display:block !important;
+  margin:14px auto 8px auto;
+  min-width:180px;
+}
+
+/* Weekly/All-Time segmented control */
+.segmented{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  margin:6px 0 12px 0;
+}
+.segmented button{
+  min-width:120px;
+  font-family:"Orbitron";
+  text-transform:uppercase;
+}
+.segmented button[aria-pressed="true"]{
+  outline:2px solid var(--brand);
+  box-shadow:0 0 12px rgba(54,225,255,0.25);
+}
+
+/* =========================
+   Scoring collapsible
+   ========================= */
+.rules-collapsible{
+  width:min(560px, 94vw);
+  margin:8px auto 12px auto;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  overflow:hidden;
+}
+.rules-collapsible summary{
+  list-style:none;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  margin:4px;
+  background:#0e1220;
+  border:1px solid #1a1f30;
+  border-radius:10px;
+  cursor:pointer;
+  width:fit-content;    /* <<< keeps bubble only as wide as text */
+}
+.rules-toggle-label{
+  font-weight:800;
+  letter-spacing:.2px;
+}
+.rules{ padding:8px 12px 12px 12px; }
+.rules-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 16px;
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+.rules-list li{
+  background:#0d0f15;
+  border:1px solid #1a2030;
+  padding:6px 10px;
+  border-radius:9px;
+  color:#bfc6d6;
+  font-size:13px;
+}
+.muted{ color:#8a91a1; }
+
+/* =========================
+   Fight Picker (no ugly bubbles)
+   ========================= */
+#fightList{
+  display:grid !important;
+  grid-template-columns:1fr;
+  gap:10px;
+  width:min(560px, 94vw);
+  margin:0 auto;
+}
+.fight{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+}
+.fight h3{
+  margin:0 0 6px 0;
+  font-size:15px;
+}
+.options{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  align-items:center;
+}
+.options label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+}
+.options input[type="radio"]{ transform:scale(1.2); }
+.pick-row{ display:flex; align-items:center; gap:6px; }
+.fighter-name{
+  display:inline-block;
+  font-weight:700;
+}
+.fighter-name.is-underdog{ /* just color emphasis, no bubble */
+  color:var(--brand);
+  text-shadow:0 0 6px rgba(54,225,255,0.25);
+}
+.dog-tag, .dog-tag--plain, .dog-tag--chip{ /* kill previous “bubble” look */
+  background:none !important;
+  border:none !important;
+  padding:0 !important;
+  margin:0 !important;
+  color:var(--brand);
+  font-weight:800;
+}
+
+/* Controls (clean selects) */
+.pick-controls{
+  margin-top:8px;
+  display:flex;
+  gap:8px;
+}
 .pick-controls select{
-  appearance:none;background:#081118;color:var(--text);
-  border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 34px 8px 10px;
-  font-weight:800;letter-spacing:.2px;
-  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
-  background-position:right 12px top 55%, right 6px top 55%;background-size:8px 8px;background-repeat:no-repeat;
+  flex:1;
+  padding:8px 10px;
+  border:1px solid #1d2230;
+  border-radius:10px;
+  background:#0d0f15;
+  color:var(--text);
+  outline:none;
 }
-.pick-controls select:focus{outline:none;border-color:var(--neon);box-shadow:0 0 0 3px rgba(0,234,255,.18)}
-
-/* Submit (centered) */
-#submitBtn{display:none;margin:8px auto 10px;text-align:center;background:linear-gradient(180deg,rgba(0,234,255,.9),rgba(0,234,255,.75));border:1px solid rgba(0,234,255,.6);color:#061015;border-radius:10px;padding:10px 16px;font-weight:900;cursor:pointer}
-#submitBtn:hover{background:linear-gradient(180deg,rgba(255,59,87,.95),rgba(255,59,87,.82));border-color:rgba(255,59,87,.8);color:#fff}
-
-/* ---------- Your Picks (center + ✓ ✕ visible) ---------- */
-#myPicks{width:min(800px,94vw);margin:8px auto;display:none}
-#myPicks .header{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}
-.scored-pick{width:min(720px,100%);margin:6px auto;display:grid;grid-template-columns:1fr max-content;align-items:center;gap:8px;padding:10px;background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:12px;text-align:center}
-.scored-pick .fight-name{font-weight:900;margin-bottom:2px}
-.scored-pick .meta{color:var(--muted);margin:2px 0}
-.check{display:inline-block;width:1.1em;text-align:center;font-weight:900}
-.check.good{color:#31d67b}
-.check.bad{color:#ff4d6d}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 7px;border-radius:999px;margin-right:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);font-weight:800;font-size:12px}
-.badge.good{border-color:rgba(0,234,255,.6);background:rgba(0,234,255,.12);color:#bff7ff}
-.badge.bad{border-color:rgba(255,59,87,.6);background:rgba(255,59,87,.12);color:#ffc3cc}
-.points{justify-self:center}.points .points{font-weight:900}.points .points.zero{color:var(--muted)}.points-cyan{color:var(--neon);font-weight:900}
-
-/* ---------- Tabs & Titles ---------- */
-.section-title{width:min(800px,94vw);margin:8px auto 4px;text-align:center;letter-spacing:.18em;color:#a9c6cf;font-weight:900}
-.section-title--leader{font-family:'Orbitron',ui-sans-serif;font-size:15px;letter-spacing:.28em;color:#e9fbff;text-shadow:0 0 14px rgba(0,234,255,.5),0 0 24px rgba(0,234,255,.25)}
-.segmented{width:min(360px,94vw);margin:6px auto;background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:4px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.segmented button{background:linear-gradient(180deg,rgba(0,234,255,.18),rgba(0,234,255,.10));border:1px solid rgba(0,234,255,.35);color:#e6fbff;border-radius:8px;padding:8px;font-weight:900;cursor:pointer;transition:all .12s}
-.segmented button:hover{background:linear-gradient(180deg,rgba(255,59,87,.95),rgba(255,59,87,.82));border-color:rgba(255,59,87,.8);color:#fff}
-.segmented button[aria-pressed="true"]{background:linear-gradient(180deg,rgba(255,59,87,.95),rgba(255,59,87,.82));border-color:rgba(255,59,87,.8)}
-
-/* ---------- Champion Banner (FULL BLEED across container) ---------- */
-#champBanner{
-  position:relative;margin:10px auto;width:min(800px,94vw);padding:16px 0;border-radius:14px;
-  background: radial-gradient(100% 150% at 10% 0%, rgba(0,234,255,.18), transparent 60%),
-             radial-gradient(100% 150% at 90% 100%, rgba(255,59,87,.18), transparent 60%);
-  box-shadow:0 0 28px rgba(0,234,255,.18), inset 0 0 18px rgba(0,234,255,.16);
-  display:none; overflow:hidden; /* no mask: runs edge-to-edge of container */
+.pick-controls select:focus{
+  border-color:#27304a;
+  box-shadow:0 0 0 3px rgba(54,225,255,0.18);
 }
-#champBanner .scroll{
-  position:relative;display:flex;gap:48px;white-space:nowrap;align-items:center;justify-content:flex-start;
-  animation: champScroll 12s linear infinite; font-weight:900;letter-spacing:.02em;font-size:22px;color:var(--text);text-shadow:0 0 16px rgba(0,234,255,.6);
+
+/* =========================
+   My Picks (tight, centered)
+   ========================= */
+#myPicks{
+  width:min(560px, 94vw);
+  margin:10px auto 8px auto;
+  display:grid;
+  gap:8px;
 }
-@keyframes champScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-#champBanner .crown{filter:drop-shadow(0 0 12px rgba(0,234,255,.6))} .champ-name{color:var(--neon)}
+#myPicks > h3{
+  margin:2px 0 2px 0;
+  text-align:center;
+  font-family:"Orbitron";
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  font-size:16px;
+}
+.scored-pick{
+  display:grid;
+  grid-template-columns:1fr auto; /* tight! */
+  gap:8px;
+  align-items:center;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:8px 10px;
+}
+.scored-pick .fight-name{
+  font-weight:800;
+  margin-bottom:2px;
+}
+.scored-pick .user-pick{
+  color:#cfd6e6;
+  font-size:14px;
+}
+.scored-pick .badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:3px 8px;
+  border-radius:8px;
+  border:1px solid #1a1f2b;
+  background:#0f121b;
+  margin-right:6px;
+}
+.scored-pick .badge.good{ color:#d2ffe8; border-color:#163524; background:#0c1a14; }
+.scored-pick .badge.bad { color:#ffe1e1; border-color:#371a1a; background:#1b0f0f; }
+.check{ font-weight:900; }
+.check.good{ color:var(--good); }
+.check.bad{ color:var(--bad); }
 
-/* ---------- Boards ---------- */
-.board{list-style:none;padding:0;margin:8px auto;width:min(800px,94vw);background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden}
+.points{ font-weight:900; white-space:nowrap; }
+.points.zero{ opacity:.65; }
 
-/* WEEKLY — tight, centered hint */
-#leaderboard.board{width:min(560px,94vw)}
-#leaderboard.board li{display:flex;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
-#leaderboard.board li>:nth-child(1){flex:0 0 38px;text-align:center;font-weight:900;font-family:'Orbitron',ui-sans-serif;color:#c9f6ff;text-shadow:0 0 10px rgba(0,234,255,.45)}
-#leaderboard.board li>:nth-child(2){flex:1 1 auto;display:flex;align-items:center;gap:8px;font-weight:900;letter-spacing:.2px;min-width:0}
-#leaderboard.board li>:nth-child(3){flex:0 0 auto;min-width:62px;text-align:right;font-variant-numeric:tabular-nums;font-weight:900;color:var(--neon)}
-#leaderboard .board-hint{padding:10px;text-align:center;color:var(--muted)}
-.row-first{background:linear-gradient(90deg,rgba(0,234,255,.12),rgba(0,234,255,0))}
-.row-first .name{color:#00eaff;text-shadow:0 0 10px rgba(0,234,255,.6)}
-.row-last{background:linear-gradient(90deg,rgba(255,59,87,.10),rgba(255,59,87,0))}
-.row-last .points{color:#ff8897}
+/* =========================
+   Weekly Leaderboard (tight & flashy)
+   ========================= */
+.board.weekly{
+  width:min(560px, 94vw);
+  margin:8px auto 0 auto;
+  list-style:none;
+  padding:0;
+  display:grid;
+  gap:6px;
+}
+.board.weekly li{
+  display:grid;
+  grid-template-columns: 48px 1fr auto; /* rank | name | points */
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+.board.weekly li .name{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.board.weekly li .points{
+  font-variant-numeric:tabular-nums;
+  min-width:72px;
+  text-align:right;
+}
 
-/* ALL-TIME — compact, centered headers */
-.board.at-five{width:min(680px,94vw)}
-.board.at-five li{display:grid;grid-template-columns:52px 1fr 56px 52px 64px;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
-.board-header{background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.08);text-transform:uppercase;letter-spacing:.12em;font-weight:900}
-.board-header.at-five span{display:block;text-align:center}
-.at-five li>:nth-child(1){text-align:center;font-family:'Orbitron',ui-sans-serif;font-weight:900}
-.at-five li>:nth-child(3),.at-five li>:nth-child(4),.at-five li>:nth-child(5){text-align:center;font-variant-numeric:tabular-nums}
-.user{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Crown for rank 1 (left side), 💩 for last handled in JS text, but add glow rows */
+.board.weekly li.row-first{
+  box-shadow:0 0 12px rgba(54,225,255,0.25);
+  border-color:#1a3340;
+}
+.board.weekly li.row-last{
+  box-shadow:0 0 12px rgba(255,59,59,0.18) inset;
+  border-color:#3a1b1b;
+}
 
-/* ---------- Discord CTA (flat, not bubbly; still turns red on hover) ---------- */
-.cta-discord{width:min(800px,94vw);margin:10px auto 14px;text-align:center}
+/* Center the “no results yet” hint */
+.board-hint{
+  text-align:center;
+  color:var(--muted);
+  padding:12px;
+  border:1px dashed #262a37;
+  border-radius:12px;
+}
+
+/* =========================
+   All-Time Leaderboard (5 columns compact)
+   ========================= */
+.board.at-five{
+  width:min(560px, 94vw);
+  margin:8px auto 0 auto;
+  list-style:none;
+  padding:0;
+  display:grid;
+  gap:6px;
+}
+.board.at-five li{
+  display:grid;
+  grid-template-columns: 56px 1fr 60px 56px 70px; /* Rank | Player | % | 👑 | Events */
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+.board.at-five .board-header{
+  background:#0e1220;
+  border-color:#1a2030;
+  font-weight:800;
+  text-align:center;
+}
+.board.at-five .rank,
+.board.at-five .user,
+.board.at-five .num{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.board.at-five .rank{ text-align:left; }
+.board.at-five .user{ text-align:center; }       /* center headers and names */
+.board.at-five .num{ text-align:right; }
+
+.board.at-five li.current-user{
+  outline:2px solid var(--brand);
+  box-shadow:0 0 10px rgba(54,225,255,0.25);
+}
+.board.at-five li.tied-first{
+  box-shadow:0 0 12px rgba(54,225,255,0.2) inset;
+}
+
+/* Mobile meta */
+.board.at-five .mobile-meta{ display:none; }
+@media (max-width:480px){
+  .board.at-five li{
+    grid-template-columns: 44px 1fr 54px 46px 58px;
+    gap:8px;
+  }
+}
+
+/* =========================
+   Discord CTA (flat brand, red on hover)
+   ========================= */
+.cta-discord{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:16px;
+}
 .btn-discord{
-  display:inline-flex;align-items:center;gap:10px;
-  background:transparent;color:#e6fbff;padding:8px 12px;border-radius:8px;font-weight:900;
-  border:1px solid rgba(0,234,255,.35);
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  text-decoration:none;
 }
-.btn-discord:hover{background:linear-gradient(135deg,rgba(255,59,87,.95),rgba(255,59,87,.82));border-color:rgba(255,59,87,.8);color:#fff}
+
+/* =========================
+   Misc
+   ========================= */
+#welcome{
+  text-align:center;
+  margin:6px 0 10px 0;
+  font-family:"Orbitron";
+  font-size:18px;
+}
