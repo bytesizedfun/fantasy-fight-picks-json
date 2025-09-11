@@ -1,14 +1,19 @@
-<script>
+// public/script.js
+// Restores “Your Picks” results + ✓/✗, preserves underdog chips, and keeps original flow.
+
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = window.API_BASE || "/api";
 
   const withTimeout = (p, ms = 10000) =>
     new Promise((res, rej) => {
       const t = setTimeout(() => rej(new Error("timeout")), ms);
-      p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
+      p.then(
+        (v) => { clearTimeout(t); res(v); },
+        (e) => { clearTimeout(t); rej(e); }
+      );
     });
 
-  // ---------- NEW: same normalization concept you use in Apps Script ----------
+  // ---------- Normalization (to match GAS result keys safely) ----------
   function normKey(s) {
     return String(s || "")
       .toLowerCase()
@@ -198,6 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
   usernameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 
+  // (kept) simple scoring rules block
   (function renderScoringRules(){
     const el = document.getElementById("scoringRules");
     if (!el) return;
@@ -219,6 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function startApp() {
     usernamePrompt.style.display = "none";
+    // (kept) welcome line — lives in script.js only per your preference
     welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
     welcome.style.display = "block";
 
@@ -407,6 +414,26 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
+  /* ---------- RESULTS MERGE HELPERS FOR “YOUR PICKS” ---------- */
+  const same = (a, b) => (String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase());
+
+  function judgePickAgainstResult(pick, result) {
+    const hasResult = !!(result && result.winner && result.method);
+    const winnerOK = hasResult ? same(pick.winner, result.winner) : null;
+    const methodOK = hasResult ? (winnerOK ? same(pick.method, result.method) : false) : null;
+
+    let roundOK = null;
+    if (hasResult && !/decision/i.test(result.method) && winnerOK && methodOK) {
+      roundOK = same(String(pick.round || ""), String(result.round || ""));
+    }
+    return { hasResult, winnerOK, methodOK, roundOK };
+  }
+
+  function resultIcon(ok) {
+    if (ok === null) return "";
+    return ok ? "✓" : "✗";
+  }
+
   /* ---------- My Picks ---------- */
   function loadMyPicks() {
     api.getUserPicks(username)
@@ -425,7 +452,6 @@ document.addEventListener("DOMContentLoaded", () => {
           buildFightMeta(fightsData);
 
           const fightResultsExact = resultData.fightResults || {};
-          // ---------- NEW: normalized map so small label differences still match ----------
           const fightResultsNorm = new Map();
           Object.keys(fightResultsExact).forEach(k => {
             fightResultsNorm.set(normKey(k), fightResultsExact[k]);
@@ -449,14 +475,9 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           data.picks.forEach(({ fight, winner, method, round }) => {
-            // ---------- USE normalized lookup FIRST if exact key not found ----------
             let actual = fightResultsExact[fight];
             if (!actual) actual = fightResultsNorm.get(normKey(fight)) || {};
-            const hasResult = actual.winner && actual.method;
-
-            const matchWinner = hasResult && winner === actual.winner;
-            const matchMethod = hasResult && method === actual.method;
-            const matchRound  = hasResult && round == actual.round;
+            const verdict = judgePickAgainstResult({ fight, winner, method, round }, actual);
 
             const meta = fightMeta.get(fight) || {};
             const dogSide = meta.underdogSide;
@@ -469,42 +490,50 @@ document.addEventListener("DOMContentLoaded", () => {
               ? `<span class="dog-tag dog-tag--chip">🐶 +${dogTier} pts</span>`
               : "";
 
+            // Score calc (winner 3, method +2 if winnerOK, round +1 if not decision & winner+method OK & round OK)
             let score = 0;
-            if (matchWinner) {
+            if (verdict.hasResult && verdict.winnerOK) {
               score += 3;
-              if (matchMethod) {
+              if (verdict.methodOK) {
                 score += 2;
-                if (method !== "Decision" && matchRound) score += 1;
+                if (method !== "Decision" && verdict.roundOK) score += 1;
               }
-              if (hasResult && actual.underdog === "Y" && chosenIsUnderdog) {
+              // Apply underdog bonus based on your card metadata (don’t rely on GAS flag)
+              if (chosenIsUnderdog && dogTier > 0) {
                 score += dogTier;
               }
             }
 
-            const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
-            const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
-            const roundClass  = hasResult && matchWinner && matchMethod && method !== "Decision"
-              ? (matchRound ? "correct" : "wrong")
+            // Build parts; show green/red only when results exist (your rule)
+            const winnerClass = verdict.hasResult ? (verdict.winnerOK ? "correct" : "wrong") : "";
+            const methodClass = verdict.hasResult && verdict.winnerOK ? (verdict.methodOK ? "correct" : "wrong") : "";
+            const roundClass  = (verdict.hasResult && verdict.winnerOK && verdict.methodOK && method !== "Decision")
+              ? (verdict.roundOK ? "correct" : "wrong")
               : "";
+
+            const winIcon = resultIcon(verdict.winnerOK);
+            const methIcon = resultIcon(verdict.methodOK);
+            const rndIcon = (method !== "Decision") ? resultIcon(verdict.roundOK) : "";
 
             let winnerHtml, methodHtml, roundHtml;
 
-            if (!hasResult) {
+            if (!verdict.hasResult) {
+              // pre-result: never red
               winnerHtml = `<span class="winner-text pre">${winner}</span>`;
               methodHtml = `<span class="method-text pre">${method}</span>`;
-              roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round">${round}</span>`;
+              roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round pre">${round}</span>`;
             } else {
-              winnerHtml = `<span class="winner-text ${winnerClass}">${winner}</span>`;
-              methodHtml = `<span class="${methodClass}">${method}</span>`;
-              roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round ${roundClass}">${round}</span>`;
+              winnerHtml = `<span class="winner-text ${winnerClass}">${winner} ${winIcon}</span>`;
+              methodHtml = `<span class="${methodClass}">${method} ${methIcon}</span>`;
+              roundHtml  = (method === "Decision") ? "" : `in Round <span class="chip chip-round ${roundClass}">${round} ${rndIcon}</span>`;
             }
 
-            const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
+            const pointsChip = verdict.hasResult ? `<span class="points">+${score} pts</span>` : "";
 
-            const earnNote = (hasResult && matchWinner && actual.underdog === "Y" && chosenIsUnderdog && dogTier > 0)
-              ? `<span class="earn-note">🐶 +${dogTier} bonus points</span>`
-              : (!hasResult && chosenIsUnderdog && dogTier > 0)
-                ? `<span class="earn-note">🐶 +${dogTier} potential bonus if correct</span>`
+            const earnNote = (!verdict.hasResult && chosenIsUnderdog && dogTier > 0)
+              ? `<span class="earn-note">🐶 +${dogTier} potential bonus if correct</span>`
+              : (verdict.hasResult && chosenIsUnderdog && dogTier > 0 && verdict.winnerOK)
+                ? `<span class="earn-note">🐶 +${dogTier} bonus</span>`
                 : "";
 
             myPicksDiv.innerHTML += `
@@ -698,4 +727,3 @@ document.addEventListener("DOMContentLoaded", () => {
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
 });
-</script>
