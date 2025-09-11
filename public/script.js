@@ -1,5 +1,5 @@
 // public/script.js
-// Defensive DOM checks + restored “Your Picks” ✓/✗ + underdog chips + FOTN
+// Defensive DOM checks + restored “Your Picks” ✓/✗ + underdog chips + FOTN + METHOD NORMALIZATION
 
 document.addEventListener("DOMContentLoaded", () => {
   const BASE = window.API_BASE || "/api";
@@ -50,6 +50,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const n = normalizeAmericanOdds(oddsRaw);
     if (n == null || n < 100) return 0;
     return 1 + Math.floor((n - 100) / 100);
+  }
+
+  // NEW: normalize methods to align GAS vs UI values
+  function normMethod(s) {
+    const x = String(s || "").toLowerCase().replace(/\s*\(.*?\)\s*/g, "").trim();
+    if (!x) return "";
+    if (x.includes("decision")) return "decision";
+    if (x.includes("ko") || x.includes("tko")) return "ko/tko";
+    if (x.includes("submission") || x.includes("sub")) return "submission";
+    return x;
   }
 
   // ---------- API auto-detect ----------
@@ -376,11 +386,16 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn?.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  // ---------- verdict helpers ----------
+  // ---------- verdict helpers (uses normMethod) ----------
   function judgePickAgainstResult(pick, result) {
     const hasResult = !!(result && result.winner && result.method);
     const winnerOK = hasResult ? same(pick.winner, result.winner) : null;
-    const methodOK = hasResult ? (winnerOK ? same(pick.method, result.method) : false) : null;
+
+    // normalize methods before comparing
+    const methodOK = hasResult
+      ? (winnerOK ? (normMethod(pick.method) === normMethod(result.method)) : false)
+      : null;
+
     let roundOK = null;
     if (hasResult && !/decision/i.test(result.method) && winnerOK && methodOK) {
       roundOK = same(String(pick.round || ""), String(result.round || ""));
