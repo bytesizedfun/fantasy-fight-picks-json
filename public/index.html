@@ -1,63 +1,55 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fantasy Fight Picks</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="/styles.css" rel="stylesheet" />
-  <script>window.API_BASE = "/api";</script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👊</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="site-header">
-    <div class="logo" aria-label="Fantasy Fight Picks">
-      <svg viewBox="0 0 64 64" width="36" height="36" role="img">
-        <circle cx="32" cy="32" r="30"></circle>
-        <text x="32" y="38" text-anchor="middle" font-size="24" font-family="system-ui, sans-serif" fill="#fff">FFP</text>
-      </svg>
-      <span class="brand">Fantasy Fight Picks</span>
+  <!-- Logo -->
+  <div class="banner-container">
+    <img src="logo_fighter.png" alt="Fantasy Fight Picks Logo" class="logo-banner">
+  </div>
+
+  <!-- Flashy Champion of the Week banner -->
+  <div id="champBanner" class="champ-banner" style="display: none;"></div>
+
+  <div id="app">
+    <!-- Username prompt -->
+    <div id="usernamePrompt">
+      <label for="usernameInput">Enter your name:</label>
+      <input type="text" id="usernameInput" />
+      <button onclick="lockUsername()">Lock In</button>
     </div>
-  </header>
 
-  <main class="container">
-    <section class="left">
-      <div id="usernamePrompt" class="card">
-        <h2>Enter Your Name</h2>
-        <div class="row">
-          <input id="usernameInput" type="text" placeholder="e.g. Bruce Buffer" />
-          <button type="button">Start</button>
-        </div>
-        <div id="scoringRules" class="muted small"></div>
+    <!-- Welcome message -->
+    <h2 id="welcome" style="display: none;"></h2>
+
+    <!-- Scoring Rules -->
+    <div id="scoringRules" style="display: none;">
+      <div class="scoring-box tight">
+        <div>+1 pt for winner</div>
+        <div>+1 pt for method (if winner is correct)</div>
+        <div>+1 pt for round (if winner & method are correct & method is not decision)</div>
+        <div>+2 bonus pts for correct underdog winner</div>
       </div>
+    </div>
 
-      <h2 id="welcome" class="welcome" style="display:none;"></h2>
+    <!-- Fight List -->
+    <div id="fightList" style="display: none;"></div>
+    <button id="submitBtn" onclick="submitPicks()" style="display: none;">Submit Picks</button>
 
-      <div id="fotnBlock" class="card" style="display:none;"></div>
-      <div id="fightList" class="fight-list" style="display:none;"></div>
+    <!-- My Picks -->
+    <div id="myPicks" style="margin-top: 20px;"></div>
 
-      <div class="actions">
-        <button id="submitBtn" class="primary" style="display:none;">Submit Picks</button>
-      </div>
-    </section>
+    <!-- Leaderboard -->
+    <h2 class="leader-title">LEADERBOARD</h2>
+    <ul id="leaderboard"></ul>
+  </div>
 
-    <section class="right">
-      <div id="champBanner" class="champ-banner" style="display:none;"></div>
-
-      <div id="myPicks" class="card" style="display:none;"></div>
-
-      <div class="tabs">
-        <button id="tabWeekly" aria-pressed="true" class="tab active">Weekly</button>
-        <button id="tabAllTime" aria-pressed="false" class="tab">All-Time</button>
-      </div>
-
-      <ul id="leaderboard" class="board weekly"></ul>
-      <ul id="allTimeBoard" class="board alltime" style="display:none;"></ul>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <span class="muted small">© Fantasy Fight Picks</span>
-  </footer>
-
-  <script src="/script.js" defer></script>
+  <script src="script.js"></script>
 </body>
 </html>
