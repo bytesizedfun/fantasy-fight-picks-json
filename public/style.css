@@ -12,6 +12,10 @@
   --shadow-dark: rgba(0,0,0,0.6);
 }
 
+/* Prevent sideways scroll on mobile */
+html, body { width: 100%; overflow-x: hidden; }
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
   background: var(--bg-dark);
   color: var(--text-main);
@@ -27,6 +31,7 @@ body {
   margin-bottom: 10px;
 }
 .logo-banner {
+  width: 100%;
   max-width: 200px;
   height: auto;
 }
@@ -40,6 +45,13 @@ body {
   border-radius: 16px;
   border: 2px solid rgba(255,255,255,0.08);
   box-shadow: 0 0 40px rgba(0, 245, 255, 0.05);
+}
+
+/* Headings */
+.leader-title {
+  text-align: center;
+  margin: 22px 0 8px;
+  letter-spacing: .05em;
 }
 
 /* Champion Banner */
@@ -84,6 +96,8 @@ body {
   border-radius: 10px;
   border-left: 4px solid var(--silver);
   transition: all 0.3s ease;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 #leaderboard li:hover {
   border-left-color: var(--neon-cyan);
@@ -120,6 +134,24 @@ body {
 .fight h3 {
   color: var(--neon-cyan);
   margin: 0 0 8px 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.fight label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.35;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.fight input[type="radio"] {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.fight select {
+  margin-top: 6px;
 }
 
 /* Your Picks - clean cards */
@@ -130,6 +162,7 @@ body {
   background: rgba(255,255,255,0.04);
   padding: 10px 12px; border-radius: 10px;
   border-left: 4px solid var(--neon-cyan);
+  overflow-wrap: anywhere; word-break: break-word;
 }
 .scored-pick .fight-name {
   font-weight: 900; letter-spacing: .03em; color: var(--text-main);
@@ -162,13 +195,41 @@ button:hover {
   box-shadow: 0 0 14px rgba(255,0,60,0.5);
 }
 
-/* Mobile */
+/* --------- MOBILE TUNING --------- */
+
+/* Small phones: slightly smaller base font */
+@media (max-width: 420px) {
+  body { font-size: 14px; }
+}
+
+/* Make dropdowns full-width and easier to tap on narrow screens */
 @media (max-width: 600px) {
-  .logo-banner { max-width: 170px; margin-bottom: 12px; }
-  .fight label { display: block; margin: 8px 0; line-height: 1.35; }
-  .fight select { width: 100%; margin-top: 6px; }
-  #submitBtn { display: block; width: 100%; margin: 12px auto 0; }
-  #myPicks > p { text-align: center; margin: 12px 0; opacity: 0.9; }
+  .fight select {
+    display: block;
+    width: 100%;
+  }
+}
+
+/* Leaderboard: switch to 2-row layout so long names/scores never overflow */
+@media (max-width: 480px) {
+  #leaderboard li {
+    grid-template-columns: 44px 1fr;
+    grid-template-areas:
+      "rank name"
+      ".    score";
+    row-gap: 4px;
+    column-gap: 8px;
+  }
+  #leaderboard li > span:nth-child(1) { grid-area: rank; }   /* #rank */
+  #leaderboard li > span:nth-child(2) { grid-area: name; }   /* name */
+  #leaderboard li > span:nth-child(3) { grid-area: score; justify-self: end; } /* score */
+}
+
+/* Tighten paddings on small screens */
+@media (max-width: 480px) {
+  #app { padding: 16px; }
+  #leaderboard li { padding: 12px; }
+  .fight { padding: 12px; }
   .scored-pick { padding: 9px 10px; gap: 6px; }
   .scored-pick .fight-name { font-size: .98rem; }
   .scored-pick .points { font-size: .9rem; padding: 3px 8px; }
