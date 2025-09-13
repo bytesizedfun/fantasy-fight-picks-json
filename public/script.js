@@ -14,7 +14,13 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/fights`, { method: "GET" }), 7000);
       if (r.ok) {
-        try { const j = await r.json(); if (Array.isArray(j)) { localStorage.setItem("apiMode","path"); return "path"; } } catch {}
+        try {
+          const j = await r.json();
+          if (j && typeof j === "object" && "fights" in j) {
+            localStorage.setItem("apiMode","path");
+            return "path";
+          }
+        } catch {}
       }
     } catch {}
 
@@ -22,7 +28,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const sep = BASE.includes("?") ? "&" : "?";
       const r = await withTimeout(fetch(`${BASE}${sep}action=getFights`, { method: "GET" }), 7000);
       if (r.ok) {
-        try { const j = await r.json(); if (Array.isArray(j)) { localStorage.setItem("apiMode","action"); return "action"; } } catch {}
+        try {
+          const j = await r.json();
+          if (Array.isArray(j)) {
+            localStorage.setItem("apiMode","action");
+            return "action";
+          }
+        } catch {}
       }
     } catch {}
 
@@ -39,7 +51,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const url = this.mode === "path"
         ? `${BASE.replace(/\/$/,"")}/fights`
         : `${BASE}${BASE.includes("?") ? "&" : "?"}action=getFights`;
-      return fetch(url).then(r => r.ok ? r.json() : []).catch(() => []);
+      return fetch(url)
+        .then(r => r.ok ? r.json() : { locked:true, fights:[] })
+        .catch(() => ({ locked:true, fights:[] }));
     },
 
     getUserPicks(username) {
@@ -122,7 +136,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const allTimeTabBtn  = document.getElementById("tabAllTime");
 
   let username = localStorage.getItem("username");
-
   const fightMeta = new Map();
 
   // caches
@@ -139,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (fightsCache.promise) return fightsCache.promise;
 
     fightsCache.promise = api.getFights()
-      .then(data => { fightsCache = { data, ts: now(), promise: null }; buildFightMeta(data); return data; })
+      .then(data => { fightsCache = { data, ts: now(), promise: null }; buildFightMeta(data.fights); return data; })
       .catch(err => { fightsCache.promise = null; throw err; });
 
     return fightsCache.promise;
@@ -211,15 +224,17 @@ document.addEventListener("DOMContentLoaded", () => {
     await api.init();
 
     Promise.all([ getFightsCached(), api.getUserPicks(username) ])
-      .then(([fightsData, pickData]) => {
+      .then(([fightsPayload, pickData]) => {
+        const { locked, fights } = fightsPayload;
         const submitted = pickData.success && Array.isArray(pickData.picks) && pickData.picks.length > 0;
-        if (submitted) {
+
+        if (submitted || locked) {
           localStorage.setItem("submitted", "true");
           fightList && (fightList.style.display = "none");
           submitBtn && (submitBtn.style.display = "none");
         } else {
           localStorage.removeItem("submitted");
-          renderFightList(fightsData);
+          renderFightList(fights);
           submitBtn && (submitBtn.style.display = "block");
         }
 
@@ -235,9 +250,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function buildFightMeta(data) {
+  function buildFightMeta(fights) {
     fightMeta.clear();
-    (data || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
+    (fights || []).forEach(({ fight, fighter1, fighter2, underdog, underdogOdds, f1Odds, f2Odds }) => {
       fightMeta.set(fight, {
         f1: fighter1, f2: fighter2,
         f1Odds: f1Odds || "", f2Odds: f2Odds || "",
@@ -245,7 +260,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
-
   // Fights
   function renderFightList(data) {
     if (!fightList) return;
@@ -321,7 +335,6 @@ document.addEventListener("DOMContentLoaded", () => {
       syncRound();
     });
 
-    // Keep stacked layout on mobile
     fightList.style.display = "block";
     submitBtn && (submitBtn.style.display = "block");
   }
@@ -376,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn?.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
-  // My picks (no FOTN)
+  // My picks
   function loadMyPicks() {
     api.getUserPicks(username)
       .then(data => {
@@ -393,7 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
         myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
 
         Promise.all([ getLeaderboardCached(), getFightsCached() ]).then(([resultData, fightsData]) => {
-          buildFightMeta(fightsData);
+          buildFightMeta(fightsData.fights);
 
           const fightResults = resultData.fightResults || {};
 
@@ -484,7 +497,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadLeaderboard() {
     showPreviousChampionBanner();
 
-    Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsData, leaderboardData]) => {
+    Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsPayload, leaderboardData]) => {
+      const fightsData = fightsPayload.fights;
       const board = leaderboardEl;
       if (!board) return;
 
