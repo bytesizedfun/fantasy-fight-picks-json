@@ -1,3 +1,6 @@
+// server.js
+// Express server + GAS bridge (Render-ready)
+
 const express = require("express");
 const fetch = require("node-fetch");
 const path = require("path");
@@ -5,42 +8,56 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Google Apps Script Web App URL (defined BEFORE use)
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+// ✅ Google Apps Script Web App URL
+const GOOGLE_SCRIPT_URL =
+  process.env.GAS_URL ||
+  "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
 app.use(express.json());
 app.use(express.static("public"));
 
-// ✅ Updated Lockout Time: August 16, 2025 @ 6:00 PM ET
-const lockoutTime = new Date("2025-08-16T18:00:00-04:00"); // ET in August = UTC-04:00
-
-// ✅ Endpoint to check lockout status (for frontend)
-app.get("/api/lockout", (req, res) => {
-  const now = new Date();
-  const locked = now >= lockoutTime;
-  res.json({ locked });
-});
-
-// ✅ Fetch Fights
+/* ================================
+   Fetch fights + lockout together
+   ================================ */
 app.get("/api/fights", async (req, res) => {
   try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
-    const fights = await response.json();
-    res.json(fights);
+    // get fights
+    const fightsRes = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    const fights = await fightsRes.json();
+
+    // get event meta (lockout info)
+    const metaRes = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEventMeta`);
+    const meta = await metaRes.json();
+    const lockoutTime = new Date(meta.LOCKOUT_ET);
+    const now = new Date();
+
+    res.json({
+      locked: now >= lockoutTime,
+      fights
+    });
   } catch (error) {
-    console.error("getFights error:", error);
-    res.status(500).json({ error: "Failed to fetch fights" });
+    console.error("getFights/lockout error:", error);
+    res.status(500).json({ error: "Failed to fetch fights or lockout" });
   }
 });
 
-// ✅ Submit Picks (with lockout logic)
+/* ================================
+   Submit picks (lockout respected)
+   ================================ */
 app.post("/api/submit", async (req, res) => {
-  const now = new Date();
-  if (now >= lockoutTime) {
-    return res.json({ success: false, error: "⛔ Picks are locked. The event has started." });
-  }
-
   try {
+    // pull meta for lockout
+    const metaRes = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEventMeta`);
+    const meta = await metaRes.json();
+    const lockoutTime = new Date(meta.LOCKOUT_ET);
+
+    if (new Date() >= lockoutTime) {
+      return res.json({
+        success: false,
+        error: "⛔ Picks are locked. The event has started."
+      });
+    }
+
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       body: JSON.stringify({ action: "submitPicks", ...req.body }),
@@ -54,7 +71,9 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// ✅ Get User Picks
+/* ================================
+   Get user picks
+   ================================ */
 app.post("/api/picks", async (req, res) => {
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -70,7 +89,9 @@ app.post("/api/picks", async (req, res) => {
   }
 });
 
-// ✅ Get Weekly Leaderboard
+/* ================================
+   Get weekly leaderboard
+   ================================ */
 app.post("/api/leaderboard", async (req, res) => {
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -86,7 +107,9 @@ app.post("/api/leaderboard", async (req, res) => {
   }
 });
 
-// ✅ NEW: All-Time (Hall) via GAS getHall
+/* ================================
+   All-time (Hall of Fame)
+   ================================ */
 app.get("/api/hall", async (req, res) => {
   try {
     const r = await fetch(`${GOOGLE_SCRIPT_URL}?action=getHall`, {
