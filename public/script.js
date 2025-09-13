@@ -4,7 +4,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const withTimeout = (p, ms = 10000) =>
     new Promise((res, rej) => {
       const t = setTimeout(() => rej(new Error("timeout")), ms);
-      p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
+      p.then(
+        v => { clearTimeout(t); res(v); },
+        e => { clearTimeout(t); rej(e); }
+      );
     });
 
   async function detectApiMode() {
@@ -14,8 +17,10 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const r = await withTimeout(fetch(`${BASE.replace(/\/$/,"")}/fights`, { method: "GET" }), 7000);
       if (r.ok) {
-        const j = await r.json();
-        if (Array.isArray(j)) { localStorage.setItem("apiMode", "path"); return "path"; }
+        try {
+          const j = await r.json();
+          if (Array.isArray(j)) { localStorage.setItem("apiMode", "path"); return "path"; }
+        } catch (_) {}
       }
     } catch (_) {}
 
@@ -23,8 +28,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const sep = BASE.includes("?") ? "&" : "?";
       const r = await withTimeout(fetch(`${BASE}${sep}action=getFights`, { method: "GET" }), 7000);
       if (r.ok) {
-        const j = await r.json();
-        if (Array.isArray(j)) { localStorage.setItem("apiMode", "action"); return "action"; }
+        try {
+          const j = await r.json();
+          if (Array.isArray(j)) { localStorage.setItem("apiMode", "action"); return "action"; }
+        } catch (_) {}
       }
     } catch (_) {}
 
@@ -39,10 +46,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     getFights() {
       if (this.mode === "path") {
-        return fetch(`${BASE.replace(/\/$/,"")}/fights`).then(r => r.json());
+        return fetch(`${BASE.replace(/\/$/,"")}/fights`)
+          .then(r => r.ok ? r.json() : Promise.resolve([]))
+          .catch(() => []);
       } else {
         const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getFights`).then(r => r.json());
+        return fetch(`${BASE}${sep}action=getFights`)
+          .then(r => r.ok ? r.json() : Promise.resolve([]))
+          .catch(() => []);
       }
     },
 
@@ -51,12 +62,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return fetch(`${BASE.replace(/\/$/,"")}/picks`, {
           method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({ username })
-        }).then(r => r.json());
+        }).then(r => r.ok ? r.json() : Promise.resolve({ success:false, picks:[] }))
+          .catch(() => ({ success:false, picks:[] }));
       } else {
         return fetch(BASE, {
           method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({ action:"getUserPicks", username })
-        }).then(r => r.json());
+        }).then(r => r.ok ? r.json() : Promise.resolve({ success:false, picks:[] }))
+          .catch(() => ({ success:false, picks:[] }));
       }
     },
 
@@ -65,12 +78,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return fetch(`${BASE.replace(/\/$/,"")}/submit`, {
           method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify(payload)
-        }).then(r => r.json());
+        }).then(r => r.ok ? r.json() : Promise.resolve({ success:false, error:"Server error" }))
+          .catch(() => ({ success:false, error:"Network error" }));
       } else {
         return fetch(BASE, {
           method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({ action:"submitPicks", ...payload })
-        }).then(r => r.json());
+        }).then(r => r.ok ? r.json() : Promise.resolve({ success:false, error:"Server error" }))
+          .catch(() => ({ success:false, error:"Network error" }));
       }
     },
 
@@ -79,26 +94,34 @@ document.addEventListener("DOMContentLoaded", () => {
         return fetch(`${BASE.replace(/\/$/,"")}/leaderboard`, {
           method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({})
-        }).then(r => r.json());
+        }).then(r => r.ok ? r.json() : Promise.resolve({ scores:{}, fightResults:{} }))
+          .catch(() => ({ scores:{}, fightResults:{} }));
       } else {
         return fetch(BASE, {
           method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({ action:"getLeaderboard" })
-        }).then(r => r.json());
+        }).then(r => r.ok ? r.json() : Promise.resolve({ scores:{}, fightResults:{} }))
+          .catch(() => ({ scores:{}, fightResults:{} }));
       }
     },
 
     getChampionBanner() {
       const sep = BASE.includes("?") ? "&" : "?";
-      return fetch(`${BASE}${sep}action=getChampionBanner`).then(r => r.json());
+      return fetch(`${BASE}${sep}action=getChampionBanner`)
+        .then(r => r.ok ? r.json() : Promise.resolve({ message:"" }))
+        .catch(() => ({ message:"" }));
     },
 
     getHall() {
       if (this.mode === "path") {
-        return fetch(`${BASE.replace(/\/$/,"")}/hall`).then(r => r.json());
+        return fetch(`${BASE.replace(/\/$/,"")}/hall`)
+          .then(r => r.ok ? r.json() : Promise.resolve([]))
+          .catch(() => []);
       } else {
         const sep = BASE.includes("?") ? "&" : "?";
-        return fetch(`${BASE}${sep}action=getHall`).then(r => r.json());
+        return fetch(`${BASE}${sep}action=getHall`)
+          .then(r => r.ok ? r.json() : Promise.resolve([]))
+          .catch(() => []);
       }
     },
 
@@ -129,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ---------- Perf caches ---------- */
   const now = () => Date.now();
   const FIGHTS_TTL = 5 * 60 * 1000;
-  const LB_TTL    = 0; // immediate refresh
+  const LB_TTL    = 0;
 
   let fightsCache = { data: null, ts: 0, promise: null };
   let lbCache     = { data: null, ts: 0, promise: null };
@@ -177,6 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function doLogin() {
+    if (!usernameInput) return;
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
     username = input;
@@ -201,15 +225,17 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   })();
 
-  if (username) {
+  if (username && usernameInput) {
     usernameInput.value = username;
     startApp();
   }
 
   async function startApp() {
-    usernamePrompt.style.display = "none";
-    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
-    welcome.style.display = "block";
+    if (usernamePrompt) usernamePrompt.style.display = "none";
+    if (welcome) {
+      welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${String(username || "").toUpperCase()}!`;
+      welcome.style.display = "block";
+    }
 
     await api.init();
 
@@ -218,25 +244,25 @@ document.addEventListener("DOMContentLoaded", () => {
         const submitted = pickData.success && Array.isArray(pickData.picks) && pickData.picks.length > 0;
         if (submitted) {
           localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-          fotnBlock.style.display = "none";
+          if (fightList) fightList.style.display = "none";
+          if (submitBtn) submitBtn.style.display = "none";
+          if (fotnBlock) fotnBlock.style.display = "none";
         } else {
           localStorage.removeItem("submitted");
           renderFightList(fightsData);
           renderFOTN(fightsData, pickData.fotnPick);
-          submitBtn.style.display = "block";
+          if (submitBtn) submitBtn.style.display = "block";
         }
 
-        leaderboardEl.classList.add("board","weekly");
+        leaderboardEl?.classList.add("board","weekly");
         loadMyPicks();
         loadLeaderboard();
         preloadAllTime();
       })
       .catch((err) => {
         console.error("Startup error:", err);
-        fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base in index.html (window.API_BASE).</div>`;
-        submitBtn.style.display = "none";
+        if (fightList) fightList.innerHTML = `<div class="board-hint">Server unavailable. Check API base in index.html (window.API_BASE).</div>`;
+        if (submitBtn) submitBtn.style.display = "none";
       });
   }
 
@@ -253,6 +279,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Fights ---------- */
   function renderFOTN(fightsData, existingPick = "") {
+    if (!fotnBlock) return;
     fotnBlock.innerHTML = `
       <div class="fotn-title">⭐ Fight of the Night</div>
       <select id="fotnSelect" class="fotn-select"></select>
@@ -268,6 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderFightList(data) {
+    if (!fightList) return;
     fightList.innerHTML = "";
     (data || []).forEach(({ fight, fighter1, fighter2 }) => {
       const meta = fightMeta.get(fight) || {};
@@ -340,12 +368,14 @@ document.addEventListener("DOMContentLoaded", () => {
       syncRound();
     });
 
-    fightList.style.display = "flex";
-    submitBtn.style.display = "block";
+    // *** CRITICAL FIX: let CSS stack fights; do NOT force flex ***
+    fightList.style.display = "block";
+    submitBtn && (submitBtn.style.display = "block");
   }
 
   /* ---------- Submit picks ---------- */
   function submitPicks() {
+    if (!submitBtn) return;
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
 
@@ -353,14 +383,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const fights = document.querySelectorAll(".fight");
 
     for (const fight of fights) {
-      const fightName = fight.querySelector("h3").innerText;
+      const fightName = fight.querySelector("h3")?.innerText || "";
       const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
       const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
       const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
       const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
 
-      if (!winner || !method) {
-        alert(`Please complete all picks. Missing data for "${fightName}".`);
+      if (!fightName || !winner || !method) {
+        alert(`Please complete all picks. Missing data for "${fightName || "a fight"}".`);
         submitBtn.disabled = false;
         submitBtn.textContent = "Submit Picks";
         return;
@@ -375,9 +405,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.success) {
           alert("Picks submitted!");
           localStorage.setItem("submitted", "true");
-          fightList.style.display = "none";
-          submitBtn.style.display = "none";
-          fotnBlock.style.display = "none";
+          if (fightList) fightList.style.display = "none";
+          if (submitBtn) { submitBtn.style.display = "none"; submitBtn.disabled = false; submitBtn.textContent = "Submit Picks"; }
+          if (fotnBlock) fotnBlock.style.display = "none";
           lbCache = { data: null, ts: 0, promise: null }; // refresh scoreboard immediately
           loadMyPicks();
           loadLeaderboard();
@@ -393,7 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.textContent = "Submit Picks";
       });
   }
-  submitBtn.addEventListener("click", submitPicks);
+  submitBtn?.addEventListener("click", submitPicks);
   window.submitPicks = submitPicks;
 
   /* ---------- My Picks ---------- */
@@ -401,6 +431,8 @@ document.addEventListener("DOMContentLoaded", () => {
     api.getUserPicks(username)
       .then(data => {
         const myPicksDiv = document.getElementById("myPicks");
+        if (!myPicksDiv) return;
+
         if (!data.success || !data.picks.length) {
           myPicksDiv.style.display = "none";
           myPicksDiv.innerHTML = "";
@@ -508,7 +540,7 @@ document.addEventListener("DOMContentLoaded", () => {
     api.getChampionBanner()
       .then(data => {
         const msg = (data && typeof data.message === "string") ? data.message.trim() : "";
-        if (msg) {
+        if (msg && champBanner) {
           champBanner.textContent = `🏆 ${msg.replace(/^🏆\s*/,"")}`;
           champBanner.style.display = "block";
         }
@@ -521,6 +553,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     Promise.all([ getFightsCached(), getLeaderboardCached() ]).then(([fightsData, leaderboardData]) => {
       const board = leaderboardEl;
+      if (!board) return;
+
       board.classList.add("board","weekly");
       board.innerHTML = "";
 
@@ -578,7 +612,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const totalFights = (fightsData || []).length;
       const completedResults = resultsArr.filter(res => res.winner && res.method && (res.method === "Decision" || (res.round && res.round !== "N/A"))).length;
 
-      if (leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
+      if (champBanner && leaderboardData.champMessage && totalFights > 0 && completedResults === totalFights) {
         champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
       }
@@ -598,6 +632,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function rowsEqual(a, b) { return a && b && a.rate === b.rate && a.crowns === b.crowns && a.events === b.events; }
 
   function renderAllTimeHeader() {
+    if (!allTimeList) return;
     const li = document.createElement("li");
     li.className = "board-header at-five";
     li.innerHTML = `
@@ -611,6 +646,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function drawAllTime(data) {
+    if (!allTimeList) return;
     allTimeList.innerHTML = "";
     if (!data.length) { allTimeList.innerHTML = "<li>No All-Time data yet.</li>"; return; }
 
@@ -650,6 +686,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadAllTimeInteractive() {
+    if (!allTimeList) return;
     if (allTimeLoaded) { drawAllTime(allTimeData); return; }
     const keepHeight = leaderboardEl?.offsetHeight || 260;
     allTimeList.style.minHeight = `${keepHeight}px`;
@@ -664,18 +701,18 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ---------- Tabs ---------- */
   weeklyTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
-    leaderboardEl.style.display = "block";
-    allTimeList.style.display = "none";
+    leaderboardEl && (leaderboardEl.style.display = "block");
+    allTimeList && (allTimeList.style.display = "none");
     weeklyTabBtn.setAttribute("aria-pressed","true");
-    allTimeTabBtn.setAttribute("aria-pressed","false");
+    allTimeTabBtn?.setAttribute("aria-pressed","false");
   });
 
   allTimeTabBtn?.addEventListener("click", (e) => {
     e.preventDefault();
     loadAllTimeInteractive();
-    leaderboardEl.style.display = "none";
-    allTimeList.style.display = "block";
-    weeklyTabBtn.setAttribute("aria-pressed","false");
+    leaderboardEl && (leaderboardEl.style.display = "none");
+    allTimeList && (allTimeList.style.display = "block");
+    weeklyTabBtn?.setAttribute("aria-pressed","false");
     allTimeTabBtn.setAttribute("aria-pressed","true");
   });
 });
