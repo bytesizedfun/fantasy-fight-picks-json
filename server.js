@@ -6,28 +6,32 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Your deployed Google Apps Script Web App URL
-// (Leave code.gs unchanged; we only call it with ?action=... here.)
+// GAS Web App URL (leave code.gs unchanged; the server calls it with ?action=...)
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Small helper to fetch JSON safely
 async function fetchJson(url, opts = {}) {
   const r = await fetch(url, { headers: { "Cache-Control": "no-cache" }, ...opts });
-  // If GAS returns a string like "Invalid GET action", guard JSON parse
   const text = await r.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`Non-JSON response from GAS: ${text.slice(0, 200)}`);
-  }
+  try { return JSON.parse(text); }
+  catch { throw new Error(`Non-JSON from GAS: ${text.slice(0, 200)}`); }
 }
 
-/* ========= API PASSTHRU (aligns with code.gs doGet/doPost) ========= */
+/* ---------- Health ---------- */
+// Quick check that Node can reach GAS *and* GAS accepts the action.
+app.get("/api/health", async (_req, res) => {
+  try {
+    const gas = await fetchJson(`${GOOGLE_SCRIPT_URL}?action=getFights`);
+    const ok = Array.isArray(gas);
+    res.json({ ok, gasType: typeof gas, fightsCount: ok ? gas.length : 0 });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e.message || e) });
+  }
+});
 
-// Fights (GET → ?action=getFights)
+/* ---------- Path endpoints (what your script.js calls) ---------- */
 app.get("/api/fights", async (_req, res) => {
   try {
     const data = await fetchJson(`${GOOGLE_SCRIPT_URL}?action=getFights`);
@@ -38,7 +42,6 @@ app.get("/api/fights", async (_req, res) => {
   }
 });
 
-// Submit Picks (POST → action=submitPicks)
 app.post("/api/submit", async (req, res) => {
   try {
     const data = await fetchJson(GOOGLE_SCRIPT_URL, {
@@ -53,7 +56,6 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// Get User Picks (POST → action=getUserPicks)
 app.post("/api/picks", async (req, res) => {
   try {
     const data = await fetchJson(GOOGLE_SCRIPT_URL, {
@@ -68,7 +70,6 @@ app.post("/api/picks", async (req, res) => {
   }
 });
 
-// Weekly Leaderboard (POST → action=getLeaderboard)
 app.post("/api/leaderboard", async (_req, res) => {
   try {
     const data = await fetchJson(GOOGLE_SCRIPT_URL, {
@@ -83,7 +84,6 @@ app.post("/api/leaderboard", async (_req, res) => {
   }
 });
 
-// Champion Banner (GET → ?action=getChampionBanner)
 app.get("/api/champion", async (_req, res) => {
   try {
     const data = await fetchJson(`${GOOGLE_SCRIPT_URL}?action=getChampionBanner`);
@@ -94,7 +94,6 @@ app.get("/api/champion", async (_req, res) => {
   }
 });
 
-// All-Time Leaderboard (GET → ?action=getHall)
 app.get("/api/hall", async (_req, res) => {
   try {
     const data = await fetchJson(`${GOOGLE_SCRIPT_URL}?action=getHall`);
@@ -105,11 +104,32 @@ app.get("/api/hall", async (_req, res) => {
   }
 });
 
-/* ========= SPA fallback (optional) ========= */
-// If you have a single-page app front-end, uncomment this:
-// app.get("*", (_req, res) => {
-//   res.sendFile(path.join(__dirname, "public", "index.html"));
-// });
+/* ---------- Query fallback (/api?action=...) for older clients ---------- */
+app.all("/api", async (req, res) => {
+  const method = req.method.toUpperCase();
+  const action = (req.query && req.query.action) || (req.body && req.body.action);
+  if (!action) return res.status(400).json({ error: "Missing action" });
+
+  try {
+    if (method === "GET") {
+      // e.g., /api?action=getFights
+      const data = await fetchJson(`${GOOGLE_SCRIPT_URL}?action=${encodeURIComponent(action)}`);
+      return res.set("Cache-Control", "no-store").json(data);
+    }
+
+    // e.g., POST /api { action: "getLeaderboard" }
+    const body = { ...req.body };
+    const data = await fetchJson(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    return res.set("Cache-Control", "no-store").json(data);
+  } catch (e) {
+    console.error("/api passthrough error:", e);
+    return res.status(500).json({ error: "GAS passthrough failed", details: String(e.message || e) });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
