@@ -1,236 +1,280 @@
+/* ==========================================================================
+   Fantasy Fight Picks — Mobile-first, flawless on phones
+   ========================================================================== */
+
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&display=swap');
 
-:root {
-  --bg-dark: #0b0b0d;
-  --bg-panel: #141416;
-  --neon-cyan: #00f5ff;
-  --neon-red: #ff003c;
-  --silver: #b0b3b8;
-  --success: #2fffa0;
-  --error: #ff4e4e;
-  --text-main: #e4e6eb;
-  --shadow-dark: rgba(0,0,0,0.6);
+:root{
+  --bg-dark:#0b0b0d;
+  --bg-panel:#141416;
+  --neon-cyan:#00f5ff;
+  --neon-red:#ff003c;
+  --silver:#b0b3b8;
+  --success:#2fffa0;
+  --error:#ff4e4e;
+  --text-main:#e4e6eb;
+
+  /* mobile sizing */
+  --fs-xxs:12px;
+  --fs-xs:14px;
+  --fs-s:15px;
+  --fs-m:16px;
+  --fs-l:18px;
+  --fs-xl:20px;
+  --radius:14px;
+  --pad:16px;
+  --gap:10px;
 }
 
-/* Prevent sideways scroll on mobile */
-html, body { width: 100%; overflow-x: hidden; }
-*, *::before, *::after { box-sizing: border-box; }
-
-body {
-  background: var(--bg-dark);
-  color: var(--text-main);
-  font-family: 'Orbitron', sans-serif;
-  margin: 0;
-  padding: 20px;
+/* Prevent any sideways scroll; respect safe areas */
+html,body{width:100%;overflow-x:hidden}
+*,
+*::before,
+*::after{box-sizing:border-box}
+body{
+  margin:0;
+  padding:calc(env(safe-area-inset-top,0) + 12px)
+          calc(env(safe-area-inset-right,0) + 12px)
+          calc(env(safe-area-inset-bottom,0) + 12px)
+          calc(env(safe-area-inset-left,0) + 12px);
+  background:var(--bg-dark);
+  color:var(--text-main);
+  font-family:'Orbitron',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  font-size:var(--fs-m);
+  line-height:1.35;
 }
 
-/* Logo container */
-.banner-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 10px;
+/* -------------------- Header / Logo -------------------- */
+.banner-container{
+  display:flex;justify-content:center;align-items:center;
+  margin:0 0 10px 0;
 }
-.logo-banner {
-  width: 100%;
-  max-width: 200px;
-  height: auto;
+.logo-banner{
+  width:min(70vw,220px);
+  height:auto;display:block;
 }
 
-/* Panels */
-#app {
-  max-width: 580px;
-  margin: auto;
-  padding: 20px;
-  background: var(--bg-panel);
-  border-radius: 16px;
-  border: 2px solid rgba(255,255,255,0.08);
-  box-shadow: 0 0 40px rgba(0, 245, 255, 0.05);
+/* -------------------- App Card -------------------- */
+#app{
+  width:100%;
+  max-width:720px; /* allows nicer tablets */
+  margin:0 auto;
+  background:var(--bg-panel);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--radius);
+  box-shadow:0 0 24px rgba(0,245,255,.06);
+  padding:var(--pad);
 }
 
-/* Headings */
-.leader-title {
-  text-align: center;
-  margin: 22px 0 8px;
-  letter-spacing: .05em;
+/* -------------------- Titles -------------------- */
+#welcome{
+  text-align:center;
+  margin:8px 0 14px;
+  font-size:clamp(var(--fs-l),4.8vw,var(--fs-xl));
+  letter-spacing:.03em;
+}
+.leader-title{
+  text-align:center;
+  margin:18px 0 6px;
+  font-size:clamp(var(--fs-m),4.4vw,var(--fs-l));
+  letter-spacing:.04em;
 }
 
-/* Champion Banner */
-.champ-banner {
-  text-align: center;
-  font-size: 2rem;
-  font-weight: 900;
-  color: var(--neon-cyan);
-  background: linear-gradient(120deg, rgba(0,245,255,0.2), rgba(255,0,60,0.2), rgba(0,245,255,0.2));
-  background-size: 300% 300%;
-  animation: bannerGlow 6s ease infinite;
-  border-radius: 14px;
-  padding: 14px;
-  border: 1px solid var(--neon-cyan);
-  text-shadow: 0 0 12px var(--neon-cyan), 0 0 24px var(--neon-red);
+/* -------------------- Champion Banner -------------------- */
+.champ-banner{
+  display:none;
+  text-align:center;
+  font-size:clamp(var(--fs-l),5vw,24px);
+  font-weight:900;
+  color:var(--neon-cyan);
+  background:linear-gradient(120deg, rgba(0,245,255,.2), rgba(255,0,60,.22), rgba(0,245,255,.2));
+  background-size:300% 300%;
+  animation:bannerGlow 6s ease infinite;
+  border-radius:12px;
+  padding:10px 12px;
+  border:1px solid var(--neon-cyan);
+  text-shadow:0 0 10px var(--neon-cyan),0 0 18px var(--neon-red);
+  margin-bottom:10px;
 }
-@keyframes bannerGlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* Welcome text centered */
-#welcome {
-  text-align: center;
-  margin: 10px 0 20px;
+@keyframes bannerGlow{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
 }
 
-/* Leaderboard */
-#leaderboard {
-  list-style: none;
-  padding: 0;
-  margin-top: 20px;
+/* -------------------- Username Prompt -------------------- */
+#usernamePrompt{
+  display:grid;gap:8px;
 }
-#leaderboard li {
-  background: rgba(255,255,255,0.04);
-  margin: 10px 0;
-  padding: 14px;
-  display: grid;
-  grid-template-columns: 50px auto 60px;
-  align-items: center;
-  border-radius: 10px;
-  border-left: 4px solid var(--silver);
-  transition: all 0.3s ease;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-#leaderboard li:hover {
-  border-left-color: var(--neon-cyan);
-  box-shadow: 0 0 12px rgba(0,245,255,0.4);
-  transform: translateX(4px);
-}
-#leaderboard li:first-child {
-  border-left-color: var(--neon-cyan);
-  background: rgba(0,245,255,0.1);
-  box-shadow: 0 0 14px rgba(0,245,255,0.5);
-  animation: pulseChampion 1.8s infinite;
-}
-/* Glow all tied #1s */
-#leaderboard li.tied-first {
-  border-left-color: var(--neon-cyan);
-  background: rgba(0,245,255,0.1);
-  box-shadow: 0 0 14px rgba(0,245,255,0.5);
-  animation: pulseChampion 1.8s infinite;
-}
-@keyframes pulseChampion {
-  0%,100% { box-shadow: 0 0 14px rgba(0,245,255,0.5); }
-  50% { box-shadow: 0 0 28px rgba(255,0,60,0.6); }
+#usernamePrompt label{font-size:var(--fs-s)}
+#usernamePrompt input{
+  width:100%;
+  padding:12px 14px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.12);
+  background:#0e0e11;
+  color:var(--text-main);
+  font-size:var(--fs-m);
 }
 
-/* Fight Blocks */
-.fight {
-  background: rgba(255,255,255,0.03);
-  padding: 14px;
-  margin-bottom: 18px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: inset 0 0 10px rgba(0,245,255,0.05);
-}
-.fight h3 {
-  color: var(--neon-cyan);
-  margin: 0 0 8px 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-.fight label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  line-height: 1.35;
-  margin: 8px 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-.fight input[type="radio"] {
-  inline-size: 18px;
-  block-size: 18px;
-}
-.fight select {
-  margin-top: 6px;
+/* -------------------- Scoring Rules -------------------- */
+#scoringRules{display:none;margin:6px 0 10px}
+.scoring-box{
+  display:grid;gap:6px;
+  padding:10px 12px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;
+  font-size:var(--fs-s);
 }
 
-/* Your Picks - clean cards */
-#myPicks { margin-top: 20px; display: grid; gap: 10px; }
-#myPicks h3 { margin: 0; text-align: center; color: var(--neon-cyan); }
-.scored-pick {
-  display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
-  background: rgba(255,255,255,0.04);
-  padding: 10px 12px; border-radius: 10px;
-  border-left: 4px solid var(--neon-cyan);
-  overflow-wrap: anywhere; word-break: break-word;
+/* -------------------- Buttons -------------------- */
+button{
+  width:100%;
+  appearance:none;
+  background:var(--neon-cyan);
+  color:#031416;
+  font-weight:900;
+  border:none;border-radius:10px;
+  padding:12px 14px;
+  font-size:var(--fs-m);
+  cursor:pointer;
+  box-shadow:0 0 16px rgba(0,245,255,.35);
+  transition:transform .08s ease, box-shadow .2s ease, background .2s ease;
 }
-.scored-pick .fight-name {
-  font-weight: 900; letter-spacing: .03em; color: var(--text-main);
-  flex: 1 1 100%;
-}
-.scored-pick .points {
-  padding: 4px 10px; border-radius: 999px; margin-left: 6px;
-  background: rgba(0,245,255,0.12); border: 1px solid var(--neon-cyan);
-  color: var(--neon-cyan); font-weight: 900;
-}
-.correct { color: var(--success); text-shadow: 0 0 6px var(--success); }
-.wrong { color: var(--error); text-shadow: 0 0 6px var(--error); }
+button:active{transform:translateY(1px)}
+button:hover{background:var(--neon-red);color:#fff;box-shadow:0 0 16px rgba(255,0,60,.45)}
+#submitBtn{margin-top:8px}
 
-/* Buttons */
-button {
-  background: var(--neon-cyan);
-  color: var(--bg-dark);
-  font-weight: 900;
-  border: none;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 0 14px rgba(0,245,255,0.4);
+/* -------------------- Fight List (mobile-first) -------------------- */
+#fightList{display:none;margin-top:8px;display:grid;gap:10px}
+.fight{
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  padding:12px;
+  box-shadow:inset 0 0 10px rgba(0,245,255,.05);
 }
-button:hover {
-  background: var(--neon-red);
-  color: white;
-  box-shadow: 0 0 14px rgba(255,0,60,0.5);
+.fight h3{
+  margin:0 0 8px 0;
+  color:var(--neon-cyan);
+  font-size:var(--fs-l);
+  line-height:1.25;
+  overflow-wrap:anywhere;word-break:break-word;
 }
 
-/* --------- MOBILE TUNING --------- */
-
-/* Small phones: slightly smaller base font */
-@media (max-width: 420px) {
-  body { font-size: 14px; }
+/* options: stack vertically, big tap targets */
+.fight label{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;
+  margin:6px 0;
+  border-radius:10px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);
+  overflow-wrap:anywhere;word-break:break-word;
+}
+.fight input[type="radio"]{
+  inline-size:20px;block-size:20px;min-inline-size:20px;min-block-size:20px;
 }
 
-/* Make dropdowns full-width and easier to tap on narrow screens */
-@media (max-width: 600px) {
-  .fight select {
-    display: block;
-    width: 100%;
+/* method & round dropdowns full-width on phones */
+.fight select{
+  display:block;width:100%;
+  margin-top:8px;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.12);
+  background:#0e0e11;color:var(--text-main);
+  font-size:var(--fs-m);
+}
+
+/* -------------------- Your Picks -------------------- */
+#myPicks{margin-top:14px;display:grid;gap:10px}
+#myPicks h3{margin:0;text-align:center;color:var(--neon-cyan);font-size:var(--fs-l)}
+.scored-pick{
+  display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;
+  background:rgba(255,255,255,.04);
+  padding:10px 12px;border-radius:12px;
+  border-left:4px solid var(--neon-cyan);
+  overflow-wrap:anywhere;word-break:break-word;
+}
+.scored-pick .fight-name{
+  flex:1 1 100%;
+  font-weight:900;letter-spacing:.03em;color:var(--text-main);
+  margin-bottom:2px;
+  font-size:var(--fs-m);
+}
+.scored-pick .points{
+  padding:4px 10px;border-radius:999px;margin-left:auto;
+  background:rgba(0,245,255,.12);border:1px solid var(--neon-cyan);
+  color:var(--neon-cyan);font-weight:900;font-size:var(--fs-xs);
+}
+.correct{color:var(--success);text-shadow:0 0 6px var(--success)}
+.wrong{color:var(--error);text-shadow:0 0 6px var(--error)}
+
+/* -------------------- Leaderboard (mobile layout) -------------------- */
+#leaderboard{
+  list-style:none;padding:0;margin:12px 0 0 0;display:grid;gap:10px;
+}
+#leaderboard li{
+  background:rgba(255,255,255,.04);
+  padding:12px;
+  display:grid;
+  grid-template-columns:44px 1fr;
+  grid-template-areas:
+    "rank name"
+    ".    score";
+  row-gap:4px;column-gap:8px;
+  align-items:center;
+  border-radius:12px;
+  border-left:4px solid var(--silver);
+  transition:box-shadow .2s ease, transform .08s ease, border-left-color .2s ease;
+  overflow-wrap:anywhere;word-break:break-word;
+}
+#leaderboard li:hover{border-left-color:var(--neon-cyan);box-shadow:0 0 12px rgba(0,245,255,.35)}
+/* map spans by DOM order */
+#leaderboard li > span:nth-child(1){grid-area:rank;font-weight:900}
+#leaderboard li > span:nth-child(2){grid-area:name}
+#leaderboard li > span:nth-child(3){grid-area:score;justify-self:end}
+
+#leaderboard li.tied-first{
+  border-left-color:var(--neon-cyan);
+  background:rgba(0,245,255,.10);
+  box-shadow:0 0 14px rgba(0,245,255,.45);
+}
+#leaderboard li:first-child{ /* first in order also gets glow */
+  border-left-color:var(--neon-cyan);
+}
+
+/* -------------------- Utilities -------------------- */
+.hidden{display:none !important}
+.muted{opacity:.78}
+
+/* ==========================================================================
+   DESKTOP / WIDE ENHANCEMENTS
+   ========================================================================== */
+@media (min-width: 640px){
+  body{font-size:17px}
+  #app{padding:20px}
+  .fight{padding:14px}
+  .fight label{margin:8px 0}
+  .scored-pick{padding:12px}
+  /* desktop leaderboard three columns */
+  #leaderboard li{
+    grid-template-columns:60px 1fr 84px;
+    grid-template-areas:"rank name score";
+    padding:14px;
   }
 }
 
-/* Leaderboard: switch to 2-row layout so long names/scores never overflow */
-@media (max-width: 480px) {
-  #leaderboard li {
-    grid-template-columns: 44px 1fr;
-    grid-template-areas:
-      "rank name"
-      ".    score";
-    row-gap: 4px;
-    column-gap: 8px;
+@media (min-width: 900px){
+  /* bring back the stronger desktop hero look */
+  #leaderboard li:hover{transform:translateX(4px)}
+  #leaderboard li:first-child{
+    animation:pulseChampion 1.8s infinite;
   }
-  #leaderboard li > span:nth-child(1) { grid-area: rank; }   /* #rank */
-  #leaderboard li > span:nth-child(2) { grid-area: name; }   /* name */
-  #leaderboard li > span:nth-child(3) { grid-area: score; justify-self: end; } /* score */
 }
-
-/* Tighten paddings on small screens */
-@media (max-width: 480px) {
-  #app { padding: 16px; }
-  #leaderboard li { padding: 12px; }
-  .fight { padding: 12px; }
-  .scored-pick { padding: 9px 10px; gap: 6px; }
-  .scored-pick .fight-name { font-size: .98rem; }
-  .scored-pick .points { font-size: .9rem; padding: 3px 8px; }
+@keyframes pulseChampion{
+  0%,100%{box-shadow:0 0 14px rgba(0,245,255,.5)}
+  50%{box-shadow:0 0 28px rgba(255,0,60,.6)}
 }
