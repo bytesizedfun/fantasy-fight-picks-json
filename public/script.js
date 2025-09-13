@@ -1,404 +1,310 @@
-// ==== script.js (full) ====
-
-// Kill any old service workers to avoid stale caches (safe even if none exist)
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations?.().then(regs => {
-    regs.forEach(r => r.unregister().catch(()=>{}));
-  }).catch(()=>{});
-}
+// script.js — matches your HTML exactly; uses your styles and messages.
 
 document.addEventListener("DOMContentLoaded", () => {
-  const BASE = window.API_BASE || "/api";
-
-  // ---- Fetch helpers: timeout + retries + cache-buster
-  function fetchWithTimeout(url, options = {}, timeoutMs = 70000) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), timeoutMs);
-    return fetch(url, { ...options, signal: controller.signal })
-      .finally(() => clearTimeout(t));
-  }
-  async function getJsonRetry(url, options = {}, { retries = 2, timeoutMs = 70000 } = {}) {
-    let lastErr;
-    for (let i = 0; i <= retries; i++) {
-      try {
-        const r = await fetchWithTimeout(url, options, timeoutMs);
-        const text = await r.text();
-        try {
-          return JSON.parse(text);
-        } catch {
-          throw new Error(`Non-JSON: ${text.slice(0,200)}`);
-        }
-      } catch (e) {
-        lastErr = e;
-        if (i < retries) await new Promise(res => setTimeout(res, 800 * (i + 1)));
-      }
-    }
-    throw lastErr;
-  }
-  function bust(url) {
-    const hasQuery = url.includes("?");
-    return url + (hasQuery ? "&" : "?") + "cb=" + Date.now();
-  }
-
-  // -------- API (calls your Node server's path endpoints) --------
-  const api = {
-    getFights() {
-      const url = bust(`${BASE.replace(/\/$/, "")}/fights`);
-      return getJsonRetry(url, { method: "GET", headers: { "Cache-Control": "no-cache" } })
-        .catch(() => []);
-    },
-    getUserPicks(username) {
-      const url = `${BASE.replace(/\/$/, "")}/picks`;
-      return getJsonRetry(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username })
-      }, { retries: 1, timeoutMs: 25000 })
-      .catch(() => ({ success:false, picks:[] }));
-    },
-    submitPicks(payload) {
-      const url = `${BASE.replace(/\/$/, "")}/submit`;
-      return getJsonRetry(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }, { retries: 0, timeoutMs: 30000 })
-      .catch(() => ({ success:false, error:"Network error" }));
-    },
-    getLeaderboard() {
-      const url = bust(`${BASE.replace(/\/$/, "")}/leaderboard`);
-      return getJsonRetry(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({})
-      }, { retries: 1, timeoutMs: 40000 })
-      .catch(() => ({ scores:{}, fightResults:{} }));
-    },
-    getChampionBanner() {
-      const url = bust(`${BASE.replace(/\/$/, "")}/champion`);
-      return getJsonRetry(url, { method: "GET", headers: { "Cache-Control":"no-cache" } },
-        { retries: 1, timeoutMs: 25000 })
-      .catch(() => ({ message:"" }));
-    },
-    getHall() {
-      const url = bust(`${BASE.replace(/\/$/, "")}/hall`);
-      return getJsonRetry(url, { method: "GET", headers: { "Cache-Control":"no-cache" } },
-        { retries: 1, timeoutMs: 30000 })
-      .catch(() => []);
-    }
-  };
-
-  // -------- DOM refs --------
-  const welcome        = document.getElementById("welcome");
-  const fightList      = document.getElementById("fightList");
-  const submitBtn      = document.getElementById("submitBtn");
+  const debugEl = document.getElementById("debugBanner");
+  const welcome = document.getElementById("welcome");
+  const fightList = document.getElementById("fightList");
+  const submitBtn = document.getElementById("submitBtn");
   const usernamePrompt = document.getElementById("usernamePrompt");
-  const usernameInput  = document.getElementById("usernameInput");
-  const champBanner    = document.getElementById("champBanner");
-  const leaderboardEl  = document.getElementById("leaderboard");
-  const allTimeList    = document.getElementById("allTimeBoard");
-  const weeklyTabBtn   = document.getElementById("tabWeekly");
-  const allTimeTabBtn  = document.getElementById("tabAllTime");
+  const usernameInput = document.getElementById("usernameInput");
+  const champBanner = document.getElementById("champBanner");
+  const punchSound = new Audio("punch.mp3");
 
-  // Create a refresh button + hint container if not present
-  let refreshBtn = document.getElementById("refreshBtn");
-  if (!refreshBtn) {
-    refreshBtn = document.createElement("button");
-    refreshBtn.id = "refreshBtn";
-    refreshBtn.textContent = "Refresh";
-    refreshBtn.style.cssText = "display:none;margin:10px 0;padding:8px 12px;";
-    (document.getElementById("controls") || document.body).prepend(refreshBtn);
-  }
-  function setLoadingHint(on) {
-    let hint = document.getElementById("coldStartHint");
-    if (on) {
-      if (!hint) {
-        hint = document.createElement("div");
-        hint.id = "coldStartHint";
-        hint.textContent = "Warming server… first load can take ~30–60s.";
-        hint.style.cssText = "margin:8px 0;font-size:12px;color:#888;";
-        (document.getElementById("controls") || document.body).prepend(hint);
-      }
-    } else if (hint) {
-      hint.remove();
-    }
-  }
-  refreshBtn.addEventListener("click", () => {
-    refreshBtn.disabled = true;
-    refreshBtn.textContent = "Refreshing…";
-    refreshAll().finally(() => {
-      refreshBtn.disabled = false;
-      refreshBtn.textContent = "Refresh";
-    });
-  });
+  function showDebug(msg) { if (debugEl) { debugEl.textContent = msg; debugEl.style.display = "block"; } }
+  function hideDebug() { if (debugEl) debugEl.style.display = "none"; }
 
   let username = localStorage.getItem("username");
+  if (username) {
+    usernameInput.value = username;
+    finalizeLogin(username);
+  }
 
-  // -------- Login --------
-  function doLogin() {
+  // Expose global for HTML onclick
+  window.lockUsername = function lockUsername() {
     const input = usernameInput.value.trim();
     if (!input) return alert("Please enter your name.");
     username = input;
     localStorage.setItem("username", username);
-    startApp();
-  }
-  document.querySelector("#usernamePrompt button")?.addEventListener("click", doLogin);
-  usernameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    finalizeLogin(username);
+  };
 
-  // -------- Startup --------
-  if (username) {
-    usernameInput.value = username;
-    startApp();
-  }
+  function finalizeLogin(name) {
+    usernamePrompt.style.display = "none";
+    welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${name.toUpperCase()}!`;
+    welcome.style.display = "block";
+    document.getElementById("scoringRules").style.display = "block";
 
-  async function startApp() {
-    if (usernamePrompt) usernamePrompt.style.display = "none";
-    if (welcome) {
-      welcome.innerText = `🎤 IIIIIIIIIIIIT'S ${username.toUpperCase()}!`;
-      welcome.style.display = "block";
-    }
-
-    // Show champ banner immediately (independent of results progress)
-    showChampionBanner();
-
-    // first load: show “warming” in case Render is cold
-    const warmTimeout = setTimeout(() => setLoadingHint(true), 1500);
-
-    const [fights, picks] = await Promise.all([
-      api.getFights(),
-      api.getUserPicks(username)
-    ]).finally(() => clearTimeout(warmTimeout));
-
-    setLoadingHint(false);
-
-    if (picks.success && Array.isArray(picks.picks) && picks.picks.length > 0) {
-      localStorage.setItem("submitted", "true");
-      if (fightList) fightList.style.display = "none";
-      if (submitBtn) submitBtn.style.display = "none";
-    } else {
-      renderFightList(fights);
-      if (submitBtn) submitBtn.style.display = "block";
-    }
-
-    loadMyPicks();
-    loadLeaderboard();
-    preloadAllTime();
-
-    // Show refresh button for users with flaky networks
-    refreshBtn.style.display = "inline-block";
-  }
-
-  // -------- Fight list render --------
-  function renderFightList(data) {
-    if (!fightList) return;
-    fightList.innerHTML = "";
-    (data || []).forEach(({ fight, fighter1, fighter2 }) => {
-      const div = document.createElement("div");
-      div.className = "fight";
-      div.innerHTML = `
-        <h3>${fight}</h3>
-        <div class="options">
-          <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1}</label>
-          <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2}</label>
-        </div>
-        <div class="pick-controls">
-          <select name="${fight}-method">
-            <option value="Decision">Decision</option>
-            <option value="KO/TKO">KO/TKO</option>
-            <option value="Submission">Submission</option>
-          </select>
-          <select name="${fight}-round">
-            <option value="1">Round 1</option>
-            <option value="2">Round 2</option>
-            <option value="3">Round 3</option>
-            <option value="4">Round 4</option>
-            <option value="5">Round 5</option>
-          </select>
-        </div>
-      `;
-      fightList.appendChild(div);
-    });
-  }
-
-  // -------- Submit picks --------
-  submitBtn?.addEventListener("click", () => {
-    if (!username) return alert("Please enter your name first.");
-    const picks = [];
-    document.querySelectorAll(".fight").forEach(f => {
-      const fight = f.querySelector("h3")?.innerText || "";
-      const winner = f.querySelector(`input[name="${fight}-winner"]:checked`)?.value;
-      const method = f.querySelector(`select[name="${fight}-method"]`)?.value || "Decision";
-      const round = f.querySelector(`select[name="${fight}-round"]`)?.value || "";
-      if (fight && winner) picks.push({ fight, winner, method, round });
-    });
-
-    if (!picks.length) return alert("Please make at least one pick.");
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting…";
-
-    api.submitPicks({ username, picks }).then(r => {
-      if (r.success) {
-        alert("Picks submitted!");
-        if (fightList) fightList.style.display = "none";
-        if (submitBtn) submitBtn.style.display = "none";
+    fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: name })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.picks.length > 0) {
+          localStorage.setItem("submitted", "true");
+          fightList.style.display = "none";
+          submitBtn.style.display = "none";
+        } else {
+          localStorage.removeItem("submitted");
+          loadFights();
+          submitBtn.style.display = "block";
+        }
         loadMyPicks();
         loadLeaderboard();
-      } else {
-        alert(r.error || "Submission failed.");
+      })
+      .catch(err => { showDebug("Error checking picks"); console.error(err); });
+  }
+
+  function loadFights() {
+    fetch("/api/fights", { headers: { "cache-control": "no-cache" }})
+      .then(res => res.json())
+      .then(data => {
+        if (!Array.isArray(data)) { showDebug("Fights response not array"); return; }
+        fightList.innerHTML = "";
+
+        data.forEach(({ fight, fighter1, fighter2, underdog }) => {
+          const dog1 = underdog === "Fighter 1" ? "🐶" : "";
+          const dog2 = underdog === "Fighter 2" ? "🐶" : "";
+
+          const div = document.createElement("div");
+          div.className = "fight";
+          div.innerHTML = `
+            <h3>${fight}</h3>
+            <label><input type="radio" name="${fight}-winner" value="${fighter1}">${fighter1} ${dog1}</label>
+            <label><input type="radio" name="${fight}-winner" value="${fighter2}">${fighter2} ${dog2}</label>
+            <select name="${fight}-method">
+              <option value="Decision">Decision</option>
+              <option value="KO/TKO">KO/TKO</option>
+              <option value="Submission">Submission</option>
+            </select>
+            <select name="${fight}-round">
+              <option value="1">Round 1</option>
+              <option value="2">Round 2</option>
+              <option value="3">Round 3</option>
+              <option value="4">Round 4</option>
+              <option value="5">Round 5</option>
+            </select>
+          `;
+          fightList.appendChild(div);
+        });
+
+        // method/round coupling
+        document.querySelectorAll(".fight").forEach(fight => {
+          const methodSelect = fight.querySelector(`select[name$="-method"]`);
+          const roundSelect = fight.querySelector(`select[name$="-round"]`);
+
+          methodSelect.addEventListener("change", () => {
+            roundSelect.disabled = methodSelect.value === "Decision";
+            if (roundSelect.disabled) roundSelect.value = "";
+            else roundSelect.value = "1";
+          });
+
+          if (methodSelect.value === "Decision") {
+            roundSelect.disabled = true;
+            roundSelect.value = "";
+          }
+        });
+
+        fightList.style.display = "block";
+        submitBtn.style.display = "block";
+        hideDebug();
+      })
+      .catch(err => { showDebug("Error loading fights"); console.error(err); });
+  }
+
+  // Expose global for HTML onclick
+  window.submitPicks = function submitPicks() {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+
+    const picks = [];
+    const fights = document.querySelectorAll(".fight");
+
+    for (const fight of fights) {
+      const fightName = fight.querySelector("h3").innerText;
+      const winner = fight.querySelector(`input[name="${fightName}-winner"]:checked`)?.value;
+      const method = fight.querySelector(`select[name="${fightName}-method"]`)?.value;
+      const roundRaw = fight.querySelector(`select[name="${fightName}-round"]`);
+      const round = roundRaw && !roundRaw.disabled ? roundRaw.value : "";
+
+      if (!winner || !method) {
+        alert(`Please complete all picks. Missing data for "${fightName}".`);
         submitBtn.disabled = false;
         submitBtn.textContent = "Submit Picks";
-      }
-    }).catch(() => {
-      alert("Network error submitting picks.");
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Submit Picks";
-    });
-  });
-
-  // -------- My picks --------
-  function loadMyPicks() {
-    api.getUserPicks(username).then(r => {
-      const div = document.getElementById("myPicks");
-      if (!div) return;
-      if (!r.success || !Array.isArray(r.picks) || !r.picks.length) {
-        div.style.display = "none";
-        div.innerHTML = "";
         return;
       }
-      div.innerHTML = "<h3>Your Picks</h3>" + r.picks.map(p =>
-        `<div>${p.fight}: ${p.winner} by ${p.method}${p.method === "Decision" ? "" : ` (R${p.round||""})`}</div>`
-      ).join("");
-      div.style.display = "block";
-    }).catch(()=>{});
+      picks.push({ fight: fightName, winner, method, round });
+    }
+
+    fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, picks })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          try { punchSound.play(); } catch (_) {}
+          alert("Picks submitted!");
+          localStorage.setItem("submitted", "true");
+          fightList.style.display = "none";
+          submitBtn.style.display = "none";
+          loadMyPicks();
+          loadLeaderboard();
+          hideDebug();
+        } else {
+          alert(data.error || "Something went wrong.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Picks";
+        }
+      })
+      .catch(err => {
+        alert("Submission failed.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Picks";
+        showDebug("Error submitting picks");
+        console.error(err);
+      });
+  };
+
+  function loadMyPicks() {
+    fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const myPicksDiv = document.getElementById("myPicks");
+        myPicksDiv.innerHTML = "<h3>Your Picks:</h3>";
+        if (!data.success || !data.picks.length) {
+          myPicksDiv.innerHTML += "<p>No picks submitted.</p>";
+          return;
+        }
+
+        fetch("/api/leaderboard", { method: "POST" })
+          .then(res => res.json())
+          .then(resultData => {
+            const fightResults = resultData.fightResults || {};
+            data.picks.forEach(({ fight, winner, method, round }) => {
+              let score = 0;
+              const actual = fightResults[fight] || {};
+              const hasResult = actual.winner && actual.method;
+              const matchWinner = hasResult && winner === actual.winner;
+              const matchMethod = hasResult && method === actual.method;
+              const matchRound = hasResult && round == actual.round;
+              const isUnderdog = actual.underdog === "Y";
+
+              if (matchWinner) {
+                score += 1;
+                if (matchMethod) {
+                  score += 1;
+                  if (method !== "Decision" && matchRound) {
+                    score += 1;
+                  }
+                }
+                if (isUnderdog) score += 2;
+              }
+
+              const winnerClass = hasResult ? (matchWinner ? "correct" : "wrong") : "";
+              const methodClass = hasResult && matchWinner ? (matchMethod ? "correct" : "wrong") : "";
+              const roundClass = hasResult && matchWinner && matchMethod && method !== "Decision"
+                ? (matchRound ? "correct" : "wrong")
+                : "";
+
+              const dogIcon = hasResult && matchWinner && isUnderdog
+                ? `<span class="correct">🐶</span>`
+                : "";
+              const roundText = method === "Decision"
+                ? "(Decision)"
+                : `in Round <span class="${roundClass}">${round}</span>`;
+
+              const pointsChip = hasResult ? `<span class="points">+${score} pts</span>` : "";
+
+              myPicksDiv.innerHTML += `
+                <div class="scored-pick">
+                  <div class="fight-name">${fight}</div>
+                  <div class="user-pick">
+                    <span class="${winnerClass}">${winner}</span> ${dogIcon} by
+                    <span class="${methodClass}">${method}</span> ${roundText}
+                  </div>
+                  ${pointsChip}
+                </div>`;
+            });
+          });
+      })
+      .catch(err => { showDebug("Error loading your picks"); console.error(err); });
   }
 
-  // -------- Weekly leaderboard --------
   function loadLeaderboard() {
-    api.getLeaderboard().then(r => {
-      if (!leaderboardEl) return;
-      const scores = r.scores || {};
-      const entries = Object.entries(scores).sort((a,b) => b[1]-a[1]);
-      leaderboardEl.innerHTML = "<h3>Weekly Leaderboard</h3>" +
-        entries.map(([u,s]) => `<div>${u}: ${s} pts</div>`).join("");
-    }).catch(()=>{});
-  }
+    Promise.all([
+      fetch("/api/fights").then(r => r.json()),
+      fetch("/api/leaderboard", { method: "POST" }).then(r => r.json())
+    ]).then(([fightsData, leaderboardData]) => {
+      const board = document.getElementById("leaderboard");
+      board.innerHTML = "";
 
-  // -------- Champion banner (from champions sheet via GAS) --------
-  function showChampionBanner() {
-    api.getChampionBanner().then(r => {
-      if (!champBanner) return;
-      const msg = (r && typeof r.message === "string") ? r.message.trim() : "";
-      if (msg) {
-        champBanner.innerText = `🏆 ${msg.replace(/^🏆\s*/, "")}`;
+      const scores = Object.entries(leaderboardData.scores || {}).sort((a, b) => b[1] - a[1]);
+
+      let rank = 1;
+      let prevScore = null;
+      let actualRank = 1;
+
+      scores.forEach(([user, score], index) => {
+        if (score !== prevScore) actualRank = rank;
+
+        const li = document.createElement("li");
+        let displayName = user;
+        let classes = [];
+
+        if (leaderboardData.champs?.includes(user)) {
+          classes.push("champ-glow");
+          displayName = `<span class="crown">👑</span> ${displayName}`;
+        }
+
+        if (index === scores.length - 1) {
+          classes.push("loser");
+          displayName = `💩 ${displayName}`;
+        }
+
+        if (user === username) {
+          classes.push("current-user");
+        }
+
+        li.className = classes.join(" ");
+        li.innerHTML = `<span>#${actualRank}</span> <span>${displayName}</span><span>${score} pts</span>`;
+        board.appendChild(li);
+
+        prevScore = score;
+        rank++;
+      });
+
+      // Glow all tied #1 entries (keep crowns as-is)
+      const lis = board.querySelectorAll("li");
+      if (lis.length > 0) {
+        const topScore = parseInt(lis[0].lastElementChild.textContent, 10);
+        lis.forEach(li => {
+          const val = parseInt(li.lastElementChild.textContent, 10);
+          if (val === topScore) li.classList.add("tied-first");
+        });
+      }
+
+      const totalFights = Array.isArray(fightsData) ? fightsData.length : 0;
+      const completedResults = Object.values(leaderboardData.fightResults || {}).filter(
+        res => res.winner && res.method
+      ).length;
+
+      if (
+        leaderboardData.champMessage &&
+        totalFights > 0 &&
+        completedResults === totalFights
+      ) {
+        champBanner.textContent = `🏆 ${leaderboardData.champMessage}`;
         champBanner.style.display = "block";
       } else {
         champBanner.style.display = "none";
       }
-    }).catch(()=>{});
+    }).catch(err => { showDebug("Error loading leaderboard"); console.error(err); });
   }
-
-  // -------- All-Time leaderboard (getHall) --------
-  let allTimeLoaded = false;
-  let allTimeData = [];
-  function preloadAllTime() {
-    api.getHall().then(rows => { allTimeData = rows || []; allTimeLoaded = true; }).catch(() => {});
-  }
-  function loadAllTime() {
-    if (!allTimeList) return;
-    const rows = allTimeLoaded ? (allTimeData || []) : (window.__hallCache || []);
-    if (!rows.length) { allTimeList.innerHTML = "<li>No All-Time data yet.</li>"; return; }
-
-    allTimeList.innerHTML = "<h3>All-Time Leaderboard</h3>" +
-      rows.map(r => {
-        const pct = (Number(r.crown_rate || 0) * 100).toFixed(1) + "%";
-        return `<div>${r.username}: 👑 ${r.crowns} • Events: ${r.events_played} • Rate: ${pct}</div>`;
-      }).join("");
-  }
-
-  // -------- Bulk refresh helper --------
-  async function refreshAll() {
-    try {
-      setLoadingHint(true);
-      const [fights, picks, lb, hall, champ] = await Promise.allSettled([
-        api.getFights(),
-        api.getUserPicks(username),
-        api.getLeaderboard(),
-        api.getHall(),
-        api.getChampionBanner()
-      ]);
-
-      if (fights.status === "fulfilled" && Array.isArray(fights.value)) {
-        renderFightList(fights.value);
-      }
-      if (picks.status === "fulfilled") {
-        const r = picks.value || { success:false, picks:[] };
-        const div = document.getElementById("myPicks");
-        if (div) {
-          if (!r.success || !r.picks?.length) {
-            div.style.display = "none";
-            div.innerHTML = "";
-          } else {
-            div.style.display = "block";
-            div.innerHTML = "<h3>Your Picks</h3>" + r.picks.map(p =>
-              `<div>${p.fight}: ${p.winner} by ${p.method}${p.method==="Decision"?"":` (R${p.round||""})`}</div>`
-            ).join("");
-          }
-        }
-      }
-      if (lb.status === "fulfilled") {
-        const r = lb.value || { scores:{} };
-        if (leaderboardEl) {
-          const entries = Object.entries(r.scores || {}).sort((a,b)=>b[1]-a[1]);
-          leaderboardEl.innerHTML = "<h3>Weekly Leaderboard</h3>" +
-            entries.map(([u,s])=>`<div>${u}: ${s} pts</div>`).join("");
-        }
-      }
-      if (hall.status === "fulfilled") {
-        window.__hallCache = hall.value || [];
-      }
-      if (champ.status === "fulfilled") {
-        const msg = (champ.value && champ.value.message || "").trim();
-        if (champBanner) {
-          if (msg) {
-            champBanner.innerText = `🏆 ${msg.replace(/^🏆\s*/, "")}`;
-            champBanner.style.display = "block";
-          }
-        }
-      }
-    } finally {
-      setLoadingHint(false);
-      refreshBtn.style.display = "inline-block";
-    }
-  }
-
-  // Auto refresh when tab becomes active again
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      refreshAll();
-    }
-  });
-
-  // Auto refresh when back online
-  window.addEventListener("online", () => {
-    refreshAll();
-  });
-
-  // -------- Tabs --------
-  weeklyTabBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    if (leaderboardEl) leaderboardEl.style.display = "block";
-    if (allTimeList) allTimeList.style.display = "none";
-    weeklyTabBtn.setAttribute("aria-pressed","true");
-    allTimeTabBtn?.setAttribute("aria-pressed","false");
-  });
-
-  allTimeTabBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    loadAllTime();
-    if (leaderboardEl) leaderboardEl.style.display = "none";
-    if (allTimeList) allTimeList.style.display = "block";
-    weeklyTabBtn?.setAttribute("aria-pressed","false");
-    allTimeTabBtn.setAttribute("aria-pressed","true");
-  });
 });
