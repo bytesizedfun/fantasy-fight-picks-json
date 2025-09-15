@@ -4,336 +4,66 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fantasy Fight Picks</title>
-  <meta name="color-scheme" content="dark light" />
-  <style>
-    :root {
-      --bg: #0b0f14;
-      --card: #121923;
-      --muted: #1e2a38;
-      --text: #e6f0ff;
-      --text-dim: #9fb3c8;
-      --accent: #ff5876;
-      --accent-2: #0e6e6e;
-      --gold: #ffd166;
-      --green: #2ecc71;
-      --red: #ff4d4f;
-      --border: #203040;
-      --shadow: 0 10px 30px rgba(0,0,0,.35);
-      --radius: 14px;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji";
-      color: var(--text);
-      background: radial-gradient(1200px 600px at 50% -100px, #132132 30%, #0b0f14 60%) no-repeat fixed;
-      min-height: 100vh;
-    }
-    .wrap { max-width: 980px; margin: 32px auto; padding: 0 16px; }
-    header { text-align: center; margin-bottom: 22px; }
-    .logo { height: 64px; filter: drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
-    .title { margin: 10px 0 6px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-    .subtitle { color: var(--text-dim); font-weight: 600; }
-    #debugBanner {
-      display:none; margin:14px auto 0; padding:10px 12px; max-width:980px;
-      background: #1f2937; color: var(--gold); border: 1px solid #374151; border-radius: 10px;
-      font-weight: 700; text-align: center;
-    }
-
-    .pillrow { display:flex; gap:8px; justify-content:center; margin:18px 0; }
-    .pill { padding:8px 14px; border-radius:999px; border:1px solid var(--border); background:var(--muted); color:var(--text); cursor:pointer; }
-    .pill.active { background: var(--accent); border-color: transparent; color:#101010; font-weight:800; }
-    .split { display:grid; grid-template-columns: 1.2fr .8fr; gap:18px; }
-    @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
-
-    .card { background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)) , var(--card);
-            border:1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
-    .card h3 { margin:0; padding:14px 16px; border-bottom:1px solid var(--border); letter-spacing:.12em; text-transform:uppercase; }
-    .card .body { padding:14px 16px; }
-
-    .list { display:flex; flex-direction:column; gap:10px; }
-    .row {
-      display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--border);
-      background: #0f1621; border-radius: 10px;
-    }
-    .row .fight { flex: 1 1 auto; font-weight: 700; }
-    .row .meta { font-size: 13px; color: var(--text-dim); }
-
-    .btn {
-      cursor: pointer; border: 1px solid var(--border); border-radius: 12px; padding:10px 14px;
-      background: var(--muted); color: var(--text); font-weight: 700;
-    }
-    .btn.primary { background: var(--accent); color: #101010; border-color: transparent; }
-    .btn.green { background: var(--green); color: #08150e; border-color: transparent; }
-    .btn.red { background: var(--red); color: #180708; border-color: transparent; }
-    .center { text-align:center; }
-
-    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    @media (max-width: 680px) { .grid2 { grid-template-columns: 1fr; } }
-
-    .field { display:flex; flex-direction:column; gap:6px; }
-    .field label { font-size:13px; color: var(--text-dim); }
-    .select, .input {
-      width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0a1018; color:var(--text);
-    }
-    .points { color: var(--gold); font-weight: 900; }
-    .ok { color: var(--green); font-weight: 800; }
-    .bad { color: var(--red); font-weight: 800; }
-    .hint { color: var(--text-dim); font-size: 13px; }
-
-    footer { margin:28px 0; color: var(--text-dim); text-align:center; font-size: 13px; }
-  </style>
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <img class="logo" alt="Fantasy Fight Picks" src="/logo_fighter.png" onerror="this.style.display='none'">
-      <h1 class="title">🎤  IIIIIIIIIIIIT’S JOSH!</h1>
-      <div class="subtitle">Scoring • Leaderboard • Your Picks</div>
+  <div id="app">
+    <header class="app-header">
+      <div class="logo-row">
+        <h1 class="app-title">Fantasy Fight Picks</h1>
+      </div>
+      <div id="champBanner" class="champ-banner" style="display:none"></div>
+      <div id="debugBanner" class="debug-banner" style="display:none"></div>
     </header>
 
-    <div id="debugBanner">Debug…</div>
-
-    <div class="pillrow">
-      <button class="pill active" id="tabWeekly">Weekly</button>
-      <button class="pill" id="tabAllTime">All-Time</button>
-    </div>
-
-    <div class="split">
-      <!-- LEFT: Leaderboard -->
-      <section class="card" id="leaderboardCard">
-        <h3>Leaderboard</h3>
-        <div class="body">
-          <div class="list" id="leaderboardList"></div>
-          <div id="leaderboardEmpty" class="center hint" style="display:none">No leaderboard data (yet).</div>
-        </div>
+    <main class="content">
+      <section class="controls">
+        <label for="username">Your username (for picks)</label>
+        <input id="username" class="input" type="text" placeholder="Enter your name" />
       </section>
 
-      <!-- RIGHT: Champion + Picks -->
-      <section class="card">
-        <h3>Champion & Picks</h3>
-        <div class="body">
-          <div id="champBanner" class="row" style="display:none"></div>
+      <section class="scoring">
+        <div class="scoring-row">
+          <span class="score-pill">+1 <b class="tip" data-tip="Winner">Winner</b></span>
+          <span class="score-pill">+1 <b class="tip" data-tip="Method">Method</b></span>
+          <span class="score-pill">+1 <b class="tip" data-tip="Round">Round</b></span>
+          <span class="score-pill">+2 <b class="tip" data-tip="Underdog">Underdog</b></span>
+        </div>
+        <div id="tooltip" class="tooltip" style="display:none"></div>
+      </section>
 
-          <div class="field" style="margin-top:12px">
-            <label for="username">Your username</label>
-            <input id="username" class="input" placeholder="e.g., Josh" />
-          </div>
-
-          <div class="field" style="margin-top:12px">
-            <label>Your Picks</label>
-            <div id="picksList" class="list"></div>
-            <div id="picksEmpty" class="hint">Fights will appear here when available.</div>
-          </div>
-
-          <div class="center" style="margin-top:14px">
+      <section class="grid">
+        <div>
+          <h2>Card</h2>
+          <div id="cardList" class="card-list"></div>
+          <div class="actions">
             <button id="submitBtn" class="btn primary">Submit Picks</button>
+            <button id="clearBtn" class="btn danger">Clear Picks</button>
           </div>
         </div>
-      </section>
-    </div>
 
-    <footer>Powered by Google Sheets (GAS) + Render • All API calls via <code>/api/*</code></footer>
+        <div>
+          <h2>Your Picks</h2>
+          <div id="yourPicks" class="your-picks"></div>
+        </div>
+      </section>
+
+      <section class="leaderboard-section">
+        <h2>Leaderboard <span id="refreshCountdown" class="muted"></span></h2>
+        <div id="leaderboard" class="leaderboard"></div>
+
+        <h2 style="margin-top:20px;">All-Time</h2>
+        <div id="leaderboardAllTime" class="leaderboard"></div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span id="welcome"></span>
+    </footer>
   </div>
 
-  <script>
-    // === CONFIG (same-origin to your Render server) ===
-    const API_BASE = ""; // leave blank for same-origin
-
-    const debugEl = document.getElementById("debugBanner");
-    function showDebug(msg) {
-      if (!debugEl) return;
-      debugEl.textContent = msg;
-      debugEl.style.display = "block";
-    }
-    function hideDebug() { if (debugEl) debugEl.style.display = "none"; }
-
-    const els = {
-      lbList: document.getElementById("leaderboardList"),
-      lbEmpty: document.getElementById("leaderboardEmpty"),
-      picksList: document.getElementById("picksList"),
-      picksEmpty: document.getElementById("picksEmpty"),
-      champBanner: document.getElementById("champBanner"),
-      submitBtn: document.getElementById("submitBtn"),
-      username: document.getElementById("username"),
-      tabWeekly: document.getElementById("tabWeekly"),
-      tabAllTime: document.getElementById("tabAllTime"),
-    };
-
-    const api = {
-      async health(){ return (await fetch(`${API_BASE}/api/health`)).json(); },
-      async getFights(){ const r = await fetch(`${API_BASE}/api/fights`); if(!r.ok) throw new Error(r.status); return r.json(); },
-      async getLeaderboard(){ const r = await fetch(`${API_BASE}/api/leaderboard`); if(!r.ok) throw new Error(r.status); return r.json(); },
-      async getChampionBanner(){ const r = await fetch(`${API_BASE}/api/championBanner`); if(!r.ok) throw new Error(r.status); return r.json(); },
-      async submitPicks(username, picks) {
-        const r = await fetch(`${API_BASE}/api/submit`, {
-          method:"POST", headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ username, picks })
-        });
-        if(!r.ok) throw new Error(r.status);
-        return r.json();
-      }
-    };
-
-    // Render helpers
-    function renderLeaderboard(data) {
-      els.lbList.innerHTML = "";
-      if (!Array.isArray(data) || data.length === 0) {
-        els.lbEmpty.style.display = "block";
-        return;
-      }
-      els.lbEmpty.style.display = "none";
-      let rank = 1, i = 0;
-      // tolerate either array of {username, points} OR array of arrays
-      const norm = data.map(row => {
-        if (row && typeof row === "object") {
-          if ("username" in row && "points" in row) return row;
-          if ("name" in row && "score" in row) return { username: row.name, points: row.score };
-        }
-        if (Array.isArray(row)) return { username: row[0], points: row[1] };
-        return { username: String(row), points: 0 };
-      });
-
-      // sort desc by points if not pre-sorted
-      norm.sort((a,b)=> (Number(b.points||0) - Number(a.points||0)));
-
-      let lastPts = null, lastRank = 0;
-      for (const row of norm) {
-        const pts = Number(row.points||0);
-        if (pts !== lastPts) { rank = i+1; lastRank = rank; lastPts = pts; }
-        else { rank = lastRank; }
-        const div = document.createElement("div");
-        div.className = "row";
-        div.innerHTML = `
-          <div class="fight">${rank}. ${row.username ?? "—"}</div>
-          <div class="points">${pts.toFixed ? pts.toFixed(0) : pts}</div>
-        `;
-        els.lbList.appendChild(div);
-        i++;
-      }
-    }
-
-    function renderChampion(champ) {
-      // Accept: {username, usernames:[..], text, label} or array of usernames
-      let names = [];
-      if (!champ) { els.champBanner.style.display="none"; return; }
-      if (Array.isArray(champ)) names = champ;
-      else if (typeof champ === "object" && champ.usernames) names = champ.usernames;
-      else if (typeof champ === "object" && champ.username) names = [champ.username];
-      else if (typeof champ === "string") names = [champ];
-
-      if (names.length === 0) { els.champBanner.style.display = "none"; return; }
-
-      els.champBanner.style.display = "flex";
-      els.champBanner.innerHTML = `
-        <div class="fight">👑 Champion of the Week: <strong>${names.join(" & ")}</strong></div>
-        <div class="meta">from Google Sheets</div>
-      `;
-    }
-
-    let fights = [];
-    function renderFights(list) {
-      fights = Array.isArray(list) ? list : [];
-      els.picksList.innerHTML = "";
-      if (fights.length === 0) {
-        els.picksEmpty.style.display = "block";
-        return;
-      }
-      els.picksEmpty.style.display = "none";
-
-      fights.forEach((f, idx) => {
-        const row = document.createElement("div");
-        row.className = "row";
-        const f1 = f.fighter1 ?? (f.Fighter1 || f.F1 || "");
-        const f2 = f.fighter2 ?? (f.Fighter2 || f.F2 || "");
-        const label = f.fight || `${f1} vs ${f2}`;
-        row.innerHTML = `
-          <div class="fight">${label}</div>
-          <div class="grid2" style="flex:0 0 360px; max-width:360px">
-            <select class="select" data-idx="${idx}" data-key="winner">
-              <option value="">Winner…</option>
-              <option>${f1}</option>
-              <option>${f2}</option>
-            </select>
-            <select class="select" data-idx="${idx}" data-key="method">
-              <option value="">Method…</option>
-              <option>KO/TKO</option>
-              <option>Submission</option>
-              <option>Decision</option>
-            </select>
-          </div>
-        `;
-        els.picksList.appendChild(row);
-      });
-
-      // hook changes into local state
-      els.picksList.addEventListener("change", (e) => {
-        const t = e.target;
-        if (!t.matches("select[data-idx]")) return;
-        const i = Number(t.dataset.idx), key = t.dataset.key, val = t.value;
-        fights[i] = fights[i] || {};
-        fights[i].pick = fights[i].pick || {};
-        fights[i].pick[key] = val;
-      }, { once: true });
-    }
-
-    async function submit() {
-      const username = (els.username.value || "").trim();
-      if (!username) { showDebug("Enter a username before submitting."); return; }
-      const picks = fights.map((f) => ({
-        fight: f.fight || `${f.fighter1 ?? ""} vs ${f.fighter2 ?? ""}`.trim(),
-        winner: f?.pick?.winner || "",
-        method: f?.pick?.method || "",
-      }));
-      try {
-        const resp = await api.submitPicks(username, picks);
-        showDebug(`Submitted ✓ ${typeof resp === "object" ? "" : String(resp)}`);
-        setTimeout(hideDebug, 3000);
-      } catch (e) {
-        showDebug("Submit failed. Check server logs.");
-      }
-    }
-
-    // TAB UI (placeholder for future weekly/all-time switch)
-    els.tabWeekly.addEventListener("click", () => {
-      els.tabWeekly.classList.add("active");
-      els.tabAllTime.classList.remove("active");
-    });
-    els.tabAllTime.addEventListener("click", () => {
-      els.tabAllTime.classList.add("active");
-      els.tabWeekly.classList.remove("active");
-    });
-
-    // ===== Boot
-    (async () => {
-      try {
-        const health = await api.health();
-        if (!health?.ok) showDebug("Server running but /api/health not OK");
-      } catch {
-        showDebug("Server unreachable — open /api/health.");
-        return;
-      }
-
-      // Champion banner
-      try { renderChampion(await api.getChampionBanner()); } catch { /* ignore */ }
-
-      // Leaderboard
-      try { renderLeaderboard(await api.getLeaderboard()); } catch { showDebug("No leaderboard yet."); }
-
-      // Fights
-      try {
-        const fightsArr = await api.getFights();
-        if (!Array.isArray(fightsArr) || fightsArr.length === 0) {
-          showDebug("Connected ✓ but no fights returned by GAS getFights().");
-        }
-        renderFights(fightsArr);
-      } catch {
-        showDebug("Failed to load fights — check GAS getFights().");
-      }
-
-      // Submit handler
-      els.submitBtn.addEventListener("click", submit);
-    })();
-  </script>
+  <script src="./script.js"></script>
 </body>
 </html>
