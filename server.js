@@ -1,221 +1,177 @@
-// Express proxy + scraper (Render-ready)
-// Security: CORS allowlist, rate limits, admin API key for scraper writes
+// Express server + optional rate limiting + GAS proxy + simple fights feed
+// Works on Render out of the box. Safe with CommonJS.
 
 const express = require("express");
-const rateLimit = require("express-rate-limit");
-const fetch = require("node-fetch");
-const cheerio = require("cheerio");
+const cors = require("cors");
+const morgan = require("morgan");
 
-const app = express();
+// ---- Optional deps (graceful fallback so missing modules don't crash boot)
+let rateLimit;
+try {
+  rateLimit = require("express-rate-limit");
+} catch {
+  console.warn("[warn] express-rate-limit not installed; running without rate limits");
+  rateLimit = () => (req, res, next) => next();
+}
+
+let cheerio;
+try {
+  cheerio = require("cheerio");
+} catch {
+  console.warn("[warn] cheerio not installed; disabling HTML scraping features");
+  cheerio = null;
+}
+
+const fetch = require("node-fetch"); // v2 CJS
+
+// ---- Config via env
 const PORT = process.env.PORT || 3000;
-
-// === ENV ===
-// MUST SET on Render:
-// GAS_URL: your deployed Apps Script web app URL (ending with /exec)
-// FRONTEND_ORIGIN: your site origin (e.g., https://fantasy-fight-picks-json.onrender.com)
-// ADMIN_API_KEY: random string for posting results into GAS
+// Google Apps Script Web App URL, e.g. https://script.google.com/macros/s/XXXX/exec
 const GAS_URL = process.env.GAS_URL || "";
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "";
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
+// Optional: an upstream JSON endpoint for fights (or use local file/public)
+const FIGHTS_JSON = process.env.FIGHTS_JSON || ""; // e.g. https://raw.githubusercontent.com/your/repo/main/fights.json
 
-// CORS
-const allowlist = new Set([
-  FRONTEND_ORIGIN,
-  "http://localhost:3000",
-  "http://localhost:5173",
-]);
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowlist.has(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Credentials", "false");
-  }
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, X-Session-Token"
-  );
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
+// ---- App init
+const app = express();
+app.set("trust proxy", 1);
+app.use(express.json({ limit: "1mb" }));
+app.use(cors());
+app.use(morgan("tiny"));
+
+// Basic global rate limit (no-op if module missing)
+app.use(
+  rateLimit({
+    windowMs: 60_000,
+    max: 300
+  })
+);
+
+// ---- Health
+app.get("/api/health", (req, res) => {
+  res.json({
+    ok: true,
+    time: new Date().toISOString(),
+    env: {
+      hasGAS: Boolean(GAS_URL),
+      hasCheerio: Boolean(cheerio),
+    }
+  });
 });
 
-app.use(express.json({ limit: "200kb" }));
+// ---- Fights feed
+// Strategy:
+// 1) If FIGHTS_JSON env is set, fetch from there.
+// 2) Else try to read a local JSON file at /public/fights.json (if present).
+// 3) Else return empty array with a helpful message.
+app.get("/api/fights", async (req, res) => {
+  try {
+    if (FIGHTS_JSON) {
+      const r = await fetch(FIGHTS_JSON, { timeout: 10_000 });
+      if (!r.ok) throw new Error(`Upstream ${FIGHTS_JSON} returned ${r.status}`);
+      const data = await r.json();
+      if (!Array.isArray(data)) throw new Error("Upstream fights is not an array");
+      return res.json(data);
+    }
+    // Try local JSON (optional)
+    try {
+      const path = require("path");
+      const fs = require("fs");
+      const p = path.join(__dirname, "public", "fights.json");
+      if (fs.existsSync(p)) {
+        const text = fs.readFileSync(p, "utf8");
+        const data = JSON.parse(text);
+        if (Array.isArray(data)) return res.json(data);
+      }
+    } catch {}
+    // Nothing available
+    return res.status(200).json({
+      message:
+        "No fights found. Set FIGHTS_JSON env to a JSON array URL or add public/fights.json.",
+      fights: []
+    });
+  } catch (e) {
+    console.error("[/api/fights] error", e);
+    res.status(500).json({ error: "Failed to load fights", detail: String(e.message || e) });
+  }
+});
 
-// Rate limits
-const readLimiter = rateLimit({ windowMs: 60_000, max: 60 });
-const writeLimiter = rateLimit({ windowMs: 60_000, max: 10 });
-app.use("/api", readLimiter);
-app.use("/api/login", writeLimiter);
-app.use("/api/picks", writeLimiter);
-
-// Static (serve the frontend/PWA)
-app.use(express.static("public"));
-
-// --- Proxy helpers ---
-async function gasGet(route) {
-  const url = `${GAS_URL}?route=${encodeURIComponent(route)}`;
-  const r = await fetch(url, { method: "GET", timeout: 15000 });
-  if (!r.ok) throw new Error(`/gas ${route} ${r.status}`);
-  return r.json();
-}
-async function gasPost(route, payload) {
-  const url = `${GAS_URL}?route=${encodeURIComponent(route)}`;
-  const r = await fetch(url, {
+// ---- GAS proxy helpers
+async function gasFetch(payload) {
+  if (!GAS_URL) {
+    throw new Error("GAS_URL env not set. Add GAS_URL in Render → Environment.");
+  }
+  const r = await fetch(GAS_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    // GAS often expects a JSON body with an 'action' field
     body: JSON.stringify(payload),
-    timeout: 20000,
+    timeout: 15_000
   });
-  if (!r.ok) throw new Error(`/gas ${route} ${r.status} ${await r.text()}`);
-  return r.json();
+  const text = await r.text();
+  // GAS can return text or JSON; try JSON first
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text, status: r.status };
+  }
 }
 
-// --- Public API (frontend) ---
-app.get("/api/health", async (req, res) => {
-  res.json({ ok: true, ts: Date.now() });
-});
-
-app.get("/api/meta", async (req, res) => {
-  const data = await gasGet("meta");
-  res.json(data);
-});
-app.get("/api/fights", async (req, res) => res.json(await gasGet("fights")));
-app.get("/api/results", async (req, res) => res.json(await gasGet("results")));
-app.get("/api/weekly", async (req, res) => res.json(await gasGet("weekly")));
-app.get("/api/alltime", async (req, res) => res.json(await gasGet("alltime")));
-
-app.post("/api/login", async (req, res) => {
-  const { username, pin } = req.body || {};
-  if (!username || !/^\d{4}$/.test(pin))
-    return res.status(400).json({ error: "Invalid login" });
+// Example: leaderboard passthrough
+app.get("/api/leaderboard", async (req, res) => {
   try {
-    const data = await gasPost("login", { username, pin });
+    const data = await gasFetch({ action: "getLeaderboard" });
     res.json(data);
   } catch (e) {
-    res.status(400).json({ error: e.message || "Login failed" });
+    console.error("[/api/leaderboard] error", e);
+    res.status(500).json({ error: "Failed to fetch leaderboard", detail: String(e.message || e) });
   }
 });
 
-app.get("/api/picks/mine", async (req, res) => {
-  const token = req.headers["x-session-token"] || "";
-  if (!token) return res.status(401).json({ error: "No token" });
+// Example: champion banner passthrough (kept for compatibility)
+app.get("/api/championBanner", async (req, res) => {
   try {
-    const data = await gasGet(
-      `picks_mine&token=${encodeURIComponent(token)}`
-    );
+    const data = await gasFetch({ action: "getChampionBanner" });
     res.json(data);
   } catch (e) {
-    res.status(400).json({ error: "Failed" });
+    console.error("[/api/championBanner] error", e);
+    res.status(500).json({ error: "Failed to fetch champion banner", detail: String(e.message || e) });
   }
 });
 
-app.post("/api/picks", async (req, res) => {
-  const token = req.headers["x-session-token"] || "";
-  if (!token) return res.status(401).json({ error: "No token" });
+// Example: submit picks passthrough
+app.post("/api/submit", async (req, res) => {
   try {
-    const data = await gasPost("picks", { token, picks: req.body?.picks || [] });
+    const { username, picks } = req.body || {};
+    const data = await gasFetch({ action: "submitPicks", username, picks });
     res.json(data);
   } catch (e) {
-    res.status(400).json({ error: e.message || "Save failed" });
+    console.error("[/api/submit] error", e);
+    res.status(500).json({ error: "Failed to submit picks", detail: String(e.message || e) });
   }
 });
 
-// --- Scraper (UFCStats) ---
-let LAST_SCRAPE = { html: "", at: 0 };
-
-async function fetchEventUrlFromMeta() {
-  const meta = await gasGet("meta");
-  return { url: meta.event_url || "", status: meta.status || "scheduled" };
-}
-
-async function scrapeAndPublish() {
-  if (!ADMIN_API_KEY) {
-    console.warn("ADMIN_API_KEY missing");
-    return;
+// ---- Optional: simple scrape (disabled if cheerio missing)
+// Keep a stub route so your frontend doesn’t 404 if it calls it
+app.get("/api/ufcstats/:cardId", async (req, res) => {
+  if (!cheerio) {
+    return res.status(200).json({ disabled: true, reason: "cheerio not installed" });
   }
-  const { url } = await fetchEventUrlFromMeta();
-  if (!url) return;
-
-  // Don't hammer: cache HTML for 30s
-  const now = Date.now();
-  let html = "";
-  if (now - LAST_SCRAPE.at < 30_000 && LAST_SCRAPE.html) {
-    html = LAST_SCRAPE.html;
-  } else {
-    const r = await fetch(url, { timeout: 15000 });
-    if (!r.ok) return;
-    html = await r.text();
-    LAST_SCRAPE = { html, at: now };
-  }
-
-  const $ = cheerio.load(html);
-  const fights = [];
-
-  // NOTE: UFCStats markup changes sometimes. This is a conservative parse.
-  $(".b-fight-details__table-row").each((_, tr) => {
-    const cols = $(tr).find(".b-fight-details__table-col");
-    if (cols.length < 2) return;
-
-    // bout name
-    const names = $(cols[1]).text().trim().replace(/\s+/g, " ");
-    const fight = names || $(cols[0]).text().trim();
-    if (!fight) return;
-
-    // result (winner)
-    let winner = "";
-    const resultCol = $(cols[0]).text().trim();
-    const m =
-      /([A-Za-z' .-]+)\s+def\.\s+([A-Za-z' .-]+)/i.exec(resultCol) || null;
-    if (m) winner = m[1].trim();
-
-    // method + round
-    let method = "";
-    let round = "";
-    const methodCol = $(cols[6]).text().trim();
-    if (methodCol) {
-      if (/KO|TKO/i.test(methodCol)) method = "KO/TKO";
-      else if (/SUB/i.test(methodCol)) method = "Submission";
-      else if (/DEC/i.test(methodCol)) method = "Decision";
-    }
-    const roundCol = $(cols[8]).text().trim();
-    if (roundCol) round = roundCol;
-
-    if (winner) fights.push({ fight, winner, method, round });
-  });
-
-  if (!fights.length) return;
-
-  // 🔐 IMPORTANT: include _adminKey in the BODY (GAS reads body, not headers)
-  await gasPost("admin_results_update", {
-    _adminKey: ADMIN_API_KEY,
-    fights,
-  });
-}
-
-async function scrapeLoop() {
-  try {
-    await scrapeAndPublish();
-  } catch (e) {
-    // silent
-  }
-  setTimeout(scrapeLoop, 30_000);
-}
-
-if (process.env.SCRAPE_LOOP === "1") {
-  scrapeLoop();
-}
-
-// Manual trigger
-app.post("/api/admin/scrape", async (req, res) => {
-  const key = req.headers["x-admin-key"] || req.body?._adminKey || "";
-  if (key !== ADMIN_API_KEY) return res.status(401).json({ error: "forbidden" });
-  try {
-    await scrapeAndPublish();
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: "scrape failed" });
-  }
+  // You can implement real scraping here if needed.
+  return res.status(200).json({ ok: true, note: "Scraper stub. Implement when needed." });
 });
 
-app.listen(PORT, () => console.log(`Server on :${PORT}`));
+// ---- Static (optional): serve your SPA/public
+app.use(express.static("public"));
+
+// ---- Fallback 404
+app.use((req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
+// ---- Start
+app.listen(PORT, () => {
+  console.log(`[server] listening on :${PORT}`);
+  if (!GAS_URL) {
+    console.warn("[warn] GAS_URL is not set. GAS proxy routes will return errors until you add it.");
+  }
+});
