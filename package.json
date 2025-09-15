@@ -1,20 +1,14 @@
 {
   "name": "fantasy-fight-picks",
-  "version": "1.0.0",
-  "description": "UFC fight picks app API server",
+  "version": "1.1.0",
+  "description": "UFC fantasy fight picks (Render + GAS)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "express-rate-limit": "^6.10.0",
-    "morgan": "^1.10.0",
-    "node-fetch": "^2.6.7"
-  },
-  "engines": {
-    "node": ">=18"
+    "express": "^4.19.2",
+    "node-fetch": "^2.6.9"
   },
   "license": "MIT"
 }
