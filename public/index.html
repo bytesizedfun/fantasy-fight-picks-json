@@ -1,64 +1,140 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
+    content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
   />
   <title>Fantasy Fight Picks</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="manifest" href="site.webmanifest" />
-  <link rel="icon" href="favicon.ico" />
-  <meta http-equiv="Cache-Control" content="no-store" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0b1220" />
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <style>
-    /* Tiny debug banner (hidden unless there's an error) */
-    #debugBanner {
-      display:none; position:sticky; top:0; z-index:9999;
-      background:#222; color:#fff; padding:8px 12px; font-size:12px;
+    /* Critical CSS (above-the-fold) – rest lives in style.css */
+    :root{
+      --bg:#0b1220;
+      --card:#111a2e;
+      --muted:#1a2440;
+      --text:#eef2ff;
+      --sub:#9fb0d9;
+      --accent:#f6c34a;  /* gold */
+      --accent-2:#e24d4d;/* warm red */
+      --ok:#35c26b;      /* green */
+      --bad:#ff5a5f;     /* red */
+      --border: #233052;
     }
+    *{box-sizing:border-box}
+    html,body{height:100%;}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    }
+    .container{max-width:980px; margin:0 auto; padding:16px;}
+    header{display:flex; align-items:center; gap:12px; padding:16px 0;}
+    .brand{font-size:1.25rem; font-weight:700; letter-spacing:.2px}
+    .pill{padding:4px 10px; border:1px solid var(--border); border-radius:999px; color:var(--sub)}
+    .card{
+      background:linear-gradient(180deg, var(--card), #0d162b);
+      border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:0 6px 22px rgba(0,0,0,.25);
+    }
+    .row{display:flex; gap:12px; flex-wrap:wrap}
+    .col{flex:1 1 320px}
+    .label{font-size:.85rem; color:var(--sub); margin-bottom:6px}
+    input, select, button{
+      width:100%; background:#0d162b; color:var(--text);
+      border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:1rem;
+      outline: none;
+    }
+    button.primary{background:var(--accent); color:#1a1200; border:none; font-weight:700}
+    button.primary:disabled{opacity:.6}
+    .fight{
+      display:grid; grid-template-columns:1fr 120px 150px 120px; gap:10px; align-items:center;
+      padding:10px; border:1px solid var(--border); border-radius:12px; background:#0f1930;
+    }
+    .fight + .fight{margin-top:10px}
+    .fighters{display:flex; flex-direction:column; gap:6px}
+    .fighter{display:flex; align-items:center; gap:8px}
+    .dog{filter:drop-shadow(0 0 6px rgba(246,195,74,.55))}
+    .status{font-size:.9rem; color:var(--sub)}
+    .points{font-weight:700; color:var(--accent)}
+    .ok{color:var(--ok)}
+    .bad{color:var(--bad)}
+    .table{width:100%; border-collapse:separate; border-spacing:0 8px;}
+    .table th,.table td{padding:10px 12px; text-align:left}
+    .table tr{background:#0f1930; border:1px solid var(--border)}
+    .table tr td:first-child,.table tr th:first-child{border-radius:10px 0 0 10px}
+    .table tr td:last-child,.table tr th:last-child{border-radius:0 10px 10px 0}
+    footer{opacity:.8; font-size:.85rem; padding:32px 0}
+    .hidden{display:none !important}
   </style>
+  <link rel="stylesheet" href="/style.css" />
+  <script>
+    if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('/sw.js'); }); }
+  </script>
 </head>
 <body>
-  <div id="debugBanner"></div>
+  <div class="container">
+    <header>
+      <div class="brand">Fantasy Fight Picks</div>
+      <span id="eventName" class="pill">loading card…</span>
+      <span id="lockInfo" class="pill"></span>
+    </header>
 
-  <header>
-    <h1 id="welcome" style="display:none;"></h1>
-    <div id="champBanner" style="display:none;"></div>
-  </header>
+    <!-- LOGIN -->
+    <section class="card" id="loginCard">
+      <div class="row">
+        <div class="col">
+          <div class="label">Username</div>
+          <input id="username" placeholder="e.g., Josh" maxlength="24" />
+        </div>
+        <div class="col">
+          <div class="label">PIN (4 digits)</div>
+          <input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" />
+        </div>
+        <div class="col" style="align-self:flex-end">
+          <button id="loginBtn" class="primary">Log in</button>
+        </div>
+      </div>
+      <div id="loginMsg" class="status" style="margin-top:8px"></div>
+    </section>
 
-  <section id="usernamePrompt">
-    <input id="usernameInput" type="text" placeholder="Enter your name" />
-    <button type="button">Start</button>
-  </section>
+    <!-- PICKS -->
+    <section class="card hidden" id="picksCard">
+      <div class="row">
+        <div class="col"><div class="label">Welcome</div><div id="welcome" style="font-weight:700"></div></div>
+        <div class="col"><div class="label">Status</div><div id="status" class="status">Loading…</div></div>
+        <div class="col" style="align-self:flex-end">
+          <button id="submitBtn" class="primary">Submit Picks</button>
+        </div>
+      </div>
 
-  <main id="controls">
-    <nav class="tabs">
-      <button id="tabWeekly" aria-pressed="true">Weekly</button>
-      <button id="tabAllTime" aria-pressed="false">All-Time</button>
-    </nav>
+      <div id="fights"></div>
 
-    <section id="fightList" style="display:none;"></section>
-    <button id="submitBtn" style="display:none;">Submit Picks</button>
+      <div id="submitMsg" class="status" style="margin-top:10px"></div>
+    </section>
 
-    <section id="myPicks" style="display:none;"></section>
+    <!-- WEEKLY LEADERBOARD -->
+    <section class="card hidden" id="weeklyCard">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px">
+        <div class="label">Weekly Leaderboard</div>
+        <button id="refreshWeekly" class="pill" style="cursor:pointer">Refresh</button>
+      </div>
+      <table class="table" id="weeklyTable"></table>
+    </section>
 
-    <ul id="leaderboard" class="board weekly" style="display:block;"></ul>
-    <ul id="allTimeBoard" class="board" style="display:none;"></ul>
-  </main>
+    <!-- ALL-TIME (manual) -->
+    <section class="card hidden" id="allTimeCard">
+      <div class="label">All-Time (manual from Sheets)</div>
+      <table class="table" id="allTimeTable"></table>
+    </section>
 
-  <!-- IMPORTANT: set API base BEFORE loading script.js -->
-  <script>
-    // If your frontend and backend are on the same Render service, this is correct:
-    window.API_BASE = "/api";
+    <footer class="container status">🐶 = underdog · KO/TKO | SUB | DEC · 5 rounds only for main events</footer>
+  </div>
 
-    // If you host the frontend elsewhere, point to your Render backend full URL, e.g.:
-    // window.API_BASE = "https://fantasy-fight-picks-json.onrender.com/api";
-  </script>
-
-  <!-- Cache-bust the script on each deploy (bump v= number when you redeploy) -->
-  <script src="script.js?v=2025-09-13-1" defer></script>
+  <script src="/script.js"></script>
 </body>
 </html>
