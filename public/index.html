@@ -7,14 +7,27 @@
     content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
   />
   <title>Fantasy Fight Picks</title>
+
+  <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#0b1220" />
-  <link rel="icon" href="/favicon-32.png" sizes="32x32" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Icons / Favicons -->
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" />
+  <link rel="icon" href="/favicon-48.png" sizes="48x48" />
+  <link rel="icon" href="/favicon-64.png" sizes="64x64" />
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+
+  <!-- Optional platform integrations (safe to keep if present in /public) -->
+  <meta name="msapplication-config" content="/browserconfig.xml">
+  <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#f6c34a">
+
+  <!-- Critical CSS (above-the-fold) – rest in style.css -->
   <style>
-    /* Critical CSS (above-the-fold) – rest lives in style.css */
     :root{
       --bg:#0b1220;
       --card:#111a2e;
@@ -25,13 +38,14 @@
       --accent-2:#e24d4d;/* warm red */
       --ok:#35c26b;      /* green */
       --bad:#ff5a5f;     /* red */
-      --border: #233052;
+      --border:#233052;
     }
     *{box-sizing:border-box}
     html,body{height:100%;}
     body{
       margin:0; background:var(--bg); color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
     .container{max-width:980px; margin:0 auto; padding:16px;}
     header{display:flex; align-items:center; gap:12px; padding:16px 0;}
@@ -39,7 +53,8 @@
     .pill{padding:4px 10px; border:1px solid var(--border); border-radius:999px; color:var(--sub)}
     .card{
       background:linear-gradient(180deg, var(--card), #0d162b);
-      border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:0 6px 22px rgba(0,0,0,.25);
+      border:1px solid var(--border); border-radius:14px; padding:16px;
+      box-shadow:0 6px 22px rgba(0,0,0,.25);
     }
     .row{display:flex; gap:12px; flex-wrap:wrap}
     .col{flex:1 1 320px}
@@ -58,11 +73,8 @@
     .fight + .fight{margin-top:10px}
     .fighters{display:flex; flex-direction:column; gap:6px}
     .fighter{display:flex; align-items:center; gap:8px}
-    .dog{filter:drop-shadow(0 0 6px rgba(246,195,74,.55))}
     .status{font-size:.9rem; color:var(--sub)}
     .points{font-weight:700; color:var(--accent)}
-    .ok{color:var(--ok)}
-    .bad{color:var(--bad)}
     .table{width:100%; border-collapse:separate; border-spacing:0 8px;}
     .table th,.table td{padding:10px 12px; text-align:left}
     .table tr{background:#0f1930; border:1px solid var(--border)}
@@ -70,10 +82,19 @@
     .table tr td:last-child,.table tr th:last-child{border-radius:0 10px 10px 0}
     footer{opacity:.8; font-size:.85rem; padding:32px 0}
     .hidden{display:none !important}
+    #fights { margin-top: 12px; display: grid; gap: 10px; }
+    #submitBtn { min-width: 180px; }
+    @media (max-width: 720px){
+      .fight{ grid-template-columns: 1fr; gap:8px; }
+    }
   </style>
+
   <link rel="stylesheet" href="/style.css" />
+
   <script>
-    if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('/sw.js'); }); }
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>{ navigator.serviceWorker.register('/sw.js'); });
+    }
   </script>
 </head>
 <body>
@@ -132,7 +153,9 @@
       <table class="table" id="allTimeTable"></table>
     </section>
 
-    <footer class="container status">🐶 = underdog · KO/TKO | SUB | DEC · 5 rounds only for main events</footer>
+    <footer class="container status">
+      🐶 = underdog · KO/TKO | SUB | DEC · 5 rounds only for main events
+    </footer>
   </div>
 
   <script src="/script.js"></script>
