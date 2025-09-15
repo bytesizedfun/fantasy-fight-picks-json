@@ -19,15 +19,22 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "";
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
 
 // CORS
-const allowlist = new Set([FRONTEND_ORIGIN, "http://localhost:3000", "http://localhost:5173"]);
-app.use((req,res,next)=>{
+const allowlist = new Set([
+  FRONTEND_ORIGIN,
+  "http://localhost:3000",
+  "http://localhost:5173",
+]);
+app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin && allowlist.has(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Credentials", "false");
   }
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Session-Token, X-Admin-Key");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, X-Session-Token"
+  );
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
@@ -42,7 +49,7 @@ app.use("/api", readLimiter);
 app.use("/api/login", writeLimiter);
 app.use("/api/picks", writeLimiter);
 
-// Static (for PWA assets if you deploy frontend here as well)
+// Static (serve the frontend/PWA)
 app.use(express.static("public"));
 
 // --- Proxy helpers ---
@@ -52,35 +59,36 @@ async function gasGet(route) {
   if (!r.ok) throw new Error(`/gas ${route} ${r.status}`);
   return r.json();
 }
-async function gasPost(route, payload, headers = {}) {
+async function gasPost(route, payload) {
   const url = `${GAS_URL}?route=${encodeURIComponent(route)}`;
   const r = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type":"application/json", ...headers },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-    timeout: 20000
+    timeout: 20000,
   });
   if (!r.ok) throw new Error(`/gas ${route} ${r.status} ${await r.text()}`);
   return r.json();
 }
 
 // --- Public API (frontend) ---
-app.get("/api/health", async (req,res) => {
+app.get("/api/health", async (req, res) => {
   res.json({ ok: true, ts: Date.now() });
 });
 
-app.get("/api/meta", async (req,res) => {
+app.get("/api/meta", async (req, res) => {
   const data = await gasGet("meta");
   res.json(data);
 });
-app.get("/api/fights", async (req,res) => res.json(await gasGet("fights")));
-app.get("/api/results", async (req,res) => res.json(await gasGet("results")));
-app.get("/api/weekly", async (req,res) => res.json(await gasGet("weekly")));
-app.get("/api/alltime", async (req,res) => res.json(await gasGet("alltime")));
+app.get("/api/fights", async (req, res) => res.json(await gasGet("fights")));
+app.get("/api/results", async (req, res) => res.json(await gasGet("results")));
+app.get("/api/weekly", async (req, res) => res.json(await gasGet("weekly")));
+app.get("/api/alltime", async (req, res) => res.json(await gasGet("alltime")));
 
-app.post("/api/login", async (req,res) => {
+app.post("/api/login", async (req, res) => {
   const { username, pin } = req.body || {};
-  if (!username || !/^\d{4}$/.test(pin)) return res.status(400).json({ error: "Invalid login" });
+  if (!username || !/^\d{4}$/.test(pin))
+    return res.status(400).json({ error: "Invalid login" });
   try {
     const data = await gasPost("login", { username, pin });
     res.json(data);
@@ -89,18 +97,20 @@ app.post("/api/login", async (req,res) => {
   }
 });
 
-app.get("/api/picks/mine", async (req,res) => {
+app.get("/api/picks/mine", async (req, res) => {
   const token = req.headers["x-session-token"] || "";
   if (!token) return res.status(401).json({ error: "No token" });
   try {
-    const data = await gasGet(`picks_mine&token=${encodeURIComponent(token)}`);
+    const data = await gasGet(
+      `picks_mine&token=${encodeURIComponent(token)}`
+    );
     res.json(data);
   } catch (e) {
     res.status(400).json({ error: "Failed" });
   }
 });
 
-app.post("/api/picks", async (req,res) => {
+app.post("/api/picks", async (req, res) => {
   const token = req.headers["x-session-token"] || "";
   if (!token) return res.status(401).json({ error: "No token" });
   try {
@@ -120,8 +130,11 @@ async function fetchEventUrlFromMeta() {
 }
 
 async function scrapeAndPublish() {
-  if (!ADMIN_API_KEY) { console.warn("ADMIN_API_KEY missing"); return; }
-  const { url, status } = await fetchEventUrlFromMeta();
+  if (!ADMIN_API_KEY) {
+    console.warn("ADMIN_API_KEY missing");
+    return;
+  }
+  const { url } = await fetchEventUrlFromMeta();
   if (!url) return;
 
   // Don't hammer: cache HTML for 30s
@@ -137,20 +150,26 @@ async function scrapeAndPublish() {
   }
 
   const $ = cheerio.load(html);
-  // This selector may need tweaking if UFCStats markup changes:
   const fights = [];
+
+  // NOTE: UFCStats markup changes sometimes. This is a conservative parse.
   $(".b-fight-details__table-row").each((_, tr) => {
     const cols = $(tr).find(".b-fight-details__table-col");
     if (cols.length < 2) return;
-    const names = $(cols[1]).text().trim().replace(/\s+/g," ");
-    const bout = names || $(cols[0]).text().trim();
-    const resultCol = $(cols[0]).text().trim();
-    // Heuristic parse — you can refine as needed:
-    const m = /(\b[A-Za-z' .-]+)\s+def\.\s+([A-Za-z' .-]+)/i.exec(resultCol) || null;
+
+    // bout name
+    const names = $(cols[1]).text().trim().replace(/\s+/g, " ");
+    const fight = names || $(cols[0]).text().trim();
+    if (!fight) return;
+
+    // result (winner)
     let winner = "";
+    const resultCol = $(cols[0]).text().trim();
+    const m =
+      /([A-Za-z' .-]+)\s+def\.\s+([A-Za-z' .-]+)/i.exec(resultCol) || null;
     if (m) winner = m[1].trim();
 
-    // Pull method/round if available
+    // method + round
     let method = "";
     let round = "";
     const methodCol = $(cols[6]).text().trim();
@@ -162,33 +181,41 @@ async function scrapeAndPublish() {
     const roundCol = $(cols[8]).text().trim();
     if (roundCol) round = roundCol;
 
-    if (bout) fights.push({ fight: bout, winner, method, round });
+    if (winner) fights.push({ fight, winner, method, round });
   });
 
   if (!fights.length) return;
 
-  await gasPost("admin_results_update", { fights }, { "X-Admin-Key": ADMIN_API_KEY });
-  if (status === "scheduled") {
-    // Flip status to live is optional (handled on Sheets if desired)
-  }
+  // 🔐 IMPORTANT: include _adminKey in the BODY (GAS reads body, not headers)
+  await gasPost("admin_results_update", {
+    _adminKey: ADMIN_API_KEY,
+    fights,
+  });
 }
 
-let loopActive = false;
 async function scrapeLoop() {
-  try { await scrapeAndPublish(); } catch(e){ /* silent */ }
+  try {
+    await scrapeAndPublish();
+  } catch (e) {
+    // silent
+  }
   setTimeout(scrapeLoop, 30_000);
 }
 
-// Optional auto loop
 if (process.env.SCRAPE_LOOP === "1") {
-  loopActive = true;
   scrapeLoop();
 }
 
 // Manual trigger
-app.post("/api/admin/scrape", async (req,res) => {
-  if ((req.headers["x-admin-key"] || "") !== ADMIN_API_KEY) return res.status(401).json({ error: "forbidden" });
-  try { await scrapeAndPublish(); res.json({ ok: true }); } catch(e){ res.status(500).json({ error: "scrape failed" }); }
+app.post("/api/admin/scrape", async (req, res) => {
+  const key = req.headers["x-admin-key"] || req.body?._adminKey || "";
+  if (key !== ADMIN_API_KEY) return res.status(401).json({ error: "forbidden" });
+  try {
+    await scrapeAndPublish();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: "scrape failed" });
+  }
 });
 
 app.listen(PORT, () => console.log(`Server on :${PORT}`));
