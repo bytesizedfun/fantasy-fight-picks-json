@@ -2,68 +2,208 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
   <title>Fantasy Fight Picks</title>
+  <meta name="description" content="Fast, lightweight UFC fantasy picks app." />
   <link rel="icon" href="/favicon.ico" />
-  <meta name="theme-color" content="#0f172a" />
-  <link rel="stylesheet" href="./style.css" />
+  <style>
+    /* Ultra-light, fast defaults (no frameworks, system fonts) */
+    :root {
+      --bg: #0f1115;
+      --panel: #151821;
+      --text: #e8eaf0;
+      --muted: #9aa3b2;
+      --accent: #3a7afe; /* blue accent, no gold */
+      --ok: #c6f6c6;     /* only for subtle borders/icons if needed */
+      --bad: #f5c2c7;    /* not for text colors – we use ✅/❌ instead */
+      --border: #252a36;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .title { font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+    .meta { font-size: 12px; color: var(--muted); }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin: 10px 0;
+    }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .row > * { flex: 1 1 220px; }
+
+    .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0b0d12;
+      color: var(--text);
+      outline: none;
+    }
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: #0b0d12;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .section-title { font-size: 16px; font-weight: 700; margin: 2px 0 8px; }
+    .tiny { font-size: 12px; color: var(--muted); }
+    .scoring { font-size: 13px; color: var(--muted); }
+
+    /* Lists */
+    .list { display: grid; gap: 10px; }
+    .fight { padding: 10px; border: 1px solid var(--border); border-radius: 8px; background:#0b0d12; }
+    .fight .name { font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+    .fight .grid { display: grid; gap: 8px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    @media (max-width: 720px) {
+      .fight .grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .status-bar { font-size: 12px; color: var(--muted); display:flex; justify-content:space-between; gap: 8px; }
+    .champ { font-size: 14px; }
+    .champ ul { margin: 6px 0 0 16px; padding: 0; }
+    .champ li { margin: 2px 0; }
+
+    .picks { font-size: 14px; }
+    .pick-line { display:flex; justify-content: space-between; gap:10px; padding:8px 10px; border:1px dashed var(--border); border-radius:8px; }
+    .right { text-align:right; }
+    .tag { font-size: 12px; padding: 2px 6px; border-radius: 6px; border:1px solid var(--border); color: var(--muted); display:inline-block; }
+    .ok { border-color: #274a2c; background:#0e1a11; }   /* for subtle ✅/❌ container tint only */
+    .bad { border-color: #4a272b; background:#1a0f11; }
+
+    .leaderboard table { width: 100%; border-collapse: collapse; }
+    .leaderboard th, .leaderboard td { border-bottom: 1px solid var(--border); padding: 8px 6px; text-align: left; font-size: 14px; }
+    .leaderboard th { color: var(--muted); font-weight: 600; }
+    .center { text-align: center; }
+
+    .debug { display:none; margin: 10px 0; font-size: 12px; color:#fff; background:#aa2e2e; border:1px solid #7d2020; padding:8px 10px; border-radius:8px; }
+  </style>
 </head>
 <body>
-  <div id="app">
-    <header class="app-header">
-      <div class="logo-row">
-        <h1 class="app-title">Fantasy Fight Picks</h1>
+  <div class="wrap">
+    <header>
+      <div class="title">Fantasy Fight Picks</div>
+      <div class="meta">
+        <span id="statusText">status: …</span> •
+        <span id="lockoutText">lockout: …</span>
       </div>
-      <div id="champBanner" class="champ-banner" style="display:none"></div>
-      <div id="debugBanner" class="debug-banner" style="display:none"></div>
     </header>
 
-    <main class="content">
-      <section class="controls">
-        <label for="username">Your username (for picks)</label>
-        <input id="username" class="input" type="text" placeholder="Enter your name" />
-      </section>
+    <!-- Debug banner (errors/network/etc) -->
+    <div id="debugBanner" class="debug"></div>
 
-      <section class="scoring">
-        <div class="scoring-row">
-          <span class="score-pill">+1 <b class="tip" data-tip="Winner">Winner</b></span>
-          <span class="score-pill">+1 <b class="tip" data-tip="Method">Method</b></span>
-          <span class="score-pill">+1 <b class="tip" data-tip="Round">Round</b></span>
-          <span class="score-pill">+2 <b class="tip" data-tip="Underdog">Underdog</b></span>
-        </div>
-        <div id="tooltip" class="tooltip" style="display:none"></div>
-      </section>
+    <!-- Champion banner (auto after event completes) -->
+    <div id="champBanner" class="panel champ" aria-live="polite">
+      <div class="section-title">Champion(s)</div>
+      <div class="tiny">Auto-updates when the event completes</div>
+      <ul id="champList"></ul>
+    </div>
 
-      <section class="grid">
+    <!-- Auth / User Info -->
+    <div class="panel" id="authPanel">
+      <div class="section-title">Sign in</div>
+      <div class="row">
         <div>
-          <h2>Card</h2>
-          <div id="cardList" class="card-list"></div>
-          <div class="actions">
-            <button id="submitBtn" class="btn primary">Submit Picks</button>
-            <button id="clearBtn" class="btn danger">Clear Picks</button>
-          </div>
+          <div class="label">Username</div>
+          <input id="usernameInput" type="text" inputmode="text" autocomplete="username" placeholder="e.g., Josh" />
         </div>
-
         <div>
-          <h2>Your Picks</h2>
-          <div id="yourPicks" class="your-picks"></div>
+          <div class="label">4-digit PIN</div>
+          <input id="pinInput" type="number" inputmode="numeric" pattern="\\d{4}" placeholder="1234" />
         </div>
-      </section>
+        <div style="flex:0 0 auto; align-self:end;">
+          <button id="saveUserBtn" class="primary">Save</button>
+        </div>
+      </div>
+      <div class="tiny">We’ll store your username + PIN locally so you don’t have to re-enter.</div>
+    </div>
 
-      <section class="leaderboard-section">
-        <h2>Leaderboard <span id="refreshCountdown" class="muted"></span></h2>
-        <div id="leaderboard" class="leaderboard"></div>
+    <!-- Scoring line (no red/green fonts; we’ll use ✅/❌) -->
+    <div class="panel">
+      <div class="scoring">
+        Scoring: +1 Winner • +1 Method (only if Winner) • +1 Round (only if Winner + Method, and not Decision) • 🐶 Underdog bonus by odds tier (+100→+1, +150→+2, +250→+3, …)
+      </div>
+    </div>
 
-        <h2 style="margin-top:20px;">All-Time</h2>
-        <div id="leaderboardAllTime" class="leaderboard"></div>
-      </section>
-    </main>
+    <!-- Fights & Picks -->
+    <div class="panel">
+      <div class="section-title">Make Your Picks</div>
+      <div id="fightsList" class="list"></div>
+      <div class="row" style="margin-top:10px;">
+        <button id="submitBtn" class="primary">Submit Picks</button>
+        <span class="tiny" id="submitHint">Picks lock at event start.</span>
+      </div>
+    </div>
 
-    <footer class="app-footer">
-      <span id="welcome"></span>
-    </footer>
+    <!-- Your Picks (with ✅/❌ + 🐶+N shown once results come in) -->
+    <div class="panel">
+      <div class="section-title">Your Picks</div>
+      <div id="yourPicks" class="list"></div>
+    </div>
+
+    <!-- Leaderboard (event) -->
+    <div class="panel leaderboard">
+      <div class="section-title">Leaderboard</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="center">Rank</th>
+            <th>User</th>
+            <th class="center">Points</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="lbBody"></tbody>
+      </table>
+    </div>
+
+    <!-- All-time stats (crowns, events played, win rate) — OPTIONAL: we can add later via endpoint -->
+    <!-- <div class="panel">
+      <div class="section-title">All-Time</div>
+      <div id="allTime"></div>
+    </div> -->
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div><span id="eventUrl" class="tiny"></span></div>
+      <div class="tiny">Fast, lightweight build • No gold theme • One event active</div>
+    </div>
   </div>
 
-  <script src="./script.js"></script>
+  <script>
+    // === CONFIG (frontend) ===
+    // Directly call your GAS web app
+    const API_BASE = "https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec";
+    // Local storage keys
+    const LS_USER = "ffp_user";
+    const LS_PIN = "ffp_pin";
+  </script>
+  <script src="./script.js" defer></script>
 </body>
 </html>
