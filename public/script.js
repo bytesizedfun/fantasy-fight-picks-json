@@ -1,5 +1,6 @@
 /* Fantasy Fight Picks — ultra-light frontend
- * - Fast fetches (no libs)
+ * - CORS-safe submit (text/plain)
+ * - PIN masked, never prefilled; stays in localStorage for silent submit
  * - ✅/❌ scoring in "Your Picks" after results finalize
  * - 🐶 +N in options and picks
  * - Username + 4-digit PIN saved locally
@@ -50,10 +51,11 @@
     if (!r.ok) throw new Error(`GET ${url} -> ${r.status}`);
     return r.json();
   }
+  // CORS-safe POST: use text/plain to avoid preflight
   async function postJSON(url, body) {
     const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(body || {})
     });
     if (!r.ok) {
@@ -100,7 +102,6 @@
     }
     locked = (String(meta.status || '').toLowerCase() !== 'open');
     submitBtn.disabled = locked;
-    // also disable inputs if locked
     fightsList.querySelectorAll('select').forEach(sel => sel.disabled = locked);
   }
 
@@ -122,7 +123,6 @@
     const methodVal = p.method || '';
     const roundVal  = p.round  || '';
 
-    // Round options depend on Rounds and disabled if Decision
     const roundDisabled = methodVal === 'Decision';
     const roundsN = Number(f.rounds || 3);
     let roundOptions = `<option value="">Round</option>`;
@@ -185,7 +185,6 @@
       const r = fightResultForKey(k);
       const dogN = p && f ? dogBonusForPick(f, p.winner) : 0;
 
-      // Scoring only if finalized result exists
       let bits = [];
       let pts = 0;
       if (r && r.finalized) {
@@ -203,7 +202,6 @@
 
         if (winnerOK && dogN > 0) { pts += dogN; bits.push(`🐶+${dogN}`); }
       } else {
-        // No result yet: no ❌ shown — use neutral placeholders
         bits = [`Winner —`, `Method —`, `Round —`];
         if (dogN > 0) bits.push(`🐶+${dogN}`);
       }
@@ -246,7 +244,6 @@
       champList.innerHTML = `<li class="tiny">No champion yet (shows when event completes)</li>`;
       return;
     }
-    // show the most recent completion set (last date group)
     const lastDate = list[list.length - 1]?.date || '';
     const recent = list.filter(x => x.date === lastDate);
     champList.innerHTML = recent.map(c => `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
@@ -261,8 +258,11 @@
       if (!u) { showDebug('Enter a username.'); return; }
       if (!isNumericPin(p)) { showDebug('PIN must be 4 digits.'); return; }
       hideDebug();
+      // Store for silent submits…
       lsSet(LS_USER, u);
       lsSet(LS_PIN, p);
+      // …but keep the field visually empty.
+      pinInput.value = '';
     });
 
     // Winner / Method / Round changes
@@ -273,12 +273,10 @@
       const fightKey = fightEl.dataset.key;
       picksState[fightKey] = picksState[fightKey] || { winner:'', method:'', round:'' };
 
-      // IDs are prefixed w_, m_, r_
       if (el.id.startsWith('w_')) {
         picksState[fightKey].winner = el.value;
       } else if (el.id.startsWith('m_')) {
         picksState[fightKey].method = el.value;
-        // Disable round if Decision
         const roundSel = fightEl.querySelector('select[id^="r_"]');
         if (roundSel) {
           const isDec = el.value === 'Decision';
@@ -288,7 +286,7 @@
       } else if (el.id.startsWith('r_')) {
         picksState[fightKey].round = el.value;
       }
-      renderYourPicks(); // keep "Your Picks" in sync
+      renderYourPicks();
     });
 
     // Submit picks
@@ -298,9 +296,8 @@
       if (!username) { showDebug('Enter a username.'); return; }
       if (!isNumericPin(pin)) { showDebug('PIN must be 4 digits.'); return; }
 
-      // Build picks payload
       const picksPayload = Object.entries(picksState)
-        .filter(([k,v]) => v && v.winner) // must have winner
+        .filter(([k,v]) => v && v.winner)
         .map(([fight, v]) => ({
           fight,
           winner: v.winner,
@@ -320,14 +317,14 @@
         });
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
         hideDebug();
-        // save locally on success
+        // Save username (and PIN remains in localStorage), keep visual PIN empty
         lsSet(LS_USER, username);
-        lsSet(LS_PIN, pin);
-        await refreshAll(); // show updated leaderboard etc.
+        pinInput.value = '';
+        await refreshAll();
       } catch (err) {
         showDebug(String(err.message || err));
       } finally {
-        submitBtn.disabled = locked; // re-enable only if not locked
+        submitBtn.disabled = locked;
       }
     });
   }
@@ -340,7 +337,6 @@
   async function refreshFights() {
     fights = await getJSON(API('getfights'));
     renderFights();
-    // If we already had picks for fights that no longer exist, prune
     const valid = new Set(fights.map(f => f.fight));
     Object.keys(picksState).forEach(k => { if (!valid.has(k)) delete picksState[k]; });
   }
@@ -374,9 +370,9 @@
   // ---- Init
   function prefillUser() {
     const u = lsGet(LS_USER, '');
-    const p = lsGet(LS_PIN, '');
     if (u) usernameInput.value = u;
-    if (p) pinInput.value = p;
+    // Intentionally do not prefill PIN (kept only in localStorage)
+    pinInput.value = '';
   }
 
   function escapeHtml(s) {
@@ -386,7 +382,6 @@
       .replace(/'/g,'&#39;');
   }
   function hashKey(s) {
-    // tiny stable-ish id for element IDs
     let h = 0, str = String(s||'');
     for (let i=0;i<str.length;i++) { h = (h*31 + str.charCodeAt(i))|0; }
     return Math.abs(h).toString(36);
