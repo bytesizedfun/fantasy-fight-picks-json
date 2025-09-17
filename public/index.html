@@ -17,8 +17,6 @@
       --text: #e8eaf0;
       --muted: #9aa3b2;
       --accent: #3a7afe; /* blue accent, no gold */
-      --ok: #c6f6c6;     /* only for subtle borders/icons if needed */
-      --bad: #f5c2c7;    /* not for text colors – we use ✅/❌ instead */
       --border: #252a36;
     }
     * { box-sizing: border-box; }
@@ -47,7 +45,7 @@
     .row > * { flex: 1 1 220px; }
 
     .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    input[type="text"], input[type="number"], select {
+    input[type="text"], input[type="number"], input[type="password"], select {
       width: 100%;
       padding: 10px 12px;
       border-radius: 8px;
@@ -94,8 +92,6 @@
     .pick-line { display:flex; justify-content: space-between; gap:10px; padding:8px 10px; border:1px dashed var(--border); border-radius:8px; }
     .right { text-align:right; }
     .tag { font-size: 12px; padding: 2px 6px; border-radius: 6px; border:1px solid var(--border); color: var(--muted); display:inline-block; }
-    .ok { border-color: #274a2c; background:#0e1a11; }   /* for subtle ✅/❌ container tint only */
-    .bad { border-color: #4a272b; background:#1a0f11; }
 
     .leaderboard table { width: 100%; border-collapse: collapse; }
     .leaderboard th, .leaderboard td { border-bottom: 1px solid var(--border); padding: 8px 6px; text-align: left; font-size: 14px; }
@@ -135,16 +131,16 @@
         </div>
         <div>
           <div class="label">4-digit PIN</div>
-          <input id="pinInput" type="number" inputmode="numeric" pattern="\\d{4}" placeholder="1234" />
+          <input id="pinInput" type="password" inputmode="numeric" pattern="\\d{4}" autocomplete="off" placeholder="••••" />
         </div>
         <div style="flex:0 0 auto; align-self:end;">
           <button id="saveUserBtn" class="primary">Save</button>
         </div>
       </div>
-      <div class="tiny">We’ll store your username + PIN locally so you don’t have to re-enter.</div>
+      <div class="tiny">We'll keep you signed in on this browser. Your PIN isn't shown here after saving.</div>
     </div>
 
-    <!-- Scoring line (no red/green fonts; we’ll use ✅/❌) -->
+    <!-- Scoring line -->
     <div class="panel">
       <div class="scoring">
         Scoring: +1 Winner • +1 Method (only if Winner) • +1 Round (only if Winner + Method, and not Decision) • 🐶 Underdog bonus by odds tier (+100→+1, +150→+2, +250→+3, …)
@@ -161,13 +157,13 @@
       </div>
     </div>
 
-    <!-- Your Picks (with ✅/❌ + 🐶+N shown once results come in) -->
+    <!-- Your Picks -->
     <div class="panel">
       <div class="section-title">Your Picks</div>
       <div id="yourPicks" class="list"></div>
     </div>
 
-    <!-- Leaderboard (event) -->
+    <!-- Leaderboard -->
     <div class="panel leaderboard">
       <div class="section-title">Leaderboard</div>
       <table>
@@ -183,16 +179,10 @@
       </table>
     </div>
 
-    <!-- All-time stats (crowns, events played, win rate) — OPTIONAL: we can add later via endpoint -->
-    <!-- <div class="panel">
-      <div class="section-title">All-Time</div>
-      <div id="allTime"></div>
-    </div> -->
-
     <!-- Status bar -->
     <div class="status-bar">
       <div><span id="eventUrl" class="tiny"></span></div>
-      <div class="tiny">Fast, lightweight build • No gold theme • One event active</div>
+      <div class="tiny">Fast, lightweight build • One event active</div>
     </div>
   </div>
 
