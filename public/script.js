@@ -1,307 +1,445 @@
-/* Fantasy Fight Picks — ultra-light frontend (full UI, robust submit) */
+/***** Fantasy Fight Picks — GAS backend (per-user lock after submit, sheet-driven lockout/URL) *****/
 
-(() => {
-  // ---- DOM refs
-  const q = (sel) => document.querySelector(sel);
-  const fightsList   = q('#fightsList');
-  const yourPicks    = q('#yourPicks');
-  const lbBody       = q('#lbBody');
-  const champList    = q('#champList');
-  const debugBanner  = q('#debugBanner');
-  const statusText   = q('#statusText');
-  const lockoutText  = q('#lockoutText');
-  const eventUrlEl   = q('#eventUrl');
-  const usernameInput= q('#usernameInput');
-  const pinInput     = q('#pinInput');
-  const saveUserBtn  = q('#saveUserBtn');
-  const submitBtn    = q('#submitBtn');
+const SPREADSHEET_ID = '1Jt_fFIR3EwcVZDIdt-JXrZq4ssDTzj-xSHk7edHB5ek'; // your Sheet ID
 
-  // ---- Guard: required globals from index.html
-  if (typeof API_BASE === 'undefined') console.error('API_BASE missing in index.html');
-  if (typeof LS_USER === 'undefined')  console.error('LS_USER missing in index.html');
-  if (typeof LS_PIN === 'undefined')   console.error('LS_PIN missing in index.html');
+const HEADERS = {
+  event_meta:   ['key', 'value'],
+  fight_list:   ['Fight', 'Fighter1', 'Fighter2', 'OddsF1', 'OddsF2', 'Rounds'],
+  results:      ['fight', 'winner', 'method', 'round', 'finalized'],
+  users:        ['username', 'pin_plain', 'pin_hash', 'created_iso'],
+  picks:        ['timestamp', 'username', 'fight', 'winner', 'method', 'round'],
+  leaderboard:  ['rank', 'username', 'points', 'details'],
+  champions:    ['date', 'username', 'points', 'comment'],
+  alltime_stats:['username', 'crowns', 'events_played', 'win_rate'],
+  logs:         ['ts','where','msg']
+};
 
-  // ---- API helper
-  const API = (action) => `${API_BASE}?action=${encodeURIComponent(action)}`;
+const METHODS = ['KO/TKO', 'Submission', 'Decision'];
+const DIGEST_SALT_KEY = 'pin_salt';
+const CACHE_SECONDS = 60;
 
-  // ---- State
-  let meta = null;
-  let fights = [];     // [{fight,fighter1,fighter2,oddsF1,oddsF2,rounds,dogF1,dogF2}]
-  let results = [];    // [{fight,winner,method,round,finalized}]
-  let picksState = {}; // fightKey -> {winner,method,round}
-  let locked = false;
+/** === JSON Helper === **/
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
-  const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
-
-  // ---- Utils
-  function showDebug(msg){
-    if(!debugBanner) return;
-    debugBanner.textContent = String(msg || '');
-    debugBanner.style.display = 'block';
+/** === SHEET HELPERS === **/
+function SS() { return SpreadsheetApp.openById(SPREADSHEET_ID); }
+function getOrCreateSheet(name) {
+  const ss = SS();
+  let s = ss.getSheetByName(name);
+  if (!s) s = ss.insertSheet(name);
+  return s;
+}
+function ensureHeader(sheet, header) {
+  const range = sheet.getRange(1, 1, 1, header.length);
+  const current = range.getValues()[0] || [];
+  const same = current.length === header.length && header.every((h, i) => (current[i] || '') === h);
+  if (!same) {
+    sheet.clear();
+    sheet.getRange(1, 1, 1, header.length).setValues([header]);
   }
-  function hideDebug(){ if(!debugBanner) return; debugBanner.style.display = 'none'; }
-  async function getJSON(url){
-    const r = await fetch(url, { cache:'no-store' });
-    const ct = r.headers.get('content-type') || '';
-    const txt = await r.text();
-    if (!r.ok) throw new Error(`GET ${url} -> ${r.status} ${txt.slice(0,120)}`);
-    try { return JSON.parse(txt); } catch { throw new Error(`GET ${url} returned non-JSON: ${txt.slice(0,200)}`); }
-  }
-  async function postJSON(url, body){
-    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
-    const txt = await r.text();
-    if (!r.ok) throw new Error(`POST ${url} -> ${r.status} ${txt.slice(0,200)}`);
-    try { return JSON.parse(txt); } catch { throw new Error(`POST ${url} returned non-JSON: ${txt.slice(0,200)}`); }
-  }
-  function lsGet(k, def=''){ try{ return localStorage.getItem(k) ?? def; }catch{ return def; } }
-  function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch{} }
-  function isNumericPin(s){ return /^\d{4}$/.test(String(s||'')); }
-  function escapeHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-  function hashKey(s){ let h=0,str=String(s||''); for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))|0;} return Math.abs(h).toString(36); }
+}
+function readTable(sheetName) {
+  const s = getOrCreateSheet(sheetName);
+  const header = HEADERS[sheetName];
+  ensureHeader(s, header);
+  const lastRow = s.getLastRow();
+  if (lastRow < 2) return [];
+  const data = s.getRange(2, 1, lastRow - 1, header.length).getValues();
+  return data.map(r => Object.fromEntries(header.map((h, i) => [h, r[i]])));
+}
+function writeTable(sheetName, rows) {
+  const s = getOrCreateSheet(sheetName);
+  const header = HEADERS[sheetName];
+  ensureHeader(s, header);
+  if (s.getLastRow() > 1) s.getRange(2, 1, s.getLastRow() - 1, header.length).clearContent();
+  if (!rows || !rows.length) return;
+  const values = rows.map(obj => header.map(h => obj[h] ?? ''));
+  s.getRange(2, 1, values.length, header.length).setValues(values);
+}
+function nowIso_() { return new Date().toISOString(); }
+function log_(where, msg) {
+  try {
+    const sh = getOrCreateSheet('logs');
+    ensureHeader(sh, HEADERS.logs);
+    sh.appendRow([nowIso_(), where, String(msg)]);
+  } catch (_) {}
+}
 
-  // ---- Scoring helpers (mirror backend)
-  function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o-100)/100)+1; }
-  function dogBonusForPick(f, pickedWinner){ if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1); if(pickedWinner===f.fighter2) return computeDogBonus(f.oddsF2); return 0; }
-  function resultForFight(key){ return results.find(r=> r.fight===key); }
-  function fightByKey(key){ return fights.find(f=> f.fight===key); }
-
-  // ---- Meta
-  function renderMeta(){
-    if(!meta) return;
-    statusText.textContent = `status: ${meta.status || 'open'}`;
-    lockoutText.textContent = `lockout: ${meta.lockout_iso || 'unset'}`;
-    if(meta.url){ eventUrlEl.innerHTML = `Event: <a href="${meta.url}" target="_blank" rel="noopener">UFCStats</a>`; }
-    else { eventUrlEl.textContent=''; }
-    locked = (String(meta.status||'').toLowerCase() !== 'open');
-    submitBtn.disabled = locked;
-    fightsList.querySelectorAll('select').forEach(sel => sel.disabled = locked);
-  }
-
-  // ---- Fights (pickers)
-  function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
-  function buildFightRow(f){
-    const key = f.fight;
-    const dog1 = f.dogF1 || 0, dog2 = f.dogF2 || 0;
-    const selWinnerId = `w_${hashKey(key)}`;
-    const selMethodId = `m_${hashKey(key)}`;
-    const selRoundId  = `r_${hashKey(key)}`;
-    const p = picksState[key] || {};
-    const winnerVal = p.winner || '';
-    const methodVal = p.method || '';
-    const roundVal  = p.round  || '';
-    const roundsN = Number(f.rounds||3);
-    const roundDisabled = methodVal === 'Decision';
-    let roundOpts = `<option value="">Round</option>`;
-    for(let i=1;i<=roundsN;i++){ const sel=String(roundVal)===String(i)?'selected':''; roundOpts += `<option value="${i}" ${sel}>${i}</option>`; }
-
-    return `
-      <div class="fight" data-key="${escapeHtml(key)}">
-        <div class="name">${escapeHtml(key)}</div>
-        <div class="grid">
-          <div>
-            <div class="label">Winner</div>
-            <select id="${selWinnerId}">
-              <option value="">Select winner</option>
-              <option value="${escapeHtml(f.fighter1)}" ${winnerVal===f.fighter1?'selected':''}>${escapeHtml(labelWithDog(f.fighter1,dog1))}</option>
-              <option value="${escapeHtml(f.fighter2)}" ${winnerVal===f.fighter2?'selected':''}>${escapeHtml(labelWithDog(f.fighter2,dog2))}</option>
-            </select>
-          </div>
-          <div>
-            <div class="label">Method</div>
-            <select id="${selMethodId}">
-              <option value="">Select method</option>
-              ${METHOD_OPTIONS.map(m=>`<option value="${m}" ${methodVal===m?'selected':''}>${m}</option>`).join('')}
-            </select>
-          </div>
-          <div>
-            <div class="label">Round</div>
-            <select id="${selRoundId}" ${roundDisabled?'disabled':''}>
-              ${roundOpts}
-            </select>
-          </div>
-          <div style="align-self:end;">
-            <span class="tag">Best of ${roundsN} ${roundsN===5?'(Main Event)':''}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  function renderFights(){
-    // Guard: backend must return array
-    if (!Array.isArray(fights)) {
-      showDebug(`getfights did not return an array: ${typeof fights}`);
-      fightsList.innerHTML = '';
-      return;
+/** === SETUP & META === **/
+function setup() {
+  Object.keys(HEADERS).forEach(name => ensureHeader(getOrCreateSheet(name), HEADERS[name]));
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty(DIGEST_SALT_KEY)) props.setProperty(DIGEST_SALT_KEY, Utilities.getUuid());
+  ensureEventMetaDefaults_();
+  clearScraperTriggers_();
+  ScriptApp.newTrigger('scraperTick').timeBased().everyMinutes(5).create();
+  return { ok: true };
+}
+function clearScraperTriggers_() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction && t.getHandlerFunction() === 'scraperTick') {
+      ScriptApp.deleteTrigger(t);
     }
-    fightsList.innerHTML = fights.map(buildFightRow).join('');
+  });
+}
+function ensureEventMetaDefaults_() {
+  const rows = readTable('event_meta');
+  const byKey = Object.fromEntries(rows.map(r => [r.key, r.value]));
+  const keys = ['url', 'lockout_iso', 'status', 'last_scrape_iso'];
+  const out = [];
+  keys.forEach(k => {
+    if (byKey[k] === undefined) out.push({ key: k, value: k === 'status' ? 'open' : '' });
+    else out.push({ key: k, value: byKey[k] });
+  });
+  writeTable('event_meta', out);
+}
+function getMeta_() {
+  const meta = {};
+  readTable('event_meta').forEach(r => { meta[r.key] = r.value; });
+  if (meta.lockout_iso) {
+    const past = new Date() >= new Date(meta.lockout_iso);
+    const st = (meta.status || 'open').toLowerCase();
+    if (st === 'open' && past) meta.status = 'locked';
   }
+  return meta;
+}
+function setMeta_(key, value) {
+  const rows = readTable('event_meta');
+  const idx = rows.findIndex(r => r.key === key);
+  if (idx === -1) rows.push({ key, value }); else rows[idx].value = value;
+  writeTable('event_meta', rows);
+}
 
-  // ---- Your Picks
-  function renderYourPicks(){
-    const keys = Object.keys(picksState);
-    if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
-    const rows=[];
-    for(const k of keys){
-      const p = picksState[k];
-      const f = fightByKey(k);
-      const r = resultForFight(k);
-      const dogN = (p && f) ? dogBonusForPick(f, p.winner) : 0;
+/** === AUTH === **/
+function hashPin_(pin) {
+  const salt = PropertiesService.getScriptProperties().getProperty(DIGEST_SALT_KEY) || '';
+  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, (pin || '') + salt);
+  return raw.map(b => (('0' + (b & 0xff).toString(16)).slice(-2))).join('');
+}
+function upsertUserAndVerify_(username, pin) {
+  if (!/^\S.{0,30}$/.test(username)) throw new Error('Invalid username');
+  if (!/^\d{4}$/.test(pin)) throw new Error('PIN must be 4 digits');
+  const users = readTable('users');
+  const idx = users.findIndex(u => String(u.username || '').toLowerCase() === String(username).toLowerCase());
+  const pin_hash = hashPin_(pin);
+  if (idx === -1) {
+    users.push({ username, pin_plain: pin, pin_hash, created_iso: nowIso_() });
+    writeTable('users', users);
+    return true;
+  } else {
+    const u = users[idx];
+    if (String(u.pin_plain) === String(pin) || String(u.pin_hash) === pin_hash) return true;
+    throw new Error('PIN does not match username');
+  }
+}
 
-      let bits=[], pts=0;
-      if(r && r.finalized){
-        const winnerOK = p.winner && p.winner===r.winner; bits.push(`Winner ${winnerOK?'✅':'❌'}`); if(winnerOK) pts+=1;
-        const methodOK = winnerOK && p.method && p.method===r.method; bits.push(`Method ${methodOK?'✅':'❌'}`); if(methodOK) pts+=1;
-        const roundOK  = methodOK && r.method!=='Decision' && String(p.round||'')===String(r.round||''); bits.push(`Round ${roundOK?'✅':'❌'}`); if(roundOK) pts+=1;
-        if(winnerOK && dogN>0){ pts+=dogN; bits.push(`🐶+${dogN}`); }
-      } else {
-        bits = [`Winner —`,`Method —`,`Round —`];
-        if(dogN>0) bits.push(`🐶+${dogN}`);
+/** === CORE DATA === **/
+function getFights_() {
+  return readTable('fight_list').map(r => ({
+    fight: String(r.Fight || ''),
+    fighter1: String(r.Fighter1 || ''),
+    fighter2: String(r.Fighter2 || ''),
+    oddsF1: Number(r.OddsF1 || 0),
+    oddsF2: Number(r.OddsF2 || 0),
+    rounds: Number(r.Rounds || 3)
+  }));
+}
+function getResults_() {
+  return readTable('results').map(r => ({
+    fight: String(r.fight || ''),
+    winner: String(r.winner || ''),
+    method: String(r.method || ''),
+    round:  String(r.round  || ''),
+    finalized: String(r.finalized).toLowerCase() === 'true'
+  }));
+}
+function isLocked_() {
+  const meta = getMeta_();
+  const st = (meta.status || 'open').toLowerCase();
+  if (st === 'locked' || st === 'complete') return true;
+  const iso = meta.lockout_iso;
+  if (!iso) return false;
+  return new Date() >= new Date(iso);
+}
+function lockIfPast_() {
+  const meta = getMeta_();
+  if (meta.lockout_iso && new Date() >= new Date(meta.lockout_iso)) setMeta_('status', 'locked');
+}
+
+/** === ODDS BONUS === **/
+function computeDogBonus_(americanOdds) {
+  const o = Number(americanOdds || 0);
+  if (o < 100) return 0;
+  return Math.floor((o - 100) / 100) + 1;
+}
+function winnerBonusForFight_(f, pickedWinner) {
+  if (pickedWinner === f.fighter1) return computeDogBonus_(f.oddsF1);
+  if (pickedWinner === f.fighter2) return computeDogBonus_(f.oddsF2);
+  return 0;
+}
+
+/** === SCORING / LEADERBOARD === **/
+function computeScores_() {
+  const fights = getFights_();
+  const results = getResults_();
+  const resByFight = Object.fromEntries(results.map(r => [r.fight, r]));
+  const picks = readTable('picks');
+
+  const totals = {}; // username -> { points, details[] }
+  picks.forEach(p => {
+    const u = p.username; if (!u) return;
+    const f = fights.find(x => x.fight === p.fight);
+    const r = resByFight[p.fight];
+    if (!f || !r || !r.finalized) return;
+
+    let pts = 0; const bits = [];
+    const wOK = p.winner && p.winner === r.winner; bits.push('Winner' + (wOK ? '✅' : '❌')); if (wOK) pts += 1;
+    const mOK = wOK && p.method && p.method === r.method; bits.push('Method' + (mOK ? '✅' : '❌')); if (mOK) pts += 1;
+    const rOK = mOK && r.method !== 'Decision' && String(p.round || '') === String(r.round || ''); bits.push('Round' + (rOK ? '✅' : '❌')); if (rOK) pts += 1;
+
+    if (wOK) { const dog = winnerBonusForFight_(f, p.winner); if (dog > 0) { pts += dog; bits.push(`🐶+${dog}`); } }
+
+    if (!totals[u]) totals[u] = { points: 0, details: [] };
+    totals[u].points += pts;
+    totals[u].details.push(`${p.fight}: ${pts} [${bits.join(', ')}]`);
+  });
+
+  const rows = Object.entries(totals)
+    .map(([username, v]) => ({ username, points: v.points, details: v.details.join(' | ') }))
+    .sort((a, b) => b.points - a.points);
+
+  // rank with ties
+  let rank = 0, prev = null, seen = 0;
+  rows.forEach(r => { seen++; if (prev === null || r.points < prev) rank = seen; r.rank = rank; prev = r.points; });
+
+  writeTable('leaderboard', rows.map(r => ({ rank: r.rank, username: r.username, points: r.points, details: r.details })));
+  return rows;
+}
+
+/** === ALL-TIME === **/
+function updateAllTimeStats_(champUsernames) {
+  const perEventPicks = readTable('picks');
+  const participants = Array.from(new Set(perEventPicks.map(p => p.username))).filter(Boolean);
+
+  const rows = readTable('alltime_stats');
+  const byUser = Object.fromEntries(rows.map(r => [r.username, {
+    username: r.username,
+    crowns: Number(r.crowns || 0),
+    events_played: Number(r.events_played || 0),
+    win_rate: Number(r.win_rate || 0)
+  }]));
+
+  participants.forEach(u => { if (!byUser[u]) byUser[u] = { username: u, crowns: 0, events_played: 0, win_rate: 0 }; byUser[u].events_played += 1; });
+  champUsernames.forEach(u => { if (!byUser[u]) byUser[u] = { username: u, crowns: 0, events_played: 0, win_rate: 0 }; byUser[u].crowns += 1; });
+  Object.values(byUser).forEach(v => { v.win_rate = v.events_played > 0 ? Math.round((v.crowns / v.events_played) * 1000) / 10 : 0; });
+
+  writeTable('alltime_stats', Object.values(byUser));
+}
+
+/** === EVENT COMPLETION / CHAMPS === **/
+function isEventComplete_() {
+  const res = getResults_();
+  return res.length > 0 && res.every(r => r.finalized);
+}
+function autoLogChampionIfDone_() {
+  if (!isEventComplete_()) return;
+  const rows = computeScores_(); if (!rows.length) return;
+
+  const top = rows[0].points;
+  const champs = rows.filter(r => r.points === top).map(r => r.username);
+
+  const existing = readTable('champions');
+  const insert = champs.map(u => ({ date: nowIso_(), username: u, points: top, comment: 'Auto-logged' }));
+  writeTable('champions', existing.concat(insert));
+
+  updateAllTimeStats_(champs);
+  setMeta_('status', 'complete');
+}
+
+/** === SCRAPER (UFCStats) === **/
+function scraperTick() {
+  lockIfPast_();
+  const meta = getMeta_();
+  const status = (meta.status || 'open').toLowerCase();
+  if (status === 'open' || status === 'complete') return;
+  const url = meta.url; if (!url) return;
+
+  try {
+    scrapeUFCStats_(url);
+    setMeta_('last_scrape_iso', nowIso_());
+    if (isEventComplete_()) { computeScores_(); autoLogChampionIfDone_(); }
+  } catch (e) {
+    log_('scraperTick', e.message || e);
+  }
+}
+function scrapeUFCStats_(eventUrl) {
+  const html = UrlFetchApp.fetch(eventUrl, { muteHttpExceptions: true }).getContentText();
+  const cleaned = html.replace(/\s+/g, ' ');
+
+  const fights = getFights_();
+  const existing = readTable('results');
+  const byFight = Object.fromEntries(existing.map(r => [r.fight, r]));
+
+  fights.forEach(f => {
+    let winner = '', method = '', round = '', finalized = false;
+
+    const w1 = new RegExp(escapeRegex_(f.fighter1) + '[\\s\\S]{0,50}?b-fight-details__person-status[^>]*>W<', 'i').test(cleaned);
+    const w2 = new RegExp(escapeRegex_(f.fighter2) + '[\\s\\S]{0,50}?b-fight-details__person-status[^>]*>W<', 'i').test(cleaned);
+    if (w1 && !w2) winner = f.fighter1;
+    else if (w2 && !w1) winner = f.fighter2;
+
+    const boutRegex = new RegExp(
+      '(?:' + escapeRegex_(f.fighter1) + '|' + escapeRegex_(f.fighter2) + ')[\\s\\S]{0,350}?' +
+      '(KO\\/TKO|Submission|Decision)[\\s\\S]{0,120}?(?:Round\\s*(\\d))',
+      'i'
+    );
+    const m = cleaned.match(boutRegex);
+    if (m) {
+      method = normalizeMethod_(m[1]);
+      round = (m[2] || '').trim();
+    }
+
+    if (winner && method) finalized = true;
+
+    byFight[f.fight] = {
+      fight: f.fight,
+      winner: finalized ? winner : (byFight[f.fight]?.winner || ''),
+      method: finalized ? method : (byFight[f.fight]?.method || ''),
+      round:  finalized ? round  : (byFight[f.fight]?.round  || ''),
+      finalized: finalized ? true : (String(byFight[f.fight]?.finalized).toLowerCase() === 'true')
+    };
+  });
+
+  writeTable('results', Object.values(byFight));
+}
+function normalizeMethod_(s) {
+  s = String(s || '').toLowerCase();
+  if (s.includes('decision')) return 'Decision';
+  if (s.includes('submission') || s.includes('sub')) return 'Submission';
+  return 'KO/TKO';
+}
+function escapeRegex_(x) { return String(x || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+/** === ENDPOINTS === **/
+function doGet(e) {
+  try {
+    ensureEventMetaDefaults_();
+
+    const cache = CacheService.getScriptCache();
+    const key = 'GET:' + JSON.stringify(e?.parameter || {});
+    const cached = cache.get(key);
+    if (cached) return ContentService.createTextOutput(cached).setMimeType(ContentService.MimeType.JSON);
+
+    const params = e?.parameter || {};
+    const action = String(params.action || '').toLowerCase();
+
+    let out;
+    if (action === 'getmeta') out = getMeta_();
+    else if (action === 'getfights') {
+      out = getFights_().map(f => ({
+        ...f,
+        dogF1: (f.oddsF1 >= 100) ? computeDogBonus_(f.oddsF1) : 0,
+        dogF2: (f.oddsF2 >= 100) ? computeDogBonus_(f.oddsF2) : 0
+      }));
+    }
+    else if (action === 'getresults') out = getResults_();
+    else if (action === 'getleaderboard') out = computeScores_();
+    else if (action === 'getchampion') out = readTable('champions').slice(-10);
+
+    // NEW: per-user lock state
+    else if (action === 'getuserlock') {
+      const username = String(params.username || '').trim();
+      const eventLocked = isLocked_();
+      let reason = eventLocked ? 'event_locked' : 'open';
+      let locked = eventLocked;
+      if (!locked && username) {
+        const picks = readTable('picks');
+        const hasSubmitted = picks.some(p => String(p.username || '').toLowerCase() === username.toLowerCase());
+        if (hasSubmitted) { locked = true; reason = 'submitted'; }
       }
-
-      rows.push(`
-        <div class="pick-line">
-          <div>
-            <div><strong>${escapeHtml(k)}</strong></div>
-            <div class="tiny">
-              ${escapeHtml(p.winner||'—')} • ${escapeHtml(p.method||'—')}${p.method==='Decision'?'':` • ${escapeHtml(p.round||'—')}`}${dogN>0?` • 🐶 +${dogN}`:''}
-            </div>
-          </div>
-          <div class="right">
-            <div>${bits.join(' • ')}</div>
-            ${(r && r.finalized) ? `<div class="tiny">Points: ${pts}</div>` : ``}
-          </div>
-        </div>
-      `);
+      out = { locked, reason };
     }
-    yourPicks.innerHTML = rows.join('');
-  }
 
-  // ---- Leaderboard
-  function renderLeaderboard(rows){
-    if(!Array.isArray(rows) || !rows.length){
-      lbBody.innerHTML = `<tr><td colspan="4" class="tiny">No scores yet.</td></tr>`;
-      return;
+    else out = { ok: true, message: 'FFP backend alive' };
+
+    const json = JSON.stringify(out);
+    cache.put(key, json, CACHE_SECONDS);
+    return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    log_('doGet', err.message || err);
+    return jsonResponse({ ok: false, error: String(err) });
+  }
+}
+
+function doPost(e) {
+  try {
+    const body = (e && e.postData && e.postData.contents) ? e.postData.contents : '';
+    if (!body) { log_('doPost', 'empty body'); return jsonResponse({ ok:false, error:'Empty request body' }); }
+
+    let req;
+    try { req = JSON.parse(body); }
+    catch (parseErr) { log_('doPost', 'bad json: ' + body); return jsonResponse({ ok:false, error:'Bad JSON' }); }
+
+    const action = String(req.action || '').toLowerCase();
+    let out = { ok: false, error: 'Unknown action' };
+
+    if (action === 'setevent') {
+      const { url, lockout_iso } = req;
+      if (!url || !lockout_iso) throw new Error('url and lockout_iso required');
+      setMeta_('url', url);
+      setMeta_('lockout_iso', lockout_iso);
+      setMeta_('status', 'open');
+      setMeta_('last_scrape_iso', '');
+      writeTable('picks', []);
+      writeTable('results', []);
+      writeTable('leaderboard', []);
+      out = { ok: true };
     }
-    lbBody.innerHTML = rows.map(r=>`
-      <tr>
-        <td class="center">${r.rank}</td>
-        <td>${escapeHtml(r.username)}</td>
-        <td class="center">${r.points}</td>
-        <td class="tiny">${escapeHtml(r.details||'')}</td>
-      </tr>
-    `).join('');
-  }
 
-  // ---- Champions
-  function renderChampions(list){
-    if(!Array.isArray(list) || !list.length){
-      champList.innerHTML = `<li class="tiny">No champion yet (shows when event completes)</li>`;
-      return;
+    else if (action === 'submitpicks') {
+      lockIfPast_();
+      if (isLocked_()) throw new Error('Picks are locked');
+
+      const username = (req.username || '').trim();
+      const pin = String(req.pin || '').trim();
+      const picks = Array.isArray(req.picks) ? req.picks : [];
+
+      if (!username) throw new Error('Missing username');
+      if (!/^\d{4}$/.test(pin)) throw new Error('PIN must be 4 digits');
+      if (!picks.length) throw new Error('No picks');
+
+      // per-user lock: if user already has any picks recorded, deny further submits
+      const existingAll = readTable('picks');
+      const already = existingAll.some(r => String(r.username || '').toLowerCase() === username.toLowerCase());
+      if (already) throw new Error('You already submitted picks. They are locked.');
+
+      // ensure headers exist (if someone wiped them)
+      ensureHeader(getOrCreateSheet('users'), HEADERS.users);
+      ensureHeader(getOrCreateSheet('picks'), HEADERS.picks);
+
+      upsertUserAndVerify_(username, pin);
+
+      const fightsByKey = Object.fromEntries(getFights_().map(f => [f.fight, f]));
+      const now = nowIso_();
+      picks.forEach(p => {
+        const f = fightsByKey[p.fight];
+        if (!f) return;
+        const method = METHODS.includes(p.method) ? p.method : 'Decision';
+        const round  = (method === 'Decision') ? '' : String(p.round || '');
+        existingAll.push({ timestamp: now, username, fight: p.fight, winner: p.winner || '', method, round });
+      });
+
+      writeTable('picks', existingAll);
+      out = { ok: true };
     }
-    const lastDate = list[list.length-1]?.date || '';
-    const recent = list.filter(x=> x.date===lastDate);
-    champList.innerHTML = recent.map(c=> `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
+
+    log_('doPost:' + action, out.ok ? 'ok' : out.error);
+    return jsonResponse(out);
+  } catch (err) {
+    log_('doPost:err', err.message || err);
+    return jsonResponse({ ok: false, error: String(err) });
   }
-
-  // ---- Bind UI
-  function bindInputs(){
-    // Save username/PIN locally
-    saveUserBtn.addEventListener('click', ()=>{
-      const u = (usernameInput.value||'').trim();
-      const p = String(pinInput.value||'').trim();
-      if(!u){ showDebug('Enter a username.'); return; }
-      if(!isNumericPin(p)){ showDebug('PIN must be 4 digits.'); return; }
-      hideDebug(); lsSet(LS_USER,u); lsSet(LS_PIN,p);
-    });
-
-    // Pick changes
-    fightsList.addEventListener('change', (ev)=>{
-      const el = ev.target;
-      const fightEl = el.closest('.fight'); if(!fightEl) return;
-      const key = fightEl.dataset.key;
-      picksState[key] = picksState[key] || { winner:'', method:'', round:'' };
-
-      if(el.id.startsWith('w_')){ picksState[key].winner = el.value; }
-      else if(el.id.startsWith('m_')){
-        picksState[key].method = el.value;
-        const roundSel = fightEl.querySelector('select[id^="r_"]');
-        if(roundSel){ const isDec = el.value==='Decision'; roundSel.disabled = isDec; if(isDec) roundSel.value=''; }
-      } else if(el.id.startsWith('r_')){ picksState[key].round = el.value; }
-
-      renderYourPicks();
-    });
-
-    // Submit picks (creates/verifies user on backend)
-    submitBtn.addEventListener('click', async () => {
-      const username = (usernameInput.value || lsGet(LS_USER,'')).trim();
-      const pin = String(pinInput.value || lsGet(LS_PIN,'')).trim();
-      if(!username){ showDebug('Enter a username.'); return; }
-      if(!isNumericPin(pin)){ showDebug('PIN must be 4 digits.'); return; }
-
-      const picksPayload = Object.entries(picksState)
-        .filter(([_,v])=> v && v.winner)
-        .map(([fight, v])=> ({
-          fight,
-          winner: v.winner,
-          method: METHOD_OPTIONS.includes(v.method) ? v.method : 'Decision',
-          round: (v.method === 'Decision') ? '' : (v.round || '')
-        }));
-      if(!picksPayload.length){ showDebug('No picks to submit.'); return; }
-
-      // --- Submitting state (prevents spam) ---
-      const oldText = submitBtn.textContent;
-      submitBtn.textContent = 'Submitting…';
-      submitBtn.disabled = true;
-
-      try{
-        const res = await postJSON(API_BASE, { action:'submitpicks', username, pin, picks:picksPayload });
-        if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
-        hideDebug();
-        lsSet(LS_USER, username);
-        lsSet(LS_PIN, pin);
-        await refreshAll();
-        // brief success pulse
-        submitBtn.textContent = 'Saved ✔';
-        setTimeout(() => { submitBtn.textContent = oldText; submitBtn.disabled = locked; }, 900);
-      }catch(err){
-        showDebug(String(err.message||err));
-        submitBtn.textContent = oldText;
-        submitBtn.disabled = locked; // re-enable only if not locked
-      }
-    });
-  }
-
-  // ---- Data fetch
-  async function refreshMeta(){ meta = await getJSON(API('getmeta')); renderMeta(); }
-  async function refreshFights(){
-    const data = await getJSON(API('getfights'));
-    // Guard against non-array responses
-    fights = Array.isArray(data) ? data : [];
-    if (!Array.isArray(data)) showDebug(`getfights returned non-array; check backend. Raw: ${JSON.stringify(data).slice(0,200)}`);
-    renderFights();
-    prunePicks();
-  }
-  async function refreshResults(){ results = await getJSON(API('getresults')); }
-  async function refreshLeaderboard(){ const rows = await getJSON(API('getleaderboard')); renderLeaderboard(rows); }
-  async function refreshChampions(){ const rows = await getJSON(API('getchampion')); renderChampions(rows); }
-  function prunePicks(){ const valid = new Set(fights.map(f=> f.fight)); Object.keys(picksState).forEach(k=>{ if(!valid.has(k)) delete picksState[k]; }); }
-
-  async function refreshAll(){
-    try{
-      await refreshMeta();
-      await Promise.all([ refreshFights(), refreshResults(), refreshLeaderboard(), refreshChampions() ]);
-      renderYourPicks(); hideDebug();
-    }catch(err){ showDebug(String(err.message||err)); }
-  }
-
-  // ---- Init
-  function prefillUser(){
-    const u = lsGet(LS_USER,''); const p = lsGet(LS_PIN,'');
-    if(u) usernameInput.value = u; if(p) pinInput.value = p;
-  }
-
-  bindInputs();
-  prefillUser();
-  refreshAll();
-  setInterval(refreshAll, 60000); // gentle auto-refresh
-})();
+}
