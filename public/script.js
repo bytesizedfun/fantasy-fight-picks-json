@@ -1,4 +1,4 @@
-/* Fantasy Fight Picks — ultra-light frontend (full UI) */
+/* Fantasy Fight Picks — ultra-light frontend (full UI, robust submit) */
 
 (() => {
   // ---- DOM refs
@@ -16,6 +16,11 @@
   const saveUserBtn  = q('#saveUserBtn');
   const submitBtn    = q('#submitBtn');
 
+  // ---- Guard: required globals from index.html
+  if (typeof API_BASE === 'undefined') console.error('API_BASE missing in index.html');
+  if (typeof LS_USER === 'undefined')  console.error('LS_USER missing in index.html');
+  if (typeof LS_PIN === 'undefined')   console.error('LS_PIN missing in index.html');
+
   // ---- API helper
   const API = (action) => `${API_BASE}?action=${encodeURIComponent(action)}`;
 
@@ -29,10 +34,25 @@
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
 
   // ---- Utils
-  function showDebug(msg){ if(!debugBanner) return; debugBanner.textContent=msg; debugBanner.style.display='block'; }
-  function hideDebug(){ if(!debugBanner) return; debugBanner.style.display='none'; }
-  async function getJSON(url){ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(`GET ${url} -> ${r.status}`); return r.json(); }
-  async function postJSON(url, body){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(!r.ok){ const t=await r.text().catch(()=> ''); throw new Error(`POST ${url} -> ${r.status} ${t}`);} return r.json(); }
+  function showDebug(msg){
+    if(!debugBanner) return;
+    debugBanner.textContent = String(msg || '');
+    debugBanner.style.display = 'block';
+  }
+  function hideDebug(){ if(!debugBanner) return; debugBanner.style.display = 'none'; }
+  async function getJSON(url){
+    const r = await fetch(url, { cache:'no-store' });
+    const ct = r.headers.get('content-type') || '';
+    const txt = await r.text();
+    if (!r.ok) throw new Error(`GET ${url} -> ${r.status} ${txt.slice(0,120)}`);
+    try { return JSON.parse(txt); } catch { throw new Error(`GET ${url} returned non-JSON: ${txt.slice(0,200)}`); }
+  }
+  async function postJSON(url, body){
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+    const txt = await r.text();
+    if (!r.ok) throw new Error(`POST ${url} -> ${r.status} ${txt.slice(0,200)}`);
+    try { return JSON.parse(txt); } catch { throw new Error(`POST ${url} returned non-JSON: ${txt.slice(0,200)}`); }
+  }
   function lsGet(k, def=''){ try{ return localStorage.getItem(k) ?? def; }catch{ return def; } }
   function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch{} }
   function isNumericPin(s){ return /^\d{4}$/.test(String(s||'')); }
@@ -106,7 +126,15 @@
       </div>
     `;
   }
-  function renderFights(){ fightsList.innerHTML = fights.map(buildFightRow).join(''); }
+  function renderFights(){
+    // Guard: backend must return array
+    if (!Array.isArray(fights)) {
+      showDebug(`getfights did not return an array: ${typeof fights}`);
+      fightsList.innerHTML = '';
+      return;
+    }
+    fightsList.innerHTML = fights.map(buildFightRow).join('');
+  }
 
   // ---- Your Picks
   function renderYourPicks(){
@@ -204,7 +232,7 @@
     });
 
     // Submit picks (creates/verifies user on backend)
-    submitBtn.addEventListener('click', async ()=>{
+    submitBtn.addEventListener('click', async () => {
       const username = (usernameInput.value || lsGet(LS_USER,'')).trim();
       const pin = String(pinInput.value || lsGet(LS_PIN,'')).trim();
       if(!username){ showDebug('Enter a username.'); return; }
@@ -220,20 +248,39 @@
         }));
       if(!picksPayload.length){ showDebug('No picks to submit.'); return; }
 
+      // --- Submitting state (prevents spam) ---
+      const oldText = submitBtn.textContent;
+      submitBtn.textContent = 'Submitting…';
       submitBtn.disabled = true;
+
       try{
         const res = await postJSON(API_BASE, { action:'submitpicks', username, pin, picks:picksPayload });
-        if(!res || res.ok!==true) throw new Error(res && res.error ? res.error : 'Submit failed');
-        hideDebug(); lsSet(LS_USER,username); lsSet(LS_PIN,pin);
+        if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
+        hideDebug();
+        lsSet(LS_USER, username);
+        lsSet(LS_PIN, pin);
         await refreshAll();
-      }catch(err){ showDebug(String(err.message||err)); }
-      finally{ submitBtn.disabled = locked; }
+        // brief success pulse
+        submitBtn.textContent = 'Saved ✔';
+        setTimeout(() => { submitBtn.textContent = oldText; submitBtn.disabled = locked; }, 900);
+      }catch(err){
+        showDebug(String(err.message||err));
+        submitBtn.textContent = oldText;
+        submitBtn.disabled = locked; // re-enable only if not locked
+      }
     });
   }
 
   // ---- Data fetch
   async function refreshMeta(){ meta = await getJSON(API('getmeta')); renderMeta(); }
-  async function refreshFights(){ fights = await getJSON(API('getfights')); renderFights(); prunePicks(); }
+  async function refreshFights(){
+    const data = await getJSON(API('getfights'));
+    // Guard against non-array responses
+    fights = Array.isArray(data) ? data : [];
+    if (!Array.isArray(data)) showDebug(`getfights returned non-array; check backend. Raw: ${JSON.stringify(data).slice(0,200)}`);
+    renderFights();
+    prunePicks();
+  }
   async function refreshResults(){ results = await getJSON(API('getresults')); }
   async function refreshLeaderboard(){ const rows = await getJSON(API('getleaderboard')); renderLeaderboard(rows); }
   async function refreshChampions(){ const rows = await getJSON(API('getchampion')); renderChampions(rows); }
