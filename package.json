@@ -1,0 +1,13 @@
+{
+  "name": "ffp-proxy",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
