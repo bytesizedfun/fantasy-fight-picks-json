@@ -1,7 +1,8 @@
-/* Fantasy Fight Picks — frontend (per-user lock after submit, robust submit, proxied via /api/*) */
+/* Fantasy Fight Picks — frontend (per-user lock after submit, robust submit, proxied via /api/*)
+   Update: Auth UI now hides PIN & shows Welcome state once saved; persists across reloads; Sign out restores form. */
 
 (() => {
-  // ---- DOM refs
+  // ---- DOM refs (note: some will be re-queried after auth panel rerender)
   const q = (sel) => document.querySelector(sel);
   const fightsList   = q('#fightsList');
   const yourPicks    = q('#yourPicks');
@@ -11,9 +12,10 @@
   const statusText   = q('#statusText');
   const lockoutText  = q('#lockoutText');
   const eventUrlEl   = q('#eventUrl');
-  const usernameInput= q('#usernameInput');
-  const pinInput     = q('#pinInput');
-  const saveUserBtn  = q('#saveUserBtn');
+  const authPanel    = q('#authPanel');
+  let usernameInput  = q('#usernameInput');
+  let pinInput       = q('#pinInput');
+  let saveUserBtn    = q('#saveUserBtn');
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
@@ -63,9 +65,94 @@
   }
   function lsGet(k, def=''){ try{ return localStorage.getItem(k) ?? def; }catch{ return def; } }
   function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch{} }
+  function lsDel(k){ try{ localStorage.removeItem(k); }catch{} }
   function isNumericPin(s){ return /^\d{4}$/.test(String(s||'')); }
   function escapeHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   function hashKey(s){ let h=0,str=String(s||''); for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))|0;} return Math.abs(h).toString(36); }
+
+  // ---- Auth helpers (NEW)
+  function isAuthed(){
+    const u = lsGet(LS_USER,'').trim();
+    const p = lsGet(LS_PIN,'').trim();
+    return !!u && isNumericPin(p);
+  }
+  function currentUsername(){
+    // Prefer stored; fallback to input if present (pre-submit UX)
+    const uStored = lsGet(LS_USER,'').trim();
+    if (uStored) return uStored;
+    const uInput = usernameInput ? String(usernameInput.value||'').trim() : '';
+    return uInput;
+  }
+  function currentPin(){
+    // Never display PIN; only read from storage or hidden input if present
+    const pStored = lsGet(LS_PIN,'').trim();
+    if (isNumericPin(pStored)) return pStored;
+    const pInput = pinInput ? String(pinInput.value||'').trim() : '';
+    return pInput;
+  }
+  function bindAuthFormHandlers(){
+    // Re-query after any re-render of authPanel
+    usernameInput = q('#usernameInput');
+    pinInput = q('#pinInput');
+    saveUserBtn = q('#saveUserBtn');
+
+    if (saveUserBtn) {
+      saveUserBtn.addEventListener('click', ()=>{
+        const u = (usernameInput?.value || '').trim();
+        const p = String(pinInput?.value || '').trim();
+        if(!u){ showDebug('Enter a username.'); return; }
+        if(!isNumericPin(p)){ showDebug('PIN must be 4 digits.'); return; }
+        hideDebug(); lsSet(LS_USER,u); lsSet(LS_PIN,p);
+        updateAuthUI();        // switch to welcome state
+        refreshUserLock();     // reflect per-user lock state
+      });
+    }
+
+    const signOutBtn = q('#signOutBtn');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', ()=>{
+        lsDel(LS_USER);
+        lsDel(LS_PIN);
+        userLocked = false;
+        updateAuthUI();        // restore sign-in form
+        applyLockState();
+      });
+    }
+  }
+  function updateAuthUI(){
+    if (!authPanel) return;
+
+    if (isAuthed()) {
+      const u = escapeHtml(lsGet(LS_USER,''));
+      authPanel.innerHTML = `
+        <div class="section-title">Welcome</div>
+        <div class="row" style="align-items:center;">
+          <div style="flex:1 1 auto;">Welcome, <strong>${u}</strong> 👋</div>
+          <div style="flex:0 0 auto;"><button id="signOutBtn">Sign out</button></div>
+        </div>
+        <div class="tiny">You’re signed in. Your PIN is securely stored locally and never shown.</div>
+      `;
+    } else {
+      authPanel.innerHTML = `
+        <div class="section-title">Sign in</div>
+        <div class="row">
+          <div>
+            <div class="label">Username</div>
+            <input id="usernameInput" type="text" inputmode="text" autocomplete="username" placeholder="e.g., Josh" />
+          </div>
+          <div>
+            <div class="label">4-digit PIN</div>
+            <input id="pinInput" type="number" inputmode="numeric" pattern="\\d{4}" placeholder="1234" />
+          </div>
+          <div style="flex:0 0 auto; align-self:end;">
+            <button id="saveUserBtn" class="primary">Save</button>
+          </div>
+        </div>
+        <div class="tiny">Saved locally so you don’t re-enter each time.</div>
+      `;
+    }
+    bindAuthFormHandlers();
+  }
 
   // ---- Scoring helpers
   function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o-100)/100)+1; }
@@ -224,7 +311,7 @@
 
   // ---- User lock fetch
   async function refreshUserLock() {
-    const username = (usernameInput.value || lsGet(LS_USER,'')).trim();
+    const username = currentUsername();
     if (!username) { userLocked = false; applyLockState(); return; }
     try {
       const state = await getJSON(API.userlock(username));
@@ -238,17 +325,8 @@
     applyLockState();
   }
 
-  // ---- Bind UI
-  function bindInputs(){
-    saveUserBtn.addEventListener('click', ()=>{
-      const u = (usernameInput.value||'').trim();
-      const p = String(pinInput.value||'').trim();
-      if(!u){ showDebug('Enter a username.'); return; }
-      if(!isNumericPin(p)){ showDebug('PIN must be 4 digits.'); return; }
-      hideDebug(); lsSet(LS_USER,u); lsSet(LS_PIN,p);
-      refreshUserLock();
-    });
-
+  // ---- Bind UI for fights & submit
+  function bindFightsAndSubmit(){
     fightsList.addEventListener('change', (ev)=>{
       const el = ev.target;
       const fightEl = el.closest('.fight'); if(!fightEl) return;
@@ -269,8 +347,8 @@
       if (eventLocked) { showDebug('Event is locked — no new submissions.'); return; }
       if (userLocked) { showDebug('Your picks are locked (already submitted).'); return; }
 
-      const username = (usernameInput.value || lsGet(LS_USER,'')).trim();
-      const pin = String(pinInput.value || lsGet(LS_PIN,'')).trim();
+      const username = currentUsername();
+      const pin = currentPin();
       if(!username){ showDebug('Enter a username.'); return; }
       if(!isNumericPin(pin)){ showDebug('PIN must be 4 digits.'); return; }
 
@@ -292,6 +370,7 @@
         const res = await postJSON(API.submit, { username, pin, picks: picksPayload });
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
         hideDebug();
+        // Ensure creds persist even if user used inline fields before saving
         lsSet(LS_USER, username);
         lsSet(LS_PIN, pin);
         userLocked = true;           // lock for this user after success
@@ -299,6 +378,7 @@
         await refreshAll();          // refresh scores/results/etc.
         submitBtn.textContent = 'Saved ✔';
         setTimeout(() => { submitBtn.textContent = oldText; /* keep disabled (userLocked) */ }, 900);
+        updateAuthUI();              // reflect welcome state if not already
       }catch(err){
         showDebug(String(err.message||err));
         submitBtn.textContent = oldText;
@@ -332,12 +412,16 @@
 
   // ---- Init
   function prefillUser(){
-    const u = lsGet(LS_USER,''); const p = lsGet(LS_PIN,'');
-    if(u) usernameInput.value = u; if(p) pinInput.value = p;
+    const u = lsGet(LS_USER,'');
+    if (u && q('#usernameInput')) q('#usernameInput').value = u;
+    // IMPORTANT: do NOT prefill pin input; PIN should never be shown
   }
 
-  bindInputs();
+  // Initial wiring
+  updateAuthUI();     // render correct auth state first (may remove inputs)
+  bindAuthFormHandlers();
   prefillUser();
+  bindFightsAndSubmit();
   refreshAll();
   setInterval(refreshAll, 60000);
 })();
