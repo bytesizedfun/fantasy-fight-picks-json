@@ -1,4 +1,4 @@
-/* Fantasy Fight Picks — frontend (per-user lock after submit, robust submit) */
+/* Fantasy Fight Picks — frontend (per-user lock after submit, robust submit, proxied via /api/*) */
 
 (() => {
   // ---- DOM refs
@@ -18,11 +18,19 @@
   const submitHint   = q('#submitHint');
 
   // required globals from index.html
-  if (typeof API_BASE === 'undefined') console.error('API_BASE missing in index.html');
   if (typeof LS_USER === 'undefined')  console.error('LS_USER missing in index.html');
   if (typeof LS_PIN === 'undefined')   console.error('LS_PIN missing in index.html');
 
-  const API = (action) => `${API_BASE}?action=${encodeURIComponent(action)}`;
+  // ---- API endpoints (proxy on same origin)
+  const API = {
+    meta: '/api/meta',
+    fights: '/api/fights',
+    results: '/api/results',
+    leaderboard: '/api/leaderboard',
+    champion: '/api/champion',
+    userlock: (u) => `/api/userlock?username=${encodeURIComponent(u)}`,
+    submit: '/api/submitpicks'
+  };
 
   // ---- State
   let meta = null;
@@ -219,7 +227,7 @@
     const username = (usernameInput.value || lsGet(LS_USER,'')).trim();
     if (!username) { userLocked = false; applyLockState(); return; }
     try {
-      const state = await getJSON(API('getuserlock') + `&username=${encodeURIComponent(username)}`);
+      const state = await getJSON(API.userlock(username));
       // Lock only if they already submitted; event lock is handled via meta/status
       userLocked = !!state.locked && state.reason === 'submitted';
     } catch (e) {
@@ -281,7 +289,7 @@
       submitBtn.disabled = true;
 
       try{
-        const res = await postJSON(API_BASE, { action:'submitpicks', username, pin, picks:picksPayload });
+        const res = await postJSON(API.submit, { username, pin, picks: picksPayload });
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
         hideDebug();
         lsSet(LS_USER, username);
@@ -300,17 +308,17 @@
   }
 
   // ---- Data fetch
-  async function refreshMeta(){ meta = await getJSON(API('getmeta')); renderMeta(); }
+  async function refreshMeta(){ meta = await getJSON(API.meta); renderMeta(); }
   async function refreshFights(){
-    const data = await getJSON(API('getfights'));
+    const data = await getJSON(API.fights);
     fights = Array.isArray(data) ? data : [];
     if (!Array.isArray(data)) showDebug(`getfights returned non-array; backend not deployed? Raw: ${JSON.stringify(data).slice(0,200)}`);
     renderFights();
     prunePicks();
   }
-  async function refreshResults(){ results = await getJSON(API('getresults')); }
-  async function refreshLeaderboard(){ const rows = await getJSON(API('getleaderboard')); renderLeaderboard(rows); }
-  async function refreshChampions(){ const rows = await getJSON(API('getchampion')); renderChampions(rows); }
+  async function refreshResults(){ results = await getJSON(API.results); }
+  async function refreshLeaderboard(){ const rows = await getJSON(API.leaderboard); renderLeaderboard(rows); }
+  async function refreshChampions(){ const rows = await getJSON(API.champion); renderChampions(rows); }
   function prunePicks(){ const valid = new Set(fights.map(f=> f.fight)); Object.keys(picksState).forEach(k=>{ if(!valid.has(k)) delete picksState[k]; }); }
 
   async function refreshAll(){
