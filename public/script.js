@@ -1,8 +1,10 @@
-/* Fantasy Fight Picks — frontend (per-user lock after submit, robust submit, proxied via /api/*)
-   Auth UI hides PIN & shows Welcome after save; NEW: once user is locked (submitted), hide Make Picks panel. */
+/* Fantasy Fight Picks — frontend (per-user lock, robust submit, proxied via /api/*)
+   Auth UI hides PIN & shows Welcome after save;
+   Hide Make Picks after submit;
+   FIX: deterministic hydration of saved picks from backend (no more “Your Picks” empty after reload). */
 
 (() => {
-  // ---- DOM refs (some re-queried after auth rerender)
+  // ---- DOM refs
   const q = (sel) => document.querySelector(sel);
   const makePicksPanel = q('#makePicksPanel');
   const yourPicksPanel = q('#yourPicksPanel');
@@ -21,11 +23,10 @@
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
-  // required globals
   if (typeof LS_USER === 'undefined')  console.error('LS_USER missing in index.html');
   if (typeof LS_PIN === 'undefined')   console.error('LS_PIN missing in index.html');
 
-  // ---- API endpoints (proxy on same origin)
+  // ---- API endpoints
   const API = {
     meta: '/api/meta',
     fights: '/api/fights',
@@ -33,6 +34,7 @@
     leaderboard: '/api/leaderboard',
     champion: '/api/champion',
     userlock: (u) => `/api/userlock?username=${encodeURIComponent(u)}`,
+    userpicks: (u) => `/api/userpicks?username=${encodeURIComponent(u)}`,
     submit: '/api/submitpicks'
   };
 
@@ -40,9 +42,9 @@
   let meta = null;
   let fights = [];
   let results = [];
-  let picksState = {};
+  let picksState = {};   // { [fightKey]: {winner, method, round} }
   let eventLocked = false;
-  let userLocked = false;  // locked AFTER first submit
+  let userLocked = false;
 
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
 
@@ -90,20 +92,22 @@
     const pInput = pinInput ? String(pinInput.value||'').trim() : '';
     return pInput;
   }
+
   function bindAuthFormHandlers(){
     usernameInput = q('#usernameInput');
     pinInput = q('#pinInput');
     saveUserBtn = q('#saveUserBtn');
 
     if (saveUserBtn) {
-      saveUserBtn.addEventListener('click', ()=>{
+      saveUserBtn.addEventListener('click', async ()=>{
         const u = (usernameInput?.value || '').trim();
         const p = String(pinInput?.value || '').trim();
         if(!u){ showDebug('Enter a username.'); return; }
         if(!isNumericPin(p)){ showDebug('PIN must be 4 digits.'); return; }
         hideDebug(); lsSet(LS_USER,u); lsSet(LS_PIN,p);
         updateAuthUI();
-        refreshUserLock();
+        await refreshUserLock();
+        await hydrateUserPicksStrict(); // <-- hydrate immediately after auth
       });
     }
 
@@ -113,11 +117,14 @@
         lsDel(LS_USER);
         lsDel(LS_PIN);
         userLocked = false;
+        picksState = {};
+        renderYourPicks();
         updateAuthUI();
         applyLockState();
       });
     }
   }
+
   function updateAuthUI(){
     if (!authPanel) return;
 
@@ -156,21 +163,16 @@
   // ---- Scoring helpers
   function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o-100)/100)+1; }
   function dogBonusForPick(f, pickedWinner){ if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1); if(pickedWinner===f.fighter2) return computeDogBonus(f.oddsF2); return 0; }
-  function resultForFight(key){ return results.find(r=> r.fight===key); }
-  function fightByKey(key){ return fights.find(f=> f.fight===key); }
 
-  // ---- Lock/UI state (UPDATED to hide Make Picks after submit)
+  // ---- Lock & visibility
   function applyLockState() {
     const shouldDisable = eventLocked || userLocked;
-    // Disable inputs when locked by event or user
     fightsList.querySelectorAll('select').forEach(sel => sel.disabled = shouldDisable);
     if (submitBtn) submitBtn.disabled = shouldDisable;
 
-    // Panel visibility rule: once user has submitted (userLocked), hide Make Picks panel
     if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
-    if (yourPicksPanel) yourPicksPanel.style.display = ''; // always visible
+    if (yourPicksPanel) yourPicksPanel.style.display = '';
 
-    // Hint text updates
     if (submitHint) {
       if (eventLocked) submitHint.textContent = 'Event is locked — no new submissions.';
       else if (userLocked) submitHint.textContent = 'Your picks are locked (already submitted).';
@@ -189,7 +191,7 @@
     applyLockState();
   }
 
-  // ---- Fights (pickers)
+  // ---- Fights UI
   function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
   function buildFightRow(f){
     const key = f.fight;
@@ -248,7 +250,7 @@
     applyLockState();
   }
 
-  // ---- Your Picks
+  // ---- Your Picks (renders from picksState)
   function renderYourPicks(){
     const keys = Object.keys(picksState);
     if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
@@ -288,7 +290,7 @@
     yourPicks.innerHTML = rows.join('');
   }
 
-  // ---- Leaderboard
+  // ---- Champions & Leaderboard
   function renderLeaderboard(rows){
     if(!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="4" class="tiny">No scores yet.</td></tr>`;
@@ -303,8 +305,6 @@
       </tr>
     `).join('');
   }
-
-  // ---- Champions
   function renderChampions(list){
     if(!Array.isArray(list) || !list.length){
       champList.innerHTML = `<li class="tiny">No champion yet (shows when event completes)</li>`;
@@ -315,7 +315,33 @@
     champList.innerHTML = recent.map(c=> `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
   }
 
-  // ---- User lock fetch
+  // ---- Backend hydration (STRICT: ensures picksState is filled before first render)
+  async function hydrateUserPicksStrict(){
+    const u = currentUsername();
+    if (!u) { renderYourPicks(); return; }
+    try{
+      const list = await getJSON(API.userpicks(u)); // [{fight,winner,method,round}]
+      const next = {};
+      if (Array.isArray(list)) {
+        for (const row of list) {
+          const k = String(row.fight || '');
+          if (!k) continue;
+          next[k] = {
+            winner: row.winner || '',
+            method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
+            round:  (row.method === 'Decision') ? '' : (row.round || '')
+          };
+        }
+      }
+      picksState = next;
+    }catch(err){
+      showDebug(`userpicks: ${String(err.message||err)}`);
+      picksState = picksState || {};
+    }
+    renderYourPicks(); // only render after hydration finished
+  }
+
+  // ---- Lock state from backend
   async function refreshUserLock() {
     const username = currentUsername();
     if (!username) { userLocked = false; applyLockState(); return; }
@@ -376,9 +402,10 @@
         hideDebug();
         lsSet(LS_USER, username);
         lsSet(LS_PIN, pin);
-        userLocked = true;           // lock user after success
-        applyLockState();            // <-- hides Make Picks panel now
-        await refreshAll();
+        userLocked = true;
+        applyLockState();              // hide Make Picks panel
+        await refreshAll(false);       // light refresh (no double hydrations)
+        await hydrateUserPicksStrict();// explicit hydrate after submit
         submitBtn.textContent = 'Saved ✔';
         setTimeout(() => { submitBtn.textContent = oldText; }, 900);
         updateAuthUI();
@@ -390,7 +417,7 @@
     });
   }
 
-  // ---- Data fetch
+  // ---- Data fetchers
   async function refreshMeta(){ meta = await getJSON(API.meta); renderMeta(); }
   async function refreshFights(){
     const data = await getJSON(API.fights);
@@ -404,12 +431,14 @@
   async function refreshChampions(){ const rows = await getJSON(API.champion); renderChampions(rows); }
   function prunePicks(){ const valid = new Set(fights.map(f=> f.fight)); Object.keys(picksState).forEach(k=>{ if(!valid.has(k)) delete picksState[k]; }); }
 
-  async function refreshAll(){
+  // Pass fullRefresh=false to skip duplicate hydrations on submit path
+  async function refreshAll(fullRefresh = true){
     try{
       await refreshMeta();
-      await refreshUserLock();  // ensures panel visibility is correct on load
+      await refreshUserLock();            // sets panel visibility on load
       await Promise.all([ refreshFights(), refreshResults(), refreshLeaderboard(), refreshChampions() ]);
-      renderYourPicks(); hideDebug();
+      if (fullRefresh) await hydrateUserPicksStrict(); // FIRST paint of Your Picks happens after this
+      if (fullRefresh) hideDebug();
     }catch(err){ showDebug(String(err.message||err)); }
   }
 
@@ -417,7 +446,6 @@
   function prefillUser(){
     const u = lsGet(LS_USER,'');
     if (u && q('#usernameInput')) q('#usernameInput').value = u;
-    // never prefill PIN
   }
 
   // Boot
