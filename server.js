@@ -1,127 +1,191 @@
-// server.js
-// Node 18+ (built-in fetch). Start with: node server.js
+// Robust proxy for Fantasy Fight Picks (Render)
+// - Maps RESTy /api/* routes to GAS doGet/doPost actions
+// - Hardened against upstream slowness: timeouts, retries, no process crash
+// - Clear JSON errors instead of 502 HTML
+
 import express from "express";
 import path from "path";
-import compression from "compression";
-import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 
-dotenv.config();
+// ---- Config
+const PORT = process.env.PORT || 10000;
+const GAS_URL = process.env.GAS_URL || ""; // MUST end with /exec
+const TIMEOUT_MS = Number(process.env.GAS_TIMEOUT_MS || 12000);
+const RETRIES = Number(process.env.GAS_RETRIES || 1); // total attempts = 1 + RETRIES
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const GAS_URL = process.env.GAS_URL; // e.g. https://script.google.com/macros/s/AKfy.../exec
-
-if (!GAS_URL) {
-  console.warn("[WARN] GAS_URL is not set. Set it in .env to reach your Apps Script backend.");
+if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(GAS_URL)) {
+  console.error("FATAL: GAS_URL env var missing or invalid. Set it to your Apps Script Web App /exec URL.");
+  process.exit(1);
 }
 
-app.use(compression());
-app.use(express.json({ limit: "256kb" }));
-app.use(express.urlencoded({ extended: true, limit: "256kb" }));
+// ---- Small helpers
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const __dirname = path.resolve();
-app.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] }));
-
-// ---- Helpers
-function toJSONSafe(text) {
-  try { return JSON.parse(text); } catch { return { raw: text }; }
+function withTimeout(ms, signal) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  // If caller passes a parent signal, propagate abort
+  if (signal) signal.addEventListener("abort", () => ctrl.abort(), { once: true });
+  return { signal: ctrl.signal, clear: () => clearTimeout(id) };
 }
-async function fetchWithTimeout(url, opts = {}, ms = 10000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), ms);
-  try {
-    const res = await fetch(url, { ...opts, signal: controller.signal });
-    const txt = await res.text();
-    if (!res.ok) {
-      return { ok: false, status: res.status, body: toJSONSafe(txt) };
+
+async function fetchJSON(url, opts = {}) {
+  const { method = "GET", body, headers = {}, timeout = TIMEOUT_MS, retries = RETRIES } = opts;
+  let attempt = 0;
+  let lastErr;
+
+  while (attempt <= retries) {
+    attempt++;
+    const { signal, clear } = withTimeout(timeout, opts.signal);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers,
+        body,
+        signal
+      });
+      const text = await res.text();
+
+      // GAS occasionally returns HTML (login/error) when misconfigured.
+      // We still try to parse JSON; if it fails, we surface a structured error.
+      let data;
+      try { data = JSON.parse(text); }
+      catch {
+        if (!res.ok) throw new Error(`Upstream ${res.status} ${res.statusText}`);
+        throw new Error(`Upstream returned non-JSON (${text.slice(0,120)})`);
+      }
+
+      if (!res.ok) {
+        const msg = (data && (data.error || data.message)) ? (data.error || data.message) : `${res.status} ${res.statusText}`;
+        throw new Error(msg);
+      }
+
+      clear();
+      return data;
+    } catch (err) {
+      lastErr = err;
+      clear();
+      // Retry only on abort/network-ish errors
+      const msg = String(err?.message || err);
+      const retriable = /aborted|network|timeout|fetch failed|TypeError: fetch/.test(msg);
+      if (!retriable || attempt > retries) break;
     }
-    return { ok: true, status: res.status, body: toJSONSafe(txt) };
-  } finally {
-    clearTimeout(id);
   }
+
+  const errText = String(lastErr?.message || lastErr || "Unknown upstream error");
+  const e = new Error(errText);
+  e.status = 502;
+  throw e;
 }
-function q(params) {
-  const usp = new URLSearchParams(params);
+
+function toQuery(params = {}) {
+  const usp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null) continue;
+    usp.set(k, String(v));
+  }
   return usp.toString();
 }
 
-// ---- Health
-app.get("/health", (_req, res) => {
-  res.json({ ok: true, hasGAS: Boolean(GAS_URL) });
-});
+async function gasGET(action, params = {}) {
+  const q = toQuery({ action, ...params });
+  const url = `${GAS_URL}?${q}`;
+  return fetchJSON(url, { method: "GET" });
+}
 
-// ---- Read routes (proxy to GAS doGet)
-app.get("/api/meta", async (_req, res) => {
-  if (!GAS_URL) return res.status(503).json({ ok: false, error: "GAS_URL missing" });
-  const url = `${GAS_URL}?${q({ action: "getmeta" })}`;
-  const r = await fetchWithTimeout(url, { method: "GET" });
-  res.status(r.ok ? 200 : 502).json(r.body);
-});
-
-app.get("/api/fights", async (_req, res) => {
-  if (!GAS_URL) return res.status(503).json({ ok: false, error: "GAS_URL missing" });
-  const url = `${GAS_URL}?${q({ action: "getfights" })}`;
-  const r = await fetchWithTimeout(url, { method: "GET" });
-  res.status(r.ok ? 200 : 502).json(r.body);
-});
-
-app.get("/api/results", async (_req, res) => {
-  if (!GAS_URL) return res.status(503).json({ ok: false, error: "GAS_URL missing" });
-  const url = `${GAS_URL}?${q({ action: "getresults" })}`;
-  const r = await fetchWithTimeout(url, { method: "GET" });
-  res.status(r.ok ? 200 : 502).json(r.body);
-});
-
-app.get("/api/leaderboard", async (_req, res) => {
-  if (!GAS_URL) return res.status(503).json({ ok: false, error: "GAS_URL missing" });
-  const url = `${GAS_URL}?${q({ action: "getleaderboard" })}`;
-  const r = await fetchWithTimeout(url, { method: "GET" });
-  res.status(r.ok ? 200 : 502).json(r.body);
-});
-
-app.get("/api/champion", async (_req, res) => {
-  if (!GAS_URL) return res.status(503).json({ ok: false, error: "GAS_URL missing" });
-  const url = `${GAS_URL}?${q({ action: "getchampion" })}`;
-  const r = await fetchWithTimeout(url, { method: "GET" });
-  res.status(r.ok ? 200 : 502).json(r.body);
-});
-
-// user lock proxy (supports your existing frontend logic)
-app.get("/api/userlock", async (req, res) => {
-  if (!GAS_URL) return res.status(503).json({ ok: false, error: "GAS_URL missing" });
-  const username = String(req.query.username || "");
-  const url = `${GAS_URL}?${q({ action: "getuserlock", username })}`;
-  const r = await fetchWithTimeout(url, { method: "GET" });
-  res.status(r.ok ? 200 : 502).json(r.body);
-});
-
-// ---- Write route (proxy to GAS doPost)
-app.post("/api/submitpicks", async (req, res) => {
-  if (!GAS_URL) return res.status(503).json({ ok: false, error: "GAS_URL missing" });
-  const { username, pin, picks } = req.body || {};
-  // Minimal validation (frontend already does checks)
-  if (!username || !pin || !Array.isArray(picks) || picks.length === 0) {
-    return res.status(400).json({ ok: false, error: "Missing username/pin/picks" });
-  }
-  const payload = { action: "submitpicks", username, pin, picks };
-  const r = await fetchWithTimeout(GAS_URL, {
+async function gasPOST(action, json = {}) {
+  const body = JSON.stringify({ action, ...json });
+  return fetchJSON(GAS_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body
   });
-  res.status(r.ok ? 200 : 502).json(r.body);
+}
+
+// ---- App
+const app = express();
+app.use(express.json());
+
+// Static frontend from ./public
+app.use(express.static(path.join(__dirname, "public"), {
+  etag: true,
+  lastModified: true,
+  maxAge: "5m",
+  extensions: ["html"]
+}));
+
+// Health
+app.get("/health", async (req, res) => {
+  try {
+    const meta = await gasGET("getmeta");
+    return res.json({ ok: true, status: meta?.status || "unknown" });
+  } catch (e) {
+    return res.status(200).json({ ok: false, error: String(e.message || e) }); // never trip Render health
+  }
 });
 
-// Echo (debug end-to-end)
-app.post("/api/echo", (req, res) => {
-  res.json({ ok: true, received: req.body ?? null });
+// ---- API -> GAS mappings (GETs)
+app.get("/api/meta", async (req, res) => {
+  try { res.json(await gasGET("getmeta")); }
+  catch (e) { res.status(e.status || 502).json({ ok:false, error:String(e.message||e) }); }
+});
+app.get("/api/fights", async (req, res) => {
+  try { res.json(await gasGET("getfights")); }
+  catch (e) { res.status(e.status || 502).json({ ok:false, error:String(e.message||e) }); }
+});
+app.get("/api/results", async (req, res) => {
+  try { res.json(await gasGET("getresults")); }
+  catch (e) { res.status(e.status || 502).json({ ok:false, error:String(e.message||e) }); }
+});
+app.get("/api/leaderboard", async (req, res) => {
+  try { res.json(await gasGET("getleaderboard")); }
+  catch (e) { res.status(e.status || 502).json({ ok:false, error:String(e.message||e) }); }
+});
+app.get("/api/champion", async (req, res) => {
+  try { res.json(await gasGET("getchampion")); }
+  catch (e) { res.status(e.status || 502).json({ ok:false, error:String(e.message||e) }); }
+});
+app.get("/api/userlock", async (req, res) => {
+  try { res.json(await gasGET("getuserlock", { username: req.query.username || "" })); }
+  catch (e) { res.status(e.status || 502).json({ ok:false, error:String(e.message||e) }); }
+});
+app.get("/api/userpicks", async (req, res) => {
+  try { res.json(await gasGET("getuserpicks", { username: req.query.username || "" })); }
+  catch (e) { res.status(e.status || 502).json({ ok:false, error:String(e.message||e) }); }
 });
 
-// Fallback → index.html
-app.get("*", (_req, res) => {
+// ---- API -> GAS mappings (POSTs)
+app.post("/api/submitpicks", async (req, res) => {
+  try {
+    const { username, pin, picks } = req.body || {};
+    res.json(await gasPOST("submitpicks", { username, pin, picks }));
+  } catch (e) {
+    res.status(e.status || 502).json({ ok:false, error:String(e.message||e) });
+  }
+});
+app.post("/api/setevent", async (req, res) => {
+  try {
+    const { url, lockout_iso, lockout_local, tz } = req.body || {};
+    res.json(await gasPOST("setevent", { url, lockout_iso, lockout_local, tz }));
+  } catch (e) {
+    res.status(e.status || 502).json({ ok:false, error:String(e.message||e) });
+  }
+});
+app.post("/api/repairlabels", async (req, res) => {
+  try {
+    res.json(await gasPOST("repairlabels", {}));
+  } catch (e) {
+    res.status(e.status || 502).json({ ok:false, error:String(e.message||e) });
+  }
+});
+
+// Fallback to index.html (SPA-ish)
+app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// ---- Boot
 app.listen(PORT, () => {
-  console.log(`FFP proxy listening on http://localhost:${PORT}  (GAS_URL set: ${Boolean(GAS_URL)})`);
+  console.log(`FFP proxy listening on http://localhost:${PORT}  (GAS_URL set: ${!!GAS_URL})`);
 });
