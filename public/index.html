@@ -9,51 +9,73 @@
   <style>
     :root{
       --bg:#0f1115;--panel:#151821;--text:#e8eaf0;--muted:#9aa3b2;
-      --accent:#3a7afe;--border:#252a36;
+      --accent:#3a7afe;--border:#232736;--panel2:#0b0d12;
+      --good:#20bf6b;--warn:#ffae42;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
     a{color:var(--accent);text-decoration:none}
+
     .wrap{max-width:980px;margin:0 auto;padding:16px}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:28px;height:28px;display:inline-block}
     .title{font-size:20px;font-weight:700;letter-spacing:.3px}
     .meta{font-size:12px;color:var(--muted)}
-    .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;margin:10px 0}
+
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;margin:10px 0}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .row>*{flex:1 1 220px}
     .label{font-size:12px;color:var(--muted);margin-bottom:6px}
-    input[type="text"],input[type="number"],select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:#0b0d12;color:var(--text);outline:none}
-    button{appearance:none;border:1px solid var(--border);background:#0b0d12;color:var(--text);padding:10px 14px;border-radius:8px;cursor:pointer}
+    input[type="text"],input[type="number"],select{width:100%;padding:10px 12px;border-radius:6px;border:1px solid var(--border);background:var(--panel2);color:var(--text);outline:none}
+    button{appearance:none;border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:10px 14px;border-radius:6px;cursor:pointer}
     button.primary{background:var(--accent);color:#fff;border:none}
     button:disabled{opacity:.6;cursor:not-allowed}
     .section-title{font-size:16px;font-weight:700;margin:2px 0 8px}
     .tiny{font-size:12px;color:var(--muted)}
     .scoring{font-size:13px;color:var(--muted)}
     .list{display:grid;gap:10px}
-    .fight{padding:10px;border:1px solid var(--border);border-radius:8px;background:#0b0d12}
+    .fight{padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--panel2)}
     .fight .name{font-weight:600;margin-bottom:8px;font-size:14px}
     .fight .grid{display:grid;gap:8px;grid-template-columns:repeat(4,minmax(0,1fr))}
     @media (max-width:720px){.fight .grid{grid-template-columns:1fr 1fr}}
-    .status-bar{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
-    .champ{font-size:14px}
+    .tag{font-size:12px;padding:2px 6px;border-radius:6px;border:1px solid var(--border);color:var(--muted);display:inline-block}
+
+    /* Leaderboard: higher contrast + zebra + sticky header */
+    .leaderboard{background:#0e1220;border-color:#2b3245}
+    .leaderboard table{width:100%;border-collapse:collapse}
+    .leaderboard thead th{position:sticky;top:0;background:#0e1220}
+    .leaderboard th,.leaderboard td{border-bottom:1px solid #2b3245;padding:10px 8px;text-align:left;font-size:14px}
+    .leaderboard tbody tr:nth-child(even){background:#0c1020}
+    .leaderboard .center{text-align:center}
+    .lb-me{background:#182040 !important}
+    .rank{font-weight:700}
+    .pts{font-weight:700}
+
+    /* Champions banner */
+    .champ{display:none} /* shown by JS when champs exist */
     .champ ul{margin:6px 0 0 16px;padding:0}
     .champ li{margin:2px 0}
+    .champ .when{color:var(--muted);font-size:12px;margin-top:4px}
+
     .picks{font-size:14px}
-    .pick-line{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px dashed var(--border);border-radius:8px}
-    .right{text-align:right}
-    .tag{font-size:12px;padding:2px 6px;border-radius:6px;border:1px solid var(--border);color:var(--muted);display:inline-block}
-    .leaderboard table{width:100%;border-collapse:collapse}
-    .leaderboard th,.leaderboard td{border-bottom:1px solid var(--border);padding:8px 6px;text-align:left;font-size:14px}
-    .leaderboard th{color:var(--muted);font-weight:600}
-    .center{text-align:center}
-    .debug{display:none;margin:10px 0;font-size:12px;color:#fff;background:#aa2e2e;border:1px solid #7d2020;padding:8px 10px;border-radius:8px}
+    .pick-line{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px dashed var(--border);border-radius:6px}
+
+    .debug{display:none;margin:10px 0;font-size:12px;color:#fff;background:#aa2e2e;border:1px solid #7d2020;padding:8px 10px;border-radius:6px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="title">Fantasy Fight Picks</div>
+      <div class="brand">
+        <!-- Tiny inline SVG logo (no extra request) -->
+        <svg class="logo" viewBox="0 0 24 24" fill="none" aria-label="FFP">
+          <rect x="2" y="2" width="20" height="20" rx="5" stroke="#3a7afe" />
+          <path d="M7 8h6M7 12h4M7 16h8" stroke="#3a7afe" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <div class="title">Fantasy Fight Picks</div>
+      </div>
       <div class="meta">
         <span id="statusText">status: …</span> •
         <span id="lockoutText">lockout: …</span>
@@ -63,36 +85,22 @@
     <!-- Debug banner -->
     <div id="debugBanner" class="debug"></div>
 
-    <!-- Champion banner -->
+    <!-- Champions: always-on “Reigning Champion(s)” if we have any -->
     <div id="champBanner" class="panel champ" aria-live="polite">
-      <div class="section-title">Champion(s)</div>
-      <div class="tiny">Auto-updates when the event completes</div>
+      <div class="section-title">Reigning Champion(s)</div>
       <ul id="champList"></ul>
+      <div id="champWhen" class="when"></div>
     </div>
 
     <!-- Auth -->
-    <div class="panel" id="authPanel" aria-live="polite">
-      <div class="section-title">Sign in</div>
-      <div class="row">
-        <div>
-          <div class="label">Username</div>
-          <input id="usernameInput" type="text" inputmode="text" autocomplete="username" placeholder="e.g., Josh" />
-        </div>
-        <div>
-          <div class="label">4-digit PIN</div>
-          <input id="pinInput" type="number" inputmode="numeric" pattern="\\d{4}" placeholder="1234" />
-        </div>
-        <div style="flex:0 0 auto; align-self:end;">
-          <button id="saveUserBtn" class="primary">Save</button>
-        </div>
-      </div>
-      <div class="tiny">Saved locally so you don’t re-enter each time.</div>
+    <div class="panel" id="authPanel">
+      <!-- JS will render either the simple welcome line + sign out, or the sign-in form -->
     </div>
 
     <!-- Scoring line -->
     <div class="panel">
       <div class="scoring">
-        Scoring: +1 Winner • +1 Method (only if Winner) • +1 Round (only if Winner + Method, and not Decision) • 🐶 Underdog bonus by odds tier (+100→+1, +150→+2, +250→+3, …)
+        Scoring: +3 Winner • +2 Method (if Winner is correct) • +1 Round (only if Winner + Method are correct and not Decision) • 🐶 Underdog bonus by odds.
       </div>
     </div>
 
@@ -128,14 +136,11 @@
       </table>
     </div>
 
-    <div class="status-bar">
-      <div><span id="eventUrl" class="tiny"></span></div>
-      <div class="tiny">Lightweight build • One active event</div>
-    </div>
   </div>
 
-  <!-- Only localStorage keys here (proxy handles API base) -->
+  <!-- Frontend config -->
   <script>
+    /* These keys are used by script.js for localStorage auth */
     const LS_USER = "ffp_user";
     const LS_PIN  = "ffp_pin";
   </script>
