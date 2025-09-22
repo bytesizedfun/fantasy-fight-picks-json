@@ -1,11 +1,12 @@
-/* Fantasy Fight Picks — frontend (per-user lock, robust submit, proxied via /api/*)
-   Auth UI hides PIN & shows Welcome after save;
-   Hide Make Picks after submit;
-   FIX: deterministic hydration of saved picks from backend (no more “Your Picks” empty after reload). */
+/* Fantasy Fight Picks — frontend with fight-key normalization
+   - Keeps saved picks visible even if fight labels in Sheet change slightly
+   - Remaps hydrated picks to current canonical fight labels
+*/
 
 (() => {
-  // ---- DOM refs
   const q = (sel) => document.querySelector(sel);
+
+  // Panels & DOM
   const makePicksPanel = q('#makePicksPanel');
   const yourPicksPanel = q('#yourPicksPanel');
   const fightsList   = q('#fightsList');
@@ -23,10 +24,11 @@
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
+  // Globals from index.html
   if (typeof LS_USER === 'undefined')  console.error('LS_USER missing in index.html');
   if (typeof LS_PIN === 'undefined')   console.error('LS_PIN missing in index.html');
 
-  // ---- API endpoints
+  // API
   const API = {
     meta: '/api/meta',
     fights: '/api/fights',
@@ -38,17 +40,33 @@
     submit: '/api/submitpicks'
   };
 
-  // ---- State
+  // State
   let meta = null;
   let fights = [];
   let results = [];
-  let picksState = {};   // { [fightKey]: {winner, method, round} }
+  let picksState = {}; // { [canonicalFightLabel]: { winner, method, round } }
   let eventLocked = false;
   let userLocked = false;
 
+  // NEW: map & helpers for canonical fight keys
+  // We normalize strings so “Main: Foo vs Bar ” and “main: foo vs bar” match.
+  const fightKeyMap = new Map(); // normKey -> canonical label
+  function normKey(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')     // collapse spaces
+      .replace(/[^\w\s:/-]+/g,'')// drop punctuation except /:- (keeps "A vs B" shape)
+      .replace(/\bvs\b/g, 'vs') // normalize vs
+      .trim();
+  }
+  function canonicalFor(label) {
+    const n = normKey(label);
+    return fightKeyMap.get(n) || label; // fall back to original if no map yet
+  }
+
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
 
-  // ---- Utils
+  // Utils
   function showDebug(msg){
     if(!debugBanner) return;
     debugBanner.textContent = String(msg || '');
@@ -74,7 +92,7 @@
   function escapeHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   function hashKey(s){ let h=0,str=String(s||''); for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))|0;} return Math.abs(h).toString(36); }
 
-  // ---- Auth helpers
+  // Auth helpers
   function isAuthed(){
     const u = lsGet(LS_USER,'').trim();
     const p = lsGet(LS_PIN,'').trim();
@@ -107,7 +125,7 @@
         hideDebug(); lsSet(LS_USER,u); lsSet(LS_PIN,p);
         updateAuthUI();
         await refreshUserLock();
-        await hydrateUserPicksStrict(); // <-- hydrate immediately after auth
+        await hydrateUserPicksStrict(); // hydrate picks immediately on sign-in
       });
     }
 
@@ -160,11 +178,11 @@
     bindAuthFormHandlers();
   }
 
-  // ---- Scoring helpers
+  // Scoring
   function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o-100)/100)+1; }
   function dogBonusForPick(f, pickedWinner){ if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1); if(pickedWinner===f.fighter2) return computeDogBonus(f.oddsF2); return 0; }
 
-  // ---- Lock & visibility
+  // Lock & visibility
   function applyLockState() {
     const shouldDisable = eventLocked || userLocked;
     fightsList.querySelectorAll('select').forEach(sel => sel.disabled = shouldDisable);
@@ -180,7 +198,7 @@
     }
   }
 
-  // ---- Meta
+  // Meta
   function renderMeta(){
     if(!meta) return;
     statusText.textContent = `status: ${meta.status || 'open'}`;
@@ -191,10 +209,10 @@
     applyLockState();
   }
 
-  // ---- Fights UI
+  // Fights UI (uses canonical labels)
   function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
   function buildFightRow(f){
-    const key = f.fight;
+    const key = f.fight; // canonical label
     const dog1 = f.dogF1 || 0, dog2 = f.dogF2 || 0;
     const selWinnerId = `w_${hashKey(key)}`;
     const selMethodId = `m_${hashKey(key)}`;
@@ -250,7 +268,7 @@
     applyLockState();
   }
 
-  // ---- Your Picks (renders from picksState)
+  // Your Picks
   function renderYourPicks(){
     const keys = Object.keys(picksState);
     if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
@@ -290,7 +308,7 @@
     yourPicks.innerHTML = rows.join('');
   }
 
-  // ---- Champions & Leaderboard
+  // Leaderboard & Champions
   function renderLeaderboard(rows){
     if(!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="4" class="tiny">No scores yet.</td></tr>`;
@@ -315,7 +333,7 @@
     champList.innerHTML = recent.map(c=> `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
   }
 
-  // ---- Backend hydration (STRICT: ensures picksState is filled before first render)
+  // Hydration WITH remap to canonical keys
   async function hydrateUserPicksStrict(){
     const u = currentUsername();
     if (!u) { renderYourPicks(); return; }
@@ -324,9 +342,11 @@
       const next = {};
       if (Array.isArray(list)) {
         for (const row of list) {
-          const k = String(row.fight || '');
-          if (!k) continue;
-          next[k] = {
+          const incomingLabel = String(row.fight || '');
+          if (!incomingLabel) continue;
+          // Remap to canonical if we have a mapping, else keep incoming
+          const canonical = canonicalFor(incomingLabel);
+          next[canonical] = {
             winner: row.winner || '',
             method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
             round:  (row.method === 'Decision') ? '' : (row.round || '')
@@ -338,10 +358,10 @@
       showDebug(`userpicks: ${String(err.message||err)}`);
       picksState = picksState || {};
     }
-    renderYourPicks(); // only render after hydration finished
+    renderYourPicks();
   }
 
-  // ---- Lock state from backend
+  // Lock from backend
   async function refreshUserLock() {
     const username = currentUsername();
     if (!username) { userLocked = false; applyLockState(); return; }
@@ -355,20 +375,20 @@
     applyLockState();
   }
 
-  // ---- Bind fights & submit
+  // Bind fight changes & submit
   function bindFightsAndSubmit(){
     fightsList.addEventListener('change', (ev)=>{
       const el = ev.target;
       const fightEl = el.closest('.fight'); if(!fightEl) return;
-      const key = fightEl.dataset.key;
-      picksState[key] = picksState[key] || { winner:'', method:'', round:'' };
+      const canonicalLabel = fightEl.dataset.key; // always canonical
+      picksState[canonicalLabel] = picksState[canonicalLabel] || { winner:'', method:'', round:'' };
 
-      if(el.id.startsWith('w_')){ picksState[key].winner = el.value; }
+      if(el.id.startsWith('w_')){ picksState[canonicalLabel].winner = el.value; }
       else if(el.id.startsWith('m_')){
-        picksState[key].method = el.value;
+        picksState[canonicalLabel].method = el.value;
         const roundSel = fightEl.querySelector('select[id^="r_"]');
         if(roundSel){ const isDec = el.value==='Decision'; roundSel.disabled = isDec; if(isDec) roundSel.value=''; }
-      } else if(el.id.startsWith('r_')){ picksState[key].round = el.value; }
+      } else if(el.id.startsWith('r_')){ picksState[canonicalLabel].round = el.value; }
 
       renderYourPicks();
     });
@@ -384,8 +404,8 @@
 
       const picksPayload = Object.entries(picksState)
         .filter(([_,v])=> v && v.winner)
-        .map(([fight, v])=> ({
-          fight,
+        .map(([fightLabel, v])=> ({
+          fight: fightLabel, // send canonical label back to server
           winner: v.winner,
           method: METHOD_OPTIONS.includes(v.method) ? v.method : 'Decision',
           round: (v.method === 'Decision') ? '' : (v.round || '')
@@ -403,9 +423,9 @@
         lsSet(LS_USER, username);
         lsSet(LS_PIN, pin);
         userLocked = true;
-        applyLockState();              // hide Make Picks panel
-        await refreshAll(false);       // light refresh (no double hydrations)
-        await hydrateUserPicksStrict();// explicit hydrate after submit
+        applyLockState();               // hide Make Picks panel
+        await refreshAll(false);        // light refresh
+        await hydrateUserPicksStrict(); // hydrate again after submit
         submitBtn.textContent = 'Saved ✔';
         setTimeout(() => { submitBtn.textContent = oldText; }, 900);
         updateAuthUI();
@@ -417,32 +437,55 @@
     });
   }
 
-  // ---- Data fetchers
+  // Data fetchers
   async function refreshMeta(){ meta = await getJSON(API.meta); renderMeta(); }
   async function refreshFights(){
     const data = await getJSON(API.fights);
     fights = Array.isArray(data) ? data : [];
+
+    // Build canonical map each time fights change
+    fightKeyMap.clear();
+    for (const f of fights) {
+      fightKeyMap.set(normKey(f.fight), f.fight);
+    }
+
     if (!Array.isArray(data)) showDebug(`getfights returned non-array; backend not deployed? Raw: ${JSON.stringify(data).slice(0,200)}`);
     renderFights();
-    prunePicks();
+    prunePicks(); // now uses normalization (see below)
   }
   async function refreshResults(){ results = await getJSON(API.results); }
   async function refreshLeaderboard(){ const rows = await getJSON(API.leaderboard); renderLeaderboard(rows); }
   async function refreshChampions(){ const rows = await getJSON(API.champion); renderChampions(rows); }
-  function prunePicks(){ const valid = new Set(fights.map(f=> f.fight)); Object.keys(picksState).forEach(k=>{ if(!valid.has(k)) delete picksState[k]; }); }
 
-  // Pass fullRefresh=false to skip duplicate hydrations on submit path
+  // Prune picks only if the normalized label isn’t present in fight map
+  function prunePicks(){
+    const before = Object.keys(picksState).length;
+    const next = {};
+    for (const [label, val] of Object.entries(picksState)) {
+      const canonical = canonicalFor(label);
+      if (fightKeyMap.has(normKey(canonical))) {
+        // keep, but re-key to canonical to avoid drift
+        next[canonical] = val;
+      }
+    }
+    picksState = next;
+    const after = Object.keys(picksState).length;
+    // Uncomment for quick debugging:
+    // if (before !== after) showDebug(`Normalized picks: kept ${after}/${before}`);
+  }
+
+  // Aggregate refresh; fullRefresh=false skips double hydration on submit
   async function refreshAll(fullRefresh = true){
     try{
       await refreshMeta();
-      await refreshUserLock();            // sets panel visibility on load
+      await refreshUserLock();
       await Promise.all([ refreshFights(), refreshResults(), refreshLeaderboard(), refreshChampions() ]);
-      if (fullRefresh) await hydrateUserPicksStrict(); // FIRST paint of Your Picks happens after this
+      if (fullRefresh) await hydrateUserPicksStrict();
       if (fullRefresh) hideDebug();
     }catch(err){ showDebug(String(err.message||err)); }
   }
 
-  // ---- Init
+  // Init
   function prefillUser(){
     const u = lsGet(LS_USER,'');
     if (u && q('#usernameInput')) q('#usernameInput').value = u;
