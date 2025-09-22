@@ -1,6 +1,11 @@
-/* Fantasy Fight Picks — frontend with fight-key normalization
-   - Keeps saved picks visible even if fight labels in Sheet change slightly
-   - Remaps hydrated picks to current canonical fight labels
+/* Fantasy Fight Picks — frontend
+   - Friendly lockout display (uses lockout_local if present; otherwise formats ISO in ET)
+   - Reigning Champion(s) banner always shown if we have champs (most-recent event)
+   - Auth panel simplified (single welcome line + Sign out)
+   - Hide Make Picks after submit, but Your Picks always visible
+   - Fight-key normalization so saved picks survive minor label edits
+   - No redundant “Winner — • Method — • Round —” line pre-results
+   - Leaderboard: highlight current user row (UI only)
 */
 
 (() => {
@@ -12,11 +17,13 @@
   const fightsList   = q('#fightsList');
   const yourPicks    = q('#yourPicks');
   const lbBody       = q('#lbBody');
+  const champBanner  = q('#champBanner');
   const champList    = q('#champList');
+  const champWhen    = q('#champWhen');
   const debugBanner  = q('#debugBanner');
   const statusText   = q('#statusText');
   const lockoutText  = q('#lockoutText');
-  const eventUrlEl   = q('#eventUrl');
+  const eventUrlEl   = q('#eventUrl'); // (not printed in this layout; kept for future link-in-header)
   const authPanel    = q('#authPanel');
   let usernameInput  = q('#usernameInput');
   let pinInput       = q('#pinInput');
@@ -24,11 +31,7 @@
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
-  // Globals from index.html
-  if (typeof LS_USER === 'undefined')  console.error('LS_USER missing in index.html');
-  if (typeof LS_PIN === 'undefined')   console.error('LS_PIN missing in index.html');
-
-  // API
+  // API (served by your Node proxy)
   const API = {
     meta: '/api/meta',
     fights: '/api/fights',
@@ -44,24 +47,24 @@
   let meta = null;
   let fights = [];
   let results = [];
-  let picksState = {}; // { [canonicalFightLabel]: { winner, method, round } }
+  let champs = [];           // full list from backend (last 10 rows)
+  let picksState = {};       // { [canonicalFightLabel]: { winner, method, round } }
   let eventLocked = false;
   let userLocked = false;
 
-  // NEW: map & helpers for canonical fight keys
-  // We normalize strings so “Main: Foo vs Bar ” and “main: foo vs bar” match.
+  // Fight key normalization
   const fightKeyMap = new Map(); // normKey -> canonical label
   function normKey(s) {
     return String(s || '')
       .toLowerCase()
-      .replace(/\s+/g, ' ')     // collapse spaces
-      .replace(/[^\w\s:/-]+/g,'')// drop punctuation except /:- (keeps "A vs B" shape)
-      .replace(/\bvs\b/g, 'vs') // normalize vs
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s:/-]+/g,'')
+      .replace(/\bvs\b/g, 'vs')
       .trim();
   }
   function canonicalFor(label) {
     const n = normKey(label);
-    return fightKeyMap.get(n) || label; // fall back to original if no map yet
+    return fightKeyMap.get(n) || label;
   }
 
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
@@ -125,7 +128,7 @@
         hideDebug(); lsSet(LS_USER,u); lsSet(LS_PIN,p);
         updateAuthUI();
         await refreshUserLock();
-        await hydrateUserPicksStrict(); // hydrate picks immediately on sign-in
+        await hydrateUserPicksStrict();
       });
     }
 
@@ -149,12 +152,10 @@
     if (isAuthed()) {
       const u = escapeHtml(lsGet(LS_USER,''));
       authPanel.innerHTML = `
-        <div class="section-title">Welcome</div>
-        <div class="row" style="align-items:center;">
+        <div class="row" style="align-items:center;justify-content:space-between;">
           <div style="flex:1 1 auto;">Welcome, <strong>${u}</strong> 👋</div>
           <div style="flex:0 0 auto;"><button id="signOutBtn">Sign out</button></div>
         </div>
-        <div class="tiny">You’re signed in. Your PIN is stored locally and never shown.</div>
       `;
     } else {
       authPanel.innerHTML = `
@@ -178,7 +179,7 @@
     bindAuthFormHandlers();
   }
 
-  // Scoring
+  // Scoring helpers
   function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o-100)/100)+1; }
   function dogBonusForPick(f, pickedWinner){ if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1); if(pickedWinner===f.fighter2) return computeDogBonus(f.oddsF2); return 0; }
 
@@ -190,11 +191,24 @@
 
     if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
     if (yourPicksPanel) yourPicksPanel.style.display = '';
+  }
 
-    if (submitHint) {
-      if (eventLocked) submitHint.textContent = 'Event is locked — no new submissions.';
-      else if (userLocked) submitHint.textContent = 'Your picks are locked (already submitted).';
-      else submitHint.textContent = 'Picks lock at event start. Submitting locks your picks.';
+  // Human-friendly lockout text: prefer lockout_local; else format ISO in ET
+  function friendlyLockout(meta){
+    const tz = 'America/Toronto';
+    const local = String(meta.lockout_local || '').trim();
+    if (local) return `${local} ET`;
+    const iso = String(meta.lockout_iso || '').trim();
+    if (!iso) return 'unset';
+    try {
+      const d = new Date(iso);
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz, weekday: 'short', month: 'short', day: '2-digit',
+        hour: 'numeric', minute: '2-digit', hour12: true
+      });
+      return `${fmt.format(d)} ET`;
+    } catch {
+      return iso; // fallback
     }
   }
 
@@ -202,14 +216,12 @@
   function renderMeta(){
     if(!meta) return;
     statusText.textContent = `status: ${meta.status || 'open'}`;
-    lockoutText.textContent = `lockout: ${meta.lockout_iso || 'unset'}`;
-    if(meta.url){ eventUrlEl.innerHTML = `Event: <a href="${meta.url}" target="_blank" rel="noopener">UFCStats</a>`; }
-    else { eventUrlEl.textContent=''; }
+    lockoutText.textContent = `lockout: ${friendlyLockout(meta)}`;
     eventLocked = (String(meta.status||'').toLowerCase() !== 'open');
     applyLockState();
   }
 
-  // Fights UI (uses canonical labels)
+  // Fights UI
   function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
   function buildFightRow(f){
     const key = f.fight; // canonical label
@@ -279,61 +291,81 @@
       const r = results.find(x=> x.fight===k);
       const dogN = (p && f) ? dogBonusForPick(f, p.winner) : 0;
 
-      let bits=[], pts=0;
+      let detailsHtml = '';
       if(r && r.finalized){
+        // Only show checkmarks/points AFTER results finalize
+        let bits=[], pts=0;
         const winnerOK = p.winner && p.winner===r.winner; bits.push(`Winner ${winnerOK?'✅':'❌'}`); if(winnerOK) pts+=1;
         const methodOK = winnerOK && p.method && p.method===r.method; bits.push(`Method ${methodOK?'✅':'❌'}`); if(methodOK) pts+=1;
         const roundOK  = methodOK && r.method!=='Decision' && String(p.round||'')===String(r.round||''); bits.push(`Round ${roundOK?'✅':'❌'}`); if(roundOK) pts+=1;
         if(winnerOK && dogN>0){ pts+=dogN; bits.push(`🐶+${dogN}`); }
-      } else {
-        bits = [`Winner —`,`Method —`,`Round —`];
-        if(dogN>0) bits.push(`🐶+${dogN}`);
-      }
+        detailsHtml = `
+          <div class="right">
+            <div>${bits.join(' • ')}</div>
+            <div class="tiny">Points: ${pts}</div>
+          </div>
+        `;
+      } // else: no redundant “Winner —” line
 
       rows.push(`
         <div class="pick-line">
           <div>
             <div><strong>${escapeHtml(k)}</strong></div>
             <div class="tiny">
-              ${escapeHtml(p.winner||'—')} • ${escapeHtml(p.method||'—')}${p.method==='Decision'?'':` • ${escapeHtml(p.round||'—')}`}${dogN>0?` • 🐶 +${dogN}`:''}
+              ${escapeHtml(p.winner||'—')}${p.method?` • ${escapeHtml(p.method)}`:''}${(p.method && p.method!=='Decision' && p.round)?` • ${escapeHtml(p.round)}`:''}${dogN>0?` • 🐶 +${dogN}`:''}
             </div>
           </div>
-          <div class="right">
-            <div>${bits.join(' • ')}</div>
-            ${(r && r.finalized) ? `<div class="tiny">Points: ${pts}</div>` : ``}
-          </div>
+          ${detailsHtml}
         </div>
       `);
     }
     yourPicks.innerHTML = rows.join('');
   }
 
-  // Leaderboard & Champions
+  // Leaderboard
   function renderLeaderboard(rows){
     if(!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="4" class="tiny">No scores yet.</td></tr>`;
       return;
     }
-    lbBody.innerHTML = rows.map(r=>`
-      <tr>
-        <td class="center">${r.rank}</td>
-        <td>${escapeHtml(r.username)}</td>
-        <td class="center">${r.points}</td>
-        <td class="tiny">${escapeHtml(r.details||'')}</td>
-      </tr>
-    `).join('');
-  }
-  function renderChampions(list){
-    if(!Array.isArray(list) || !list.length){
-      champList.innerHTML = `<li class="tiny">No champion yet (shows when event completes)</li>`;
-      return;
-    }
-    const lastDate = list[list.length-1]?.date || '';
-    const recent = list.filter(x=> x.date===lastDate);
-    champList.innerHTML = recent.map(c=> `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
+    const me = (lsGet(LS_USER,'') || '').toLowerCase();
+    lbBody.innerHTML = rows.map(r=>{
+      const isMe = me && (String(r.username||'').toLowerCase()===me);
+      return `
+        <tr class="${isMe?'lb-me':''}">
+          <td class="center rank">${r.rank}</td>
+          <td>${escapeHtml(r.username)}</td>
+          <td class="center pts">${r.points}</td>
+          <td class="tiny">${escapeHtml(r.details||'')}</td>
+        </tr>
+      `;
+    }).join('');
   }
 
-  // Hydration WITH remap to canonical keys
+  // Champions (ALWAYS show most-recent winners if any)
+  function formatEt(dIso){
+    try{
+      const d = new Date(dIso);
+      const fmt = new Intl.DateTimeFormat('en-CA',{
+        timeZone:'America/Toronto', year:'numeric', month:'short', day:'2-digit'
+      });
+      return fmt.format(d);
+    }catch{ return ''; }
+  }
+  function renderChampions(list){
+    // list is last 10 rows (possibly from multiple events). We want the most recent date group.
+    if(!Array.isArray(list) || !list.length){ if(champBanner) champBanner.style.display='none'; return; }
+
+    const lastDate = list[list.length-1]?.date || '';
+    const recent = list.filter(x=> x.date===lastDate);
+    if (recent.length === 0) { champBanner.style.display='none'; return; }
+
+    champList.innerHTML = recent.map(c=> `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
+    champWhen.textContent = `Won on ${formatEt(lastDate)}`;
+    champBanner.style.display = ''; // show the banner if we have at least one champ
+  }
+
+  // Backend hydration (STRICT)
   async function hydrateUserPicksStrict(){
     const u = currentUsername();
     if (!u) { renderYourPicks(); return; }
@@ -344,7 +376,6 @@
         for (const row of list) {
           const incomingLabel = String(row.fight || '');
           if (!incomingLabel) continue;
-          // Remap to canonical if we have a mapping, else keep incoming
           const canonical = canonicalFor(incomingLabel);
           next[canonical] = {
             winner: row.winner || '',
@@ -361,7 +392,7 @@
     renderYourPicks();
   }
 
-  // Lock from backend
+  // Lock state from backend
   async function refreshUserLock() {
     const username = currentUsername();
     if (!username) { userLocked = false; applyLockState(); return; }
@@ -375,12 +406,12 @@
     applyLockState();
   }
 
-  // Bind fight changes & submit
+  // Bind fights & submit
   function bindFightsAndSubmit(){
     fightsList.addEventListener('change', (ev)=>{
       const el = ev.target;
       const fightEl = el.closest('.fight'); if(!fightEl) return;
-      const canonicalLabel = fightEl.dataset.key; // always canonical
+      const canonicalLabel = fightEl.dataset.key;
       picksState[canonicalLabel] = picksState[canonicalLabel] || { winner:'', method:'', round:'' };
 
       if(el.id.startsWith('w_')){ picksState[canonicalLabel].winner = el.value; }
@@ -405,7 +436,7 @@
       const picksPayload = Object.entries(picksState)
         .filter(([_,v])=> v && v.winner)
         .map(([fightLabel, v])=> ({
-          fight: fightLabel, // send canonical label back to server
+          fight: fightLabel,
           winner: v.winner,
           method: METHOD_OPTIONS.includes(v.method) ? v.method : 'Decision',
           round: (v.method === 'Decision') ? '' : (v.round || '')
@@ -425,7 +456,7 @@
         userLocked = true;
         applyLockState();               // hide Make Picks panel
         await refreshAll(false);        // light refresh
-        await hydrateUserPicksStrict(); // hydrate again after submit
+        await hydrateUserPicksStrict(); // re-hydrate after submit
         submitBtn.textContent = 'Saved ✔';
         setTimeout(() => { submitBtn.textContent = oldText; }, 900);
         updateAuthUI();
@@ -443,38 +474,29 @@
     const data = await getJSON(API.fights);
     fights = Array.isArray(data) ? data : [];
 
-    // Build canonical map each time fights change
+    // build canonical map
     fightKeyMap.clear();
-    for (const f of fights) {
-      fightKeyMap.set(normKey(f.fight), f.fight);
-    }
+    for (const f of fights) fightKeyMap.set(normKey(f.fight), f.fight);
 
     if (!Array.isArray(data)) showDebug(`getfights returned non-array; backend not deployed? Raw: ${JSON.stringify(data).slice(0,200)}`);
     renderFights();
-    prunePicks(); // now uses normalization (see below)
+    prunePicks();
   }
   async function refreshResults(){ results = await getJSON(API.results); }
   async function refreshLeaderboard(){ const rows = await getJSON(API.leaderboard); renderLeaderboard(rows); }
-  async function refreshChampions(){ const rows = await getJSON(API.champion); renderChampions(rows); }
+  async function refreshChampions(){ champs = await getJSON(API.champion); renderChampions(champs); }
 
-  // Prune picks only if the normalized label isn’t present in fight map
+  // Prune picks using canonical existence
   function prunePicks(){
-    const before = Object.keys(picksState).length;
     const next = {};
     for (const [label, val] of Object.entries(picksState)) {
       const canonical = canonicalFor(label);
-      if (fightKeyMap.has(normKey(canonical))) {
-        // keep, but re-key to canonical to avoid drift
-        next[canonical] = val;
-      }
+      if (fightKeyMap.has(normKey(canonical))) next[canonical] = val;
     }
     picksState = next;
-    const after = Object.keys(picksState).length;
-    // Uncomment for quick debugging:
-    // if (before !== after) showDebug(`Normalized picks: kept ${after}/${before}`);
   }
 
-  // Aggregate refresh; fullRefresh=false skips double hydration on submit
+  // Aggregate refresh; fullRefresh=false skips duplicate hydrations on submit
   async function refreshAll(fullRefresh = true){
     try{
       await refreshMeta();
