@@ -25,17 +25,25 @@
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
+  // --- GAS endpoint (surgical add) ---
+  const GAS_EXEC = 'https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec';
+
+  // --- API routes (surgical replace) ---
   const API = {
-    meta: '/api/meta',
-    fights: '/api/fights',
-    results: '/api/results',
-    leaderboard: '/api/leaderboard',
-    champion: '/api/champion',
-    userlock: (u) => `/api/userlock?username=${encodeURIComponent(u)}`,
-    userpicks: (u) => `/api/userpicks?username=${encodeURIComponent(u)}`,
-    submit: '/api/submitpicks',
-    // NEW: single-call payload (switched to action=bootstrap to avoid HTML fallthrough)
-    bootstrap: (u) => `/api?action=bootstrap&username=${encodeURIComponent(u || '')}`
+    // one-call hydrate
+    bootstrap: (u) => `${GAS_EXEC}?action=bootstrap&username=${encodeURIComponent(u || '')}`,
+
+    // individual endpoints (for live refresh / legacy helpers)
+    meta:        `${GAS_EXEC}?action=getmeta`,
+    fights:      `${GAS_EXEC}?action=getfights`,
+    results:     `${GAS_EXEC}?action=getresults`,
+    leaderboard: `${GAS_EXEC}?action=getleaderboard`,
+    champion:    `${GAS_EXEC}?action=getchampion`,
+    userlock:  (u) => `${GAS_EXEC}?action=getuserlock&username=${encodeURIComponent(u)}`,
+    userpicks: (u) => `${GAS_EXEC}?action=getuserpicks&username=${encodeURIComponent(u)}`,
+
+    // POST goes to exec; we include the action in the body
+    submit: GAS_EXEC
   };
 
   let meta = null;
@@ -212,7 +220,7 @@
     theMethodVal = p.method || '';
     const methodVal = theMethodVal;
     const roundVal  = p.round  || '';
-       const roundsN = Number(f.rounds||3);
+    const roundsN = Number(f.rounds||3);
     const roundDisabled = methodVal === 'Decision';
     let roundOpts = `<option value="">Round</option>`;
     for(let i=1;i<=roundsN;i++){ const sel=String(roundVal)===String(i)?'selected':''; roundOpts += `<option value="${i}" ${sel}>${i}</option>`; }
@@ -416,7 +424,13 @@
       const old = submitBtn.textContent;
       submitBtn.textContent = 'Submitting…'; submitBtn.disabled = true;
       try{
-        const res = await postJSON(API.submit, { username, pin, picks: picksPayload });
+        // --- surgical edit: include action for GAS ---
+        const res = await postJSON(API.submit, {
+          action: 'submitpicks',
+          username,
+          pin,
+          picks: picksPayload
+        });
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
         hideDebug();
         lsSet(LS_USER, username); lsSet(LS_PIN, pin);
