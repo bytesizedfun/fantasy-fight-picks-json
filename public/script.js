@@ -33,7 +33,9 @@
     champion: '/api/champion',
     userlock: (u) => `/api/userlock?username=${encodeURIComponent(u)}`,
     userpicks: (u) => `/api/userpicks?username=${encodeURIComponent(u)}`,
-    submit: '/api/submitpicks'
+    submit: '/api/submitpicks',
+    // NEW: single-call payload
+    bootstrap: (u) => `/api/bootstrap?username=${encodeURIComponent(u || '')}`
   };
 
   let meta = null;
@@ -57,7 +59,6 @@
   function showDebug(msg){ if(debugBanner){ debugBanner.textContent=String(msg||''); debugBanner.style.display='block'; } }
   function hideDebug(){ if(debugBanner){ debugBanner.style.display='none'; } }
   async function getJSON(url){
-    // was: { cache: 'no-store' } — disabling browser cache; use revalidation-friendly 'no-cache'
     const r = await fetch(url, { cache:'no-cache' });
     const t = await r.text();
     if(!r.ok) throw new Error(`GET ${url} -> ${r.status} ${t.slice(0,200)}`);
@@ -210,7 +211,7 @@
     const winnerVal = p.winner || '';
     const methodVal = p.method || '';
     const roundVal  = p.round  || '';
-    const roundsN = Number(f.rounds||3);
+       const roundsN = Number(f.rounds||3);
     const roundDisabled = methodVal === 'Decision';
     let roundOpts = `<option value="">Round</option>`;
     for(let i=1;i<=roundsN;i++){ const sel=String(roundVal)===String(i)?'selected':''; roundOpts += `<option value="${i}" ${sel}>${i}</option>`; }
@@ -307,7 +308,7 @@
     }).join('');
   }
 
-  // Hydration with ID mapping
+  // Hydration with ID mapping (legacy path still used in sign-in flow)
   async function hydrateUserPicksStrict(){
     const u = currentUsername();
     if (!u) { renderYourPicks(); return; }
@@ -319,7 +320,6 @@
           const fid = String(row.fight_id||'').trim();
           let label = row.fight || '';
           if (fid && labelById.has(fid)) label = labelById.get(fid);
-          // else if we only have label, keep it
           if (!label) continue;
           next[label] = {
             fight_id: fid || (idByLabel.get(label) || ''),
@@ -337,7 +337,7 @@
     renderYourPicks();
   }
 
-  // User lock
+  // User lock (legacy endpoint kept; bootstrap also hydrates this on first load)
   async function refreshUserLock() {
     const username = currentUsername();
     if (!username) { userLocked = false; applyLockState(); return; }
@@ -392,7 +392,6 @@
         if (!method) { showDebug(`Select a Method for: ${label}`); return; }
         if (method !== 'Decision' && !round) { showDebug(`Select a Round for: ${label}`); return; }
 
-        // normalize: ensure no round kept for decisions
         if (method === 'Decision' && ps.round) ps.round = '';
       }
 
@@ -421,8 +420,10 @@
         hideDebug();
         lsSet(LS_USER, username); lsSet(LS_PIN, pin);
         userLocked = true; applyLockState();
-        await refreshAll(false);
-        await hydrateUserPicksStrict();
+
+        // After submit, do a single fast rehydrate via bootstrap
+        await loadBootstrap();
+
         submitBtn.textContent = 'Saved ✔';
         setTimeout(()=>{ submitBtn.textContent = old; }, 900);
         updateAuthUI();
@@ -433,7 +434,78 @@
     });
   }
 
-  // Data fetchers
+  // ---------- NEW: Bootstrap loader ----------
+  async function loadBootstrap(){
+    const u = currentUsername();
+    const payload = await getJSON(API.bootstrap(u));
+
+    // meta
+    meta = payload.meta || {};
+    renderMeta();
+
+    // fights + maps
+    fights = Array.isArray(payload.fights) ? payload.fights : [];
+    fightKeyMap.clear(); idByLabel.clear(); labelById.clear();
+    for (const f of fights) {
+      fightKeyMap.set(normKey(f.fight), f.fight);
+      idByLabel.set(f.fight, f.fight_id || '');
+      if (f.fight_id) labelById.set(f.fight_id, f.fight);
+    }
+    renderFights();
+
+    // results
+    results = Array.isArray(payload.results) ? payload.results : [];
+
+    // leaderboard
+    const lb = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
+    renderLeaderboard(lb);
+
+    // champs
+    champs = Array.isArray(payload.champion) ? payload.champion : [];
+    renderChampions(champs);
+
+    // user lock + picks (if present)
+    if (payload.user && payload.user.lock) {
+      userLocked = !!payload.user.lock.locked && payload.user.lock.reason === 'submitted';
+      applyLockState();
+    }
+    if (payload.user && Array.isArray(payload.user.picks)) {
+      const next = {};
+      for (const row of payload.user.picks) {
+        const fid = String(row.fight_id||'').trim();
+        let label = row.fight || (fid && labelById.get(fid)) || '';
+        if (!label) continue;
+        next[label] = {
+          fight_id: fid || (idByLabel.get(label) || ''),
+          winner: row.winner || '',
+          method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
+          round:  (row.method === 'Decision') ? '' : (row.round || '')
+        };
+      }
+      picksState = next;
+    }
+    renderYourPicks();
+    hideDebug();
+  }
+
+  // ---------- Lightweight live refresh (results + leaderboard only) ----------
+  async function refreshLive(){
+    try{
+      const [resNew, lbNew] = await Promise.all([
+        getJSON(API.results),
+        getJSON(API.leaderboard)
+      ]);
+      results = Array.isArray(resNew) ? resNew : [];
+      renderYourPicks();
+      renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
+    }catch(e){
+      // Not fatal for UI; surface once
+      showDebug(String(e && e.message ? e.message : e));
+      setTimeout(hideDebug, 2500);
+    }
+  }
+
+  // (legacy) Single-resource helpers kept for compatibility elsewhere
   async function refreshMeta(){ meta = await getJSON(API.meta); renderMeta(); }
   async function refreshFights(){
     const data = await getJSON(API.fights);
@@ -447,31 +519,18 @@
     }
     if (!Array.isArray(data)) showDebug(`getfights returned non-array; raw: ${JSON.stringify(data).slice(0,200)}`);
     renderFights();
-    // DO NOT prune unmatched picks anymore; keep them visible
   }
   async function refreshResults(){ results = await getJSON(API.results); }
   async function refreshLeaderboard(){ const rows = await getJSON(API.leaderboard); renderLeaderboard(rows); }
   async function refreshChampions(){ champs = await getJSON(API.champion); renderChampions(champs); }
 
-  // Aggregate refresh
-  async function refreshAll(full=true){
+  // Aggregate refresh — replaced to use bootstrap for initial load
+  async function refreshAll(){
     try{
-      // PARALLELIZE the first two
-      await Promise.all([ refreshMeta(), refreshUserLock() ]);
-
-      // Render fights ASAP, then lazy-load the rest without blocking first paint
-      await refreshFights();
-
-      // Kick off the rest in the background
-      const pending = Promise.all([ refreshResults(), refreshLeaderboard(), refreshChampions() ]);
-      // Don't await `pending` here to keep UI snappy; panels will update when each finishes.
-
-      if (full) await hydrateUserPicksStrict();
-      if (full) hideDebug();
-
-      // Optionally catch errors from background tasks so they don't be unhandled
-      pending.catch(e => showDebug(String(e && e.message ? e.message : e)));
-    }catch(err){ showDebug(String(err.message||err)); }
+      await loadBootstrap();
+    }catch(err){
+      showDebug(String(err.message||err));
+    }
   }
 
   // Init
@@ -484,6 +543,10 @@
   bindAuthFormHandlers();
   prefillUser();
   bindFightsAndSubmit();
+
+  // First paint: single fast call
   refreshAll();
-  setInterval(refreshAll, 60000);
+
+  // Then keep things fresh: results + leaderboard only
+  setInterval(refreshLive, 60000);
 })();
