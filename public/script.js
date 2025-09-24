@@ -57,7 +57,8 @@
   function showDebug(msg){ if(debugBanner){ debugBanner.textContent=String(msg||''); debugBanner.style.display='block'; } }
   function hideDebug(){ if(debugBanner){ debugBanner.style.display='none'; } }
   async function getJSON(url){
-    const r = await fetch(url, { cache:'no-store' });
+    // was: { cache: 'no-store' } — disabling browser cache; use revalidation-friendly 'no-cache'
+    const r = await fetch(url, { cache:'no-cache' });
     const t = await r.text();
     if(!r.ok) throw new Error(`GET ${url} -> ${r.status} ${t.slice(0,200)}`);
     try { return JSON.parse(t); } catch { throw new Error(`GET ${url} returned non-JSON: ${t.slice(0,200)}`); }
@@ -455,11 +456,21 @@
   // Aggregate refresh
   async function refreshAll(full=true){
     try{
-      await refreshMeta();
-      await refreshUserLock();
-      await Promise.all([ refreshFights(), refreshResults(), refreshLeaderboard(), refreshChampions() ]);
+      // PARALLELIZE the first two
+      await Promise.all([ refreshMeta(), refreshUserLock() ]);
+
+      // Render fights ASAP, then lazy-load the rest without blocking first paint
+      await refreshFights();
+
+      // Kick off the rest in the background
+      const pending = Promise.all([ refreshResults(), refreshLeaderboard(), refreshChampions() ]);
+      // Don't await `pending` here to keep UI snappy; panels will update when each finishes.
+
       if (full) await hydrateUserPicksStrict();
       if (full) hideDebug();
+
+      // Optionally catch errors from background tasks so they don't be unhandled
+      pending.catch(e => showDebug(String(e && e.message ? e.message : e)));
     }catch(err){ showDebug(String(err.message||err)); }
   }
 
