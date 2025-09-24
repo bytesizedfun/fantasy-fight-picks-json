@@ -188,8 +188,13 @@
   }
 
   // Scoring helpers
-  function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o-100)/100)+1; }
-  function dogBonusForPick(f, pickedWinner){ if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1); if(pickedWinner===f.fighter2) return computeDogBonus(f.oddsF2); return 0; }
+  function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o - 100) / 100) + 1; }
+  function dogBonusForPick(f, pickedWinner){
+    if(!f) return 0;
+    if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1);
+    if(pickedWinner===f.fighter2) return computeDogBonus(f.oddsF2);
+    return 0;
+  }
 
   // Fights UI
   function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
@@ -261,9 +266,9 @@
       let detailsHtml = '';
       if(r && r.finalized){
         let bits=[], pts=0;
-        const winnerOK = p.winner && p.winner===r.winner; bits.push(`Winner ${winnerOK?'✅':'❌'}`); if(winnerOK) pts+=1;
-        const methodOK = winnerOK && p.method && p.method===r.method; bits.push(`Method ${methodOK?'✅':'❌'}`); if(methodOK) pts+=1;
-        const roundOK  = methodOK && r.method!=='Decision' && String(p.round||'')===String(r.round||''); bits.push(`Round ${roundOK?'✅':'❌'}`); if(roundOK) pts+=1;
+        const winnerOK = p.winner && p.winner===r.winner; bits.push(`Winner ${winnerOK?'✅(+3)':'❌'}`); if(winnerOK) pts+=3;
+        const methodOK = winnerOK && p.method && p.method===r.method; bits.push(`Method ${methodOK?'✅(+2)':'❌'}`); if(methodOK) pts+=2;
+        const roundOK  = methodOK && r.method!=='Decision' && String(p.round||'')===String(r.round||''); bits.push(`Round ${roundOK?'✅(+1)':'❌'}`); if(roundOK) pts+=1;
         if(winnerOK && dogN>0){ pts+=dogN; bits.push(`🐶+${dogN}`); }
         detailsHtml = `<div class="right"><div>${bits.join(' • ')}</div><div class="tiny">Points: ${pts}</div></div>`;
       }
@@ -286,7 +291,7 @@
   // Leaderboard
   function renderLeaderboard(rows){
     if(!Array.isArray(rows) || !rows.length){
-      lbBody.innerHTML = `<tr><td colspan="4" class="tiny">No scores yet.</td></tr>`;
+      lbBody.innerHTML = `<tr><td colspan="3" class="tiny">No scores yet.</td></tr>`;
       return;
     }
     const me = (lsGet(LS_USER,'') || '').toLowerCase();
@@ -297,7 +302,6 @@
           <td class="center rank">${r.rank}</td>
           <td>${escapeHtml(r.username)}</td>
           <td class="center pts">${r.points}</td>
-          <td class="tiny">${escapeHtml(r.details||'')}</td>
         </tr>`;
     }).join('');
   }
