@@ -200,7 +200,7 @@
   function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
   function buildFightRow(f){
     const key = f.fight; // canonical label
-    const fid = f.fight_id || '';
+    theFid = f.fight_id || '';
     const dog1 = f.dogF1 || 0, dog2 = f.dogF2 || 0;
     const selWinnerId = `w_${hashKey(key)}`;
     const selMethodId = `m_${hashKey(key)}`;
@@ -215,7 +215,7 @@
     for(let i=1;i<=roundsN;i++){ const sel=String(roundVal)===String(i)?'selected':''; roundOpts += `<option value="${i}" ${sel}>${i}</option>`; }
 
     return `
-      <div class="fight" data-key="${escapeHtml(key)}" data-id="${escapeHtml(fid)}">
+      <div class="fight" data-key="${escapeHtml(key)}" data-id="${escapeHtml(theFid)}">
         <div class="name">${escapeHtml(key)}</div>
         <div class="grid">
           <div>
@@ -252,7 +252,7 @@
     applyLockState();
   }
 
-  // Picks render
+  // Picks render (clean markers: no (+3)/(+2)/(+1))
   function renderYourPicks(){
     const keys = Object.keys(picksState);
     if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
@@ -266,9 +266,9 @@
       let detailsHtml = '';
       if(r && r.finalized){
         let bits=[], pts=0;
-        const winnerOK = p.winner && p.winner===r.winner; bits.push(`Winner ${winnerOK?'✅(+3)':'❌'}`); if(winnerOK) pts+=3;
-        const methodOK = winnerOK && p.method && p.method===r.method; bits.push(`Method ${methodOK?'✅(+2)':'❌'}`); if(methodOK) pts+=2;
-        const roundOK  = methodOK && r.method!=='Decision' && String(p.round||'')===String(r.round||''); bits.push(`Round ${roundOK?'✅(+1)':'❌'}`); if(roundOK) pts+=1;
+        const winnerOK = p.winner && p.winner===r.winner; if(winnerOK) pts+=3; bits.push(`Winner ${winnerOK?'✅':'❌'}`);
+        const methodOK = winnerOK && p.method && p.method===r.method; if(methodOK) pts+=2; bits.push(`Method ${methodOK?'✅':'❌'}`);
+        const roundOK  = methodOK && r.method!=='Decision' && String(p.round||'')===String(r.round||''); if(roundOK) pts+=1; bits.push(`Round ${roundOK?'✅':'❌'}`);
         if(winnerOK && dogN>0){ pts+=dogN; bits.push(`🐶+${dogN}`); }
         detailsHtml = `<div class="right"><div>${bits.join(' • ')}</div><div class="tiny">Points: ${pts}</div></div>`;
       }
