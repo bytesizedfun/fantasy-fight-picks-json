@@ -379,17 +379,38 @@
       if(!username){ showDebug('Enter a username.'); return; }
       if(!isNumericPin(pin)){ showDebug('PIN must be 4 digits.'); return; }
 
-      const picksPayload = Object.entries(picksState)
-        .filter(([_,v])=> v && v.winner)
-        .map(([label, v])=> ({
-          fight_id: v.fight_id || idByLabel.get(label) || '',
-          fight: label, // label included for readability/back-compat
-          winner: v.winner,
-          method: METHOD_OPTIONS.includes(v.method) ? v.method : 'Decision',
-          round: (v.method === 'Decision') ? '' : (v.round || '')
-        }));
+      // --- STRICT VALIDATION: every fight must be fully picked ---
+      for (const f of fights) {
+        const label = f.fight;
+        const ps = picksState[label] || {};
+        const winner = (ps.winner || '').trim();
+        const method = (ps.method || '').trim();
+        const round  = (ps.round  || '').trim();
 
-      if(!picksPayload.length){ showDebug('No picks to submit.'); return; }
+        if (!winner) { showDebug(`Select a Winner for: ${label}`); return; }
+        if (!method) { showDebug(`Select a Method for: ${label}`); return; }
+        if (method !== 'Decision' && !round) { showDebug(`Select a Round for: ${label}`); return; }
+
+        // normalize: ensure no round kept for decisions
+        if (method === 'Decision' && ps.round) ps.round = '';
+      }
+
+      // Build complete, validated payload from fights list
+      const picksPayload = fights.map(f => {
+        const label = f.fight;
+        const ps = picksState[label] || {};
+        const method = METHOD_OPTIONS.includes(ps.method) ? ps.method : 'Decision';
+        const round  = (method === 'Decision') ? '' : String(ps.round || '');
+        const fid    = (ps.fight_id || idByLabel.get(label) || '');
+
+        return {
+          fight_id: fid,
+          fight: label,
+          winner: ps.winner,
+          method,
+          round
+        };
+      });
 
       const old = submitBtn.textContent;
       submitBtn.textContent = 'Submitting…'; submitBtn.disabled = true;
