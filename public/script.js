@@ -34,8 +34,8 @@
     userlock: (u) => `/api/userlock?username=${encodeURIComponent(u)}`,
     userpicks: (u) => `/api/userpicks?username=${encodeURIComponent(u)}`,
     submit: '/api/submitpicks',
-    // NEW: single-call payload
-    bootstrap: (u) => `/api/bootstrap?username=${encodeURIComponent(u || '')}`
+    // NEW: single-call payload (switched to action=bootstrap to avoid HTML fallthrough)
+    bootstrap: (u) => `/api?action=bootstrap&username=${encodeURIComponent(u || '')}`
   };
 
   let meta = null;
@@ -209,7 +209,8 @@
     const selRoundId  = `r_${hashKey(key)}`;
     const p = picksState[key] || {};
     const winnerVal = p.winner || '';
-    const methodVal = p.method || '';
+    theMethodVal = p.method || '';
+    const methodVal = theMethodVal;
     const roundVal  = p.round  || '';
        const roundsN = Number(f.rounds||3);
     const roundDisabled = methodVal === 'Decision';
