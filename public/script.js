@@ -7,6 +7,11 @@
 (() => {
   const q = (sel) => document.querySelector(sel);
 
+  // ---- GAS endpoint + localStorage keys ----
+  const GAS_EXEC = 'https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec';
+  const LS_USER = 'ffp_user';
+  const LS_PIN  = 'ffp_pin';
+
   const makePicksPanel = q('#makePicksPanel');
   const yourPicksPanel = q('#yourPicksPanel');
   const fightsList   = q('#fightsList');
@@ -25,32 +30,24 @@
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
-  // --- GAS endpoint (surgical add) ---
-  const GAS_EXEC = 'https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec';
-
-  // --- API routes (surgical replace) ---
+  // ---- API (direct to GAS with action=...) ----
   const API = {
-    // one-call hydrate
-    bootstrap: (u) => `${GAS_EXEC}?action=bootstrap&username=${encodeURIComponent(u || '')}`,
-
-    // individual endpoints (for live refresh / legacy helpers)
     meta:        `${GAS_EXEC}?action=getmeta`,
     fights:      `${GAS_EXEC}?action=getfights`,
     results:     `${GAS_EXEC}?action=getresults`,
     leaderboard: `${GAS_EXEC}?action=getleaderboard`,
     champion:    `${GAS_EXEC}?action=getchampion`,
-    userlock:  (u) => `${GAS_EXEC}?action=getuserlock&username=${encodeURIComponent(u)}`,
-    userpicks: (u) => `${GAS_EXEC}?action=getuserpicks&username=${encodeURIComponent(u)}`,
-
-    // POST goes to exec; we include the action in the body
-    submit: GAS_EXEC
+    userlock:    (u) => `${GAS_EXEC}?action=getuserlock&username=${encodeURIComponent(u || '')}`,
+    userpicks:   (u) => `${GAS_EXEC}?action=getuserpicks&username=${encodeURIComponent(u || '')}`,
+    submit:      `${GAS_EXEC}`, // doPost with { action:'submitpicks', ... }
+    bootstrap:   (u) => `${GAS_EXEC}?action=bootstrap&username=${encodeURIComponent(u || '')}`
   };
 
   let meta = null;
   let fights = [];
   let results = [];
   let champs = [];
-  // picksState now keyed by canonical label, but retains fight_id on each entry
+  // picksState keyed by canonical label; each entry keeps fight_id
   // { [fightLabel]: { fight_id, winner, method, round } }
   let picksState = {};
   let eventLocked = false;
@@ -210,15 +207,14 @@
   function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
   function buildFightRow(f){
     const key = f.fight; // canonical label
-    theFid = f.fight_id || '';
+    const theFid = f.fight_id || '';
     const dog1 = f.dogF1 || 0, dog2 = f.dogF2 || 0;
     const selWinnerId = `w_${hashKey(key)}`;
     const selMethodId = `m_${hashKey(key)}`;
     const selRoundId  = `r_${hashKey(key)}`;
     const p = picksState[key] || {};
     const winnerVal = p.winner || '';
-    theMethodVal = p.method || '';
-    const methodVal = theMethodVal;
+    const methodVal = p.method || '';
     const roundVal  = p.round  || '';
     const roundsN = Number(f.rounds||3);
     const roundDisabled = methodVal === 'Decision';
@@ -263,7 +259,7 @@
     applyLockState();
   }
 
-  // Picks render (clean markers: no (+3)/(+2)/(+1))
+  // Picks render (clean markers)
   function renderYourPicks(){
     const keys = Object.keys(picksState);
     if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
@@ -401,6 +397,7 @@
         if (!method) { showDebug(`Select a Method for: ${label}`); return; }
         if (method !== 'Decision' && !round) { showDebug(`Select a Round for: ${label}`); return; }
 
+        // normalize: ensure no round kept for decisions
         if (method === 'Decision' && ps.round) ps.round = '';
       }
 
@@ -424,13 +421,8 @@
       const old = submitBtn.textContent;
       submitBtn.textContent = 'Submitting…'; submitBtn.disabled = true;
       try{
-        // --- surgical edit: include action for GAS ---
-        const res = await postJSON(API.submit, {
-          action: 'submitpicks',
-          username,
-          pin,
-          picks: picksPayload
-        });
+        // IMPORTANT: include action for GAS doPost
+        const res = await postJSON(API.submit, { action:'submitpicks', username, pin, picks: picksPayload });
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
         hideDebug();
         lsSet(LS_USER, username); lsSet(LS_PIN, pin);
@@ -539,7 +531,7 @@
   async function refreshLeaderboard(){ const rows = await getJSON(API.leaderboard); renderLeaderboard(rows); }
   async function refreshChampions(){ champs = await getJSON(API.champion); renderChampions(champs); }
 
-  // Aggregate refresh — replaced to use bootstrap for initial load
+  // Aggregate refresh — use bootstrap for initial load
   async function refreshAll(){
     try{
       await loadBootstrap();
