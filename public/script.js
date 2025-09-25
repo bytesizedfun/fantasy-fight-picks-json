@@ -1,14 +1,13 @@
-<script>
-/* Fantasy Fight Picks — frontend (proxy + bootstrap, fight_id enabled)
-   - All data via /api/* (Render proxy) — no direct GAS calls (fixes CORS + flakiness)
-   - One-shot bootstrap hydrate; 60s live refresh = results + leaderboard only
-   - Faster "Your Picks" via map lookups (no O(n^2) scans)
+/* Fantasy Fight Picks — frontend (fight_id enabled, proxy-based)
+   - Uses Render proxy /api/* (avoids GAS CORS + HTML redirects)
+   - One-call bootstrap for fast first paint
+   - Live refresh limited to results + leaderboard
 */
 
 (() => {
   const q = (sel) => document.querySelector(sel);
 
-  // ---- localStorage keys ----
+  // ---- Local auth keys ----
   const LS_USER = 'ffp_user';
   const LS_PIN  = 'ffp_pin';
 
@@ -30,7 +29,7 @@
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
-  // ---- API (Render proxy) ----
+  // ---- API via Render proxy ----
   const API = {
     meta:        `/api/meta`,
     fights:      `/api/fights`,
@@ -40,7 +39,7 @@
     userlock:    (u) => `/api/userlock?username=${encodeURIComponent(u || '')}`,
     userpicks:   (u) => `/api/userpicks?username=${encodeURIComponent(u || '')}`,
     submit:      `/api/submitpicks`,
-    bootstrap:   (u) => `/api/bootstrap?username=${encodeURIComponent(u || '')}`,
+    bootstrap:   (u) => `/api/bootstrap?username=${encodeURIComponent(u || '')}`
   };
 
   let meta = null;
@@ -53,34 +52,48 @@
   let eventLocked = false;
   let userLocked = false;
 
-  // Fight & result maps (rebuilt after data updates)
-  // label <-> id
+  // Fight maps: label <-> id
   const fightKeyMap = new Map(); // normLabel -> canonical label
   const idByLabel = new Map();   // canonical label -> fight_id
   const labelById = new Map();   // fight_id -> canonical label
-  // quick lookups for render speed
-  let fightByLabel = new Map();
-  let fightById    = new Map();
-  let resultById   = new Map();
-  let resultByLabel= new Map();
 
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
 
   // Utils
   function showDebug(msg){ if(debugBanner){ debugBanner.textContent=String(msg||''); debugBanner.style.display='block'; } }
   function hideDebug(){ if(debugBanner){ debugBanner.style.display='none'; } }
+
   async function getJSON(url){
     const r = await fetch(url, { cache:'no-cache' });
     const t = await r.text();
-    if(!r.ok) throw new Error(`GET ${url} -> ${r.status} ${t.slice(0,200)}`);
-    try { return JSON.parse(t); } catch { throw new Error(`GET ${url} returned non-JSON: ${t.slice(0,200)}`); }
+    // Proxy always returns JSON. If upstream failed, it still JSON-encodes the error.
+    try {
+      const data = JSON.parse(t);
+      if (!r.ok || data?.ok === false) {
+        const msg = data?.error || `${r.status} ${r.statusText}`;
+        throw new Error(msg);
+      }
+      return data;
+    } catch (e) {
+      throw new Error(`GET ${url} -> ${r.status} ${t.slice(0,200)}`);
+    }
   }
+
   async function postJSON(url, body){
     const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
     const t = await r.text();
-    if(!r.ok) throw new Error(`POST ${url} -> ${r.status} ${t.slice(0,200)}`);
-    try { return JSON.parse(t); } catch { throw new Error(`POST ${url} returned non-JSON: ${t.slice(0,200)}`); }
+    try {
+      const data = JSON.parse(t);
+      if (!r.ok || data?.ok === false) {
+        const msg = data?.error || `${r.status} ${r.statusText}`;
+        throw new Error(msg);
+      }
+      return data;
+    } catch {
+      throw new Error(`POST ${url} -> ${r.status} ${t.slice(0,200)}`);
+    }
   }
+
   function lsGet(k, d=''){ try{ return localStorage.getItem(k) ?? d; }catch{ return d; } }
   function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch{} }
   function lsDel(k){ try{ localStorage.removeItem(k); }catch{} }
@@ -201,7 +214,7 @@
   }
 
   // Scoring helpers
-  function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o - 100) / 100) + 1; }
+  function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o - 100) )/100 + 1 | 0; } // int math
   function dogBonusForPick(f, pickedWinner){
     if(!f) return 0;
     if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1);
@@ -259,36 +272,21 @@
       </div>
     `;
   }
-  function rebuildMaps(){
-    // label/id maps
-    fightKeyMap.clear(); idByLabel.clear(); labelById.clear();
-    fightByLabel = new Map();
-    fightById    = new Map();
-    for (const f of fights) {
-      fightKeyMap.set(normKey(f.fight), f.fight);
-      idByLabel.set(f.fight, f.fight_id || '');
-      if (f.fight_id) labelById.set(f.fight_id, f.fight);
-      fightByLabel.set(f.fight, f);
-      if (f.fight_id) fightById.set(f.fight_id, f);
-    }
-    resultById = new Map(results.map(r => [r.fight_id, r]));
-    resultByLabel = new Map(results.map(r => [r.fight, r]));
-  }
   function renderFights(){
     if (!Array.isArray(fights)) { showDebug(`getfights did not return an array`); fightsList.innerHTML = ''; return; }
     fightsList.innerHTML = fights.map(buildFightRow).join('');
     applyLockState();
   }
 
-  // Picks render (fast path: O(1) lookups)
+  // Picks render (clean markers)
   function renderYourPicks(){
     const keys = Object.keys(picksState);
     if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
     const rows=[];
     for(const k of keys){
       const p = picksState[k];
-      const f = fightByLabel.get(k) || (p.fight_id ? fightById.get(p.fight_id) : null);
-      const r = p.fight_id ? resultById.get(p.fight_id) : resultByLabel.get(k);
+      const f = fights.find(x=> x.fight===k) || (p.fight_id ? fights.find(x=> x.fight_id===p.fight_id) : null);
+      const r = p.fight_id ? results.find(x=> x.fight_id===p.fight_id) : results.find(x=> x.fight===k);
       const dogN = (p && f) ? dogBonusForPick(f, p.winner) : 0;
 
       let detailsHtml = '';
@@ -313,8 +311,7 @@
         </div>
       `);
     }
-    // batch to next frame to avoid layout thrash
-    requestAnimationFrame(()=>{ yourPicks.innerHTML = rows.join(''); });
+    yourPicks.innerHTML = rows.join('');
   }
 
   // Leaderboard
@@ -335,7 +332,7 @@
     }).join('');
   }
 
-  // Hydration with ID mapping (legacy path still used in sign-in flow)
+  // Hydration with ID mapping
   async function hydrateUserPicksStrict(){
     const u = currentUsername();
     if (!u) { renderYourPicks(); return; }
@@ -364,7 +361,7 @@
     renderYourPicks();
   }
 
-  // User lock (legacy endpoint kept; bootstrap also hydrates this on first load)
+  // User lock
   async function refreshUserLock() {
     const username = currentUsername();
     if (!username) { userLocked = false; applyLockState(); return; }
@@ -442,7 +439,7 @@
       const old = submitBtn.textContent;
       submitBtn.textContent = 'Submitting…'; submitBtn.disabled = true;
       try{
-        // Proxy handles action=submitpicks on the server side
+        // Proxy expects { username, pin, picks }
         const res = await postJSON(API.submit, { username, pin, picks: picksPayload });
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
         hideDebug();
@@ -462,7 +459,7 @@
     });
   }
 
-  // ---------- NEW: Bootstrap loader ----------
+  // ---------- Bootstrap loader ----------
   async function loadBootstrap(){
     const u = currentUsername();
     const payload = await getJSON(API.bootstrap(u));
@@ -471,14 +468,18 @@
     meta = payload.meta || {};
     renderMeta();
 
-    // fights
+    // fights + maps
     fights = Array.isArray(payload.fights) ? payload.fights : [];
-    // results (needed for picks panel scoring)
-    results = Array.isArray(payload.results) ? payload.results : [];
-
-    // rebuild maps once for fast UI rendering
-    rebuildMaps();
+    fightKeyMap.clear(); idByLabel.clear(); labelById.clear();
+    for (const f of fights) {
+      fightKeyMap.set(normKey(f.fight), f.fight);
+      idByLabel.set(f.fight, f.fight_id || '');
+      if (f.fight_id) labelById.set(f.fight_id, f.fight);
+    }
     renderFights();
+
+    // results
+    results = Array.isArray(payload.results) ? payload.results : [];
 
     // leaderboard
     const lb = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
@@ -520,9 +521,6 @@
         getJSON(API.leaderboard)
       ]);
       results = Array.isArray(resNew) ? resNew : [];
-      // update result maps only (fights unchanged)
-      resultById = new Map(results.map(r => [r.fight_id, r]));
-      resultByLabel = new Map(results.map(r => [r.fight, r]));
       renderYourPicks();
       renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
     }catch(e){
@@ -531,20 +529,21 @@
     }
   }
 
-  // (legacy) Single-resource helpers kept for compatibility elsewhere
+  // (legacy helpers retained)
   async function refreshMeta(){ meta = await getJSON(API.meta); renderMeta(); }
   async function refreshFights(){
     const data = await getJSON(API.fights);
     fights = Array.isArray(data) ? data : [];
-    rebuildMaps();
+    fightKeyMap.clear(); idByLabel.clear(); labelById.clear();
+    for (const f of fights) {
+      fightKeyMap.set(normKey(f.fight), f.fight);
+      idByLabel.set(f.fight, f.fight_id || '');
+      if (f.fight_id) labelById.set(f.fight_id, f.fight);
+    }
     if (!Array.isArray(data)) showDebug(`getfights returned non-array; raw: ${JSON.stringify(data).slice(0,200)}`);
     renderFights();
   }
-  async function refreshResults(){
-    results = await getJSON(API.results);
-    resultById = new Map(results.map(r => [r.fight_id, r]));
-    resultByLabel = new Map(results.map(r => [r.fight, r]));
-  }
+  async function refreshResults(){ results = await getJSON(API.results); }
   async function refreshLeaderboard(){ const rows = await getJSON(API.leaderboard); renderLeaderboard(rows); }
   async function refreshChampions(){ champs = await getJSON(API.champion); renderChampions(champs); }
 
@@ -574,4 +573,3 @@
   // Then keep things fresh: results + leaderboard only
   setInterval(refreshLive, 60000);
 })();
-</script>
