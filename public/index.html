@@ -137,12 +137,7 @@
 
   </div>
 
-  <!-- Frontend config -->
-  <script>
-    /* These keys are used by script.js for localStorage auth */
-    const LS_USER = "ffp_user";
-    const LS_PIN  = "ffp_pin";
-  </script>
-  <script src="./script.js" defer></script>
+  <!-- Single JS entry (cache-busted while testing) -->
+  <script src="/script.js?v=bootstrap1" defer></script>
 </body>
 </html>
