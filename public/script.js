@@ -1,14 +1,14 @@
-/* Fantasy Fight Picks — frontend (fight_id enabled)
-   - Submits fight_id + label; hydrates using fight_id when available
-   - Keeps prior UX fixes: friendly lockout, reigning champs, auth simplification,
-     hide Make Picks after submit, no redundant placeholder line, normalization tolerant
+<script>
+/* Fantasy Fight Picks — frontend (proxy + bootstrap, fight_id enabled)
+   - All data via /api/* (Render proxy) — no direct GAS calls (fixes CORS + flakiness)
+   - One-shot bootstrap hydrate; 60s live refresh = results + leaderboard only
+   - Faster "Your Picks" via map lookups (no O(n^2) scans)
 */
 
 (() => {
   const q = (sel) => document.querySelector(sel);
 
-  // ---- GAS endpoint + localStorage keys ----
-  const GAS_EXEC = 'https://script.google.com/macros/s/AKfycbyQOfLKyM3aHW1xAZ7TCeankcgOSp6F2Ux1tEwBTp4A6A7tIULBoEyxDnC6dYsNq-RNGA/exec';
+  // ---- localStorage keys ----
   const LS_USER = 'ffp_user';
   const LS_PIN  = 'ffp_pin';
 
@@ -30,17 +30,17 @@
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
-  // ---- API (direct to GAS with action=...) ----
+  // ---- API (Render proxy) ----
   const API = {
-    meta:        `${GAS_EXEC}?action=getmeta`,
-    fights:      `${GAS_EXEC}?action=getfights`,
-    results:     `${GAS_EXEC}?action=getresults`,
-    leaderboard: `${GAS_EXEC}?action=getleaderboard`,
-    champion:    `${GAS_EXEC}?action=getchampion`,
-    userlock:    (u) => `${GAS_EXEC}?action=getuserlock&username=${encodeURIComponent(u || '')}`,
-    userpicks:   (u) => `${GAS_EXEC}?action=getuserpicks&username=${encodeURIComponent(u || '')}`,
-    submit:      `${GAS_EXEC}`, // doPost with { action:'submitpicks', ... }
-    bootstrap:   (u) => `${GAS_EXEC}?action=bootstrap&username=${encodeURIComponent(u || '')}`
+    meta:        `/api/meta`,
+    fights:      `/api/fights`,
+    results:     `/api/results`,
+    leaderboard: `/api/leaderboard`,
+    champion:    `/api/champion`,
+    userlock:    (u) => `/api/userlock?username=${encodeURIComponent(u || '')}`,
+    userpicks:   (u) => `/api/userpicks?username=${encodeURIComponent(u || '')}`,
+    submit:      `/api/submitpicks`,
+    bootstrap:   (u) => `/api/bootstrap?username=${encodeURIComponent(u || '')}`,
   };
 
   let meta = null;
@@ -53,10 +53,16 @@
   let eventLocked = false;
   let userLocked = false;
 
-  // Fight maps: label <-> id
+  // Fight & result maps (rebuilt after data updates)
+  // label <-> id
   const fightKeyMap = new Map(); // normLabel -> canonical label
   const idByLabel = new Map();   // canonical label -> fight_id
   const labelById = new Map();   // fight_id -> canonical label
+  // quick lookups for render speed
+  let fightByLabel = new Map();
+  let fightById    = new Map();
+  let resultById   = new Map();
+  let resultByLabel= new Map();
 
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
 
@@ -253,21 +259,36 @@
       </div>
     `;
   }
+  function rebuildMaps(){
+    // label/id maps
+    fightKeyMap.clear(); idByLabel.clear(); labelById.clear();
+    fightByLabel = new Map();
+    fightById    = new Map();
+    for (const f of fights) {
+      fightKeyMap.set(normKey(f.fight), f.fight);
+      idByLabel.set(f.fight, f.fight_id || '');
+      if (f.fight_id) labelById.set(f.fight_id, f.fight);
+      fightByLabel.set(f.fight, f);
+      if (f.fight_id) fightById.set(f.fight_id, f);
+    }
+    resultById = new Map(results.map(r => [r.fight_id, r]));
+    resultByLabel = new Map(results.map(r => [r.fight, r]));
+  }
   function renderFights(){
     if (!Array.isArray(fights)) { showDebug(`getfights did not return an array`); fightsList.innerHTML = ''; return; }
     fightsList.innerHTML = fights.map(buildFightRow).join('');
     applyLockState();
   }
 
-  // Picks render (clean markers)
+  // Picks render (fast path: O(1) lookups)
   function renderYourPicks(){
     const keys = Object.keys(picksState);
     if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
     const rows=[];
     for(const k of keys){
       const p = picksState[k];
-      const f = fights.find(x=> x.fight===k) || (p.fight_id ? fights.find(x=> x.fight_id===p.fight_id) : null);
-      const r = p.fight_id ? results.find(x=> x.fight_id===p.fight_id) : results.find(x=> x.fight===k);
+      const f = fightByLabel.get(k) || (p.fight_id ? fightById.get(p.fight_id) : null);
+      const r = p.fight_id ? resultById.get(p.fight_id) : resultByLabel.get(k);
       const dogN = (p && f) ? dogBonusForPick(f, p.winner) : 0;
 
       let detailsHtml = '';
@@ -292,7 +313,8 @@
         </div>
       `);
     }
-    yourPicks.innerHTML = rows.join('');
+    // batch to next frame to avoid layout thrash
+    requestAnimationFrame(()=>{ yourPicks.innerHTML = rows.join(''); });
   }
 
   // Leaderboard
@@ -397,7 +419,6 @@
         if (!method) { showDebug(`Select a Method for: ${label}`); return; }
         if (method !== 'Decision' && !round) { showDebug(`Select a Round for: ${label}`); return; }
 
-        // normalize: ensure no round kept for decisions
         if (method === 'Decision' && ps.round) ps.round = '';
       }
 
@@ -421,8 +442,8 @@
       const old = submitBtn.textContent;
       submitBtn.textContent = 'Submitting…'; submitBtn.disabled = true;
       try{
-        // IMPORTANT: include action for GAS doPost
-        const res = await postJSON(API.submit, { action:'submitpicks', username, pin, picks: picksPayload });
+        // Proxy handles action=submitpicks on the server side
+        const res = await postJSON(API.submit, { username, pin, picks: picksPayload });
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
         hideDebug();
         lsSet(LS_USER, username); lsSet(LS_PIN, pin);
@@ -450,18 +471,14 @@
     meta = payload.meta || {};
     renderMeta();
 
-    // fights + maps
+    // fights
     fights = Array.isArray(payload.fights) ? payload.fights : [];
-    fightKeyMap.clear(); idByLabel.clear(); labelById.clear();
-    for (const f of fights) {
-      fightKeyMap.set(normKey(f.fight), f.fight);
-      idByLabel.set(f.fight, f.fight_id || '');
-      if (f.fight_id) labelById.set(f.fight_id, f.fight);
-    }
-    renderFights();
-
-    // results
+    // results (needed for picks panel scoring)
     results = Array.isArray(payload.results) ? payload.results : [];
+
+    // rebuild maps once for fast UI rendering
+    rebuildMaps();
+    renderFights();
 
     // leaderboard
     const lb = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
@@ -503,10 +520,12 @@
         getJSON(API.leaderboard)
       ]);
       results = Array.isArray(resNew) ? resNew : [];
+      // update result maps only (fights unchanged)
+      resultById = new Map(results.map(r => [r.fight_id, r]));
+      resultByLabel = new Map(results.map(r => [r.fight, r]));
       renderYourPicks();
       renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
     }catch(e){
-      // Not fatal for UI; surface once
       showDebug(String(e && e.message ? e.message : e));
       setTimeout(hideDebug, 2500);
     }
@@ -517,17 +536,15 @@
   async function refreshFights(){
     const data = await getJSON(API.fights);
     fights = Array.isArray(data) ? data : [];
-    // build maps
-    fightKeyMap.clear(); idByLabel.clear(); labelById.clear();
-    for (const f of fights) {
-      fightKeyMap.set(normKey(f.fight), f.fight);
-      idByLabel.set(f.fight, f.fight_id || '');
-      if (f.fight_id) labelById.set(f.fight_id, f.fight);
-    }
+    rebuildMaps();
     if (!Array.isArray(data)) showDebug(`getfights returned non-array; raw: ${JSON.stringify(data).slice(0,200)}`);
     renderFights();
   }
-  async function refreshResults(){ results = await getJSON(API.results); }
+  async function refreshResults(){
+    results = await getJSON(API.results);
+    resultById = new Map(results.map(r => [r.fight_id, r]));
+    resultByLabel = new Map(results.map(r => [r.fight, r]));
+  }
   async function refreshLeaderboard(){ const rows = await getJSON(API.leaderboard); renderLeaderboard(rows); }
   async function refreshChampions(){ champs = await getJSON(API.champion); renderChampions(champs); }
 
@@ -557,3 +574,4 @@
   // Then keep things fresh: results + leaderboard only
   setInterval(refreshLive, 60000);
 })();
+</script>
