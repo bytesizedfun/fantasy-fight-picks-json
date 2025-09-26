@@ -213,8 +213,12 @@
     champBanner.style.display = '';
   }
 
-  // Scoring helpers
-  function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o - 100) )/100 + 1 | 0; } // int math
+  // Scoring helpers (FIXED precedence & flooring)
+  function computeDogBonus(odds){
+    const o = Number(odds || 0);
+    if (o < 100) return 0;
+    return Math.floor((o - 100) / 100) + 1;
+  }
   function dogBonusForPick(f, pickedWinner){
     if(!f) return 0;
     if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1);
@@ -278,15 +282,22 @@
     applyLockState();
   }
 
-  // Picks render (clean markers)
+  // Picks render (optimized to O(N) by prebuilding lookups)
   function renderYourPicks(){
     const keys = Object.keys(picksState);
     if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
     const rows=[];
+
+    // Build O(1) lookup maps to avoid repeated .find()
+    const fightByLabel  = new Map(fights.map(f => [f.fight, f]));
+    const fightById     = new Map(fights.map(f => [f.fight_id, f]));
+    const resultById    = new Map(results.map(r => [r.fight_id, r]));
+    const resultByLabel = new Map(results.map(r => [r.fight, r]));
+
     for(const k of keys){
       const p = picksState[k];
-      const f = fights.find(x=> x.fight===k) || (p.fight_id ? fights.find(x=> x.fight_id===p.fight_id) : null);
-      const r = p.fight_id ? results.find(x=> x.fight_id===p.fight_id) : results.find(x=> x.fight===k);
+      const f = fightByLabel.get(k) || (p.fight_id ? fightById.get(p.fight_id) : null);
+      const r = p.fight_id ? resultById.get(p.fight_id) : resultByLabel.get(k);
       const dogN = (p && f) ? dogBonusForPick(f, p.winner) : 0;
 
       let detailsHtml = '';
