@@ -1,7 +1,7 @@
-/* Fantasy Fight Picks — frontend (fight_id primary, proxy-based)
-   - Uses Render proxy /api/* (avoids GAS CORS + HTML redirects)
-   - One-call bootstrap for fast first paint
-   - Live refresh limited to results + leaderboard
+/* Fantasy Fight Picks — frontend (lean bootstrap + robust retries)
+   - Proxy /api/* to Render
+   - Tries /api/bootstrap first; if it 5xx/aborts, gracefully falls back to separate calls
+   - Strict submit validation + button lock
 */
 
 (() => {
@@ -46,54 +46,77 @@
   let fights = [];
   let results = [];
   let champs = [];
-
-  // picksState keyed by fight_id ONLY; keep label inside for display
-  // { [fight_id]: { fight, winner, method, round } }
-  let picksState = {};
+  let picksState = {}; // { [fightLabel]: { fight_id, winner, method, round } }
   let eventLocked = false;
   let userLocked = false;
 
-  // Fight maps
-  const idByLabel = new Map();   // label -> fight_id
-  const labelById = new Map();   // fight_id -> label
-
+  const idByLabel = new Map();   // canonical label -> fight_id
+  const labelById = new Map();   // fight_id -> canonical label
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
 
   // Utils
   function showDebug(msg){ if(debugBanner){ debugBanner.textContent=String(msg||''); debugBanner.style.display='block'; } }
   function hideDebug(){ if(debugBanner){ debugBanner.style.display='none'; } }
-  function setSubmitHint(msg){ if(submitHint){ submitHint.textContent = msg || ''; submitHint.classList.toggle('error', !!msg); } }
 
+  // Robust fetch with small retries on transient issues
   async function getJSON(url){
-    const r = await fetch(url, { cache:'no-store' });
-    const t = await r.text();
-    try {
-      const data = JSON.parse(t);
-      if (!r.ok || data?.ok === false) {
-        throw new Error(data?.error || `${r.status} ${r.statusText}`);
+    const max = 3;
+    for (let i=0;i<max;i++){
+      try{
+        const r = await fetch(url, { cache:'no-store' });
+        const t = await r.text();
+        let data;
+        try { data = JSON.parse(t || '{}'); } catch { data = null; }
+        if (!r.ok || data?.ok === false) {
+          const status = r.status;
+          const msg = (data && data.error) ? data.error : `${status} ${r.statusText}`;
+          // transient statuses
+          if ([429, 500, 502, 503, 504].includes(status) && i < max-1) {
+            await new Promise(s=>setTimeout(s, 300*(i+1)));
+            continue;
+          }
+          throw new Error(msg);
+        }
+        return data;
+      } catch(e) {
+        const m = String(e && e.message || e || '');
+        const transient = /NetworkError|Failed to fetch|aborted|timeout|timed out/i.test(m);
+        if (transient && i < max-1) {
+          await new Promise(s=>setTimeout(s, 300*(i+1)));
+          continue;
+        }
+        throw e;
       }
-      return data;
-    } catch (e) {
-      throw new Error(`GET ${url} -> ${r.status} ${t.slice(0,200)}`);
     }
   }
 
   async function postJSON(url, body){
-    const r = await fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      cache:'no-store',
-      body: JSON.stringify(body||{})
-    });
-    const t = await r.text();
-    try {
-      const data = JSON.parse(t);
-      if (!r.ok || data?.ok === false) {
-        throw new Error(data?.error || `${r.status} ${r.statusText}`);
+    const max = 2;
+    for (let i=0;i<max;i++){
+      try{
+        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+        const t = await r.text();
+        let data;
+        try { data = JSON.parse(t || '{}'); } catch { data = null; }
+        if (!r.ok || data?.ok === false) {
+          const status = r.status;
+          const msg = (data && data.error) ? data.error : `${status} ${r.statusText}`;
+          if ([429, 500, 502, 503, 504].includes(status) && i < max-1) {
+            await new Promise(s=>setTimeout(s, 300*(i+1)));
+            continue;
+          }
+          throw new Error(msg);
+        }
+        return data;
+      } catch(e) {
+        const m = String(e && e.message || e || '');
+        const transient = /NetworkError|Failed to fetch|aborted|timeout|timed out/i.test(m);
+        if (transient && i < max-1) {
+          await new Promise(s=>setTimeout(s, 300*(i+1)));
+          continue;
+        }
+        throw e;
       }
-      return data;
-    } catch {
-      throw new Error(`POST ${url} -> ${r.status} ${t.slice(0,200)}`);
     }
   }
 
@@ -175,7 +198,6 @@
       if (eventLocked) submitHint.textContent = 'Event is locked — no new submissions.';
       else if (userLocked) submitHint.textContent = 'Your picks are locked (already submitted).';
       else submitHint.textContent = 'Picks lock at event start. Submitting locks your picks.';
-      submitHint.classList.remove('error');
     }
   }
   function friendlyLockout(meta){
@@ -198,30 +220,7 @@
     applyLockState();
   }
 
-  // Champions (reigning)
-  function formatEt(dIso){
-    try{
-      const d=new Date(dIso);
-      const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Toronto',year:'numeric',month:'short',day:'2-digit'});
-      return fmt.format(d);
-    }catch{ return ''; }
-  }
-  function renderChampions(list){
-    if(!Array.isArray(list) || !list.length){ if(champBanner) champBanner.style.display='none'; return; }
-    const lastDate = list[list.length-1]?.date || '';
-    const recent = list.filter(x=> x.date===lastDate);
-    if (!recent.length) { champBanner.style.display='none'; return; }
-    champList.innerHTML = recent.map(c => `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
-    champWhen.textContent = `Won on ${formatEt(lastDate)}`;
-    champBanner.style.display = '';
-  }
-
-  // Scoring helpers
-  function computeDogBonus(odds){
-    const o = Number(odds || 0);
-    if (o < 100) return 0;
-    return Math.floor((o - 100) / 100) + 1;
-  }
+  function computeDogBonus(odds){ const o=Number(odds||0); if(o<100) return 0; return Math.floor((o-100)/100)+1; }
   function dogBonusForPick(f, pickedWinner){
     if(!f) return 0;
     if(pickedWinner===f.fighter1) return computeDogBonus(f.oddsF1);
@@ -229,19 +228,15 @@
     return 0;
   }
 
-  // Fights UI
   function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
   function buildFightRow(f){
-    const keyLabel = f.fight;       // display only
-    const fid      = f.fight_id||''; // primary key
+    const key = f.fight;
+    const theFid = f.fight_id || '';
     const dog1 = f.dogF1 || 0, dog2 = f.dogF2 || 0;
-
-    // Use fight_id to generate unique element IDs
-    const selWinnerId = `w_${hashKey(fid)}`;
-    const selMethodId = `m_${hashKey(fid)}`;
-    const selRoundId  = `r_${hashKey(fid)}`;
-
-    const p = picksState[fid] || {};
+    const selWinnerId = `w_${hashKey(key)}`;
+    const selMethodId = `m_${hashKey(key)}`;
+    const selRoundId  = `r_${hashKey(key)}`;
+    const p = picksState[key] || {};
     const winnerVal = p.winner || '';
     const methodVal = p.method || '';
     const roundVal  = p.round  || '';
@@ -251,8 +246,8 @@
     for(let i=1;i<=roundsN;i++){ const sel=String(roundVal)===String(i)?'selected':''; roundOpts += `<option value="${i}" ${sel}>${i}</option>`; }
 
     return `
-      <div class="fight" data-key="${escapeHtml(keyLabel)}" data-id="${escapeHtml(fid)}">
-        <div class="name">${escapeHtml(keyLabel)}</div>
+      <div class="fight" data-key="${escapeHtml(key)}" data-id="${escapeHtml(theFid)}">
+        <div class="name">${escapeHtml(key)}</div>
         <div class="grid">
           <div>
             <div class="label">Winner</div>
@@ -285,31 +280,23 @@
   function renderFights(){
     if (!Array.isArray(fights)) { showDebug(`getfights did not return an array`); fightsList.innerHTML = ''; return; }
     fightsList.innerHTML = fights.map(buildFightRow).join('');
-
-    // Seed stable state by fight_id to avoid undefined lookups
-    for (const f of fights) {
-      if (!picksState[f.fight_id]) {
-        picksState[f.fight_id] = { fight: f.fight, winner:'', method:'', round:'' };
-      } else {
-        // keep label fresh in case it was updated server-side
-        picksState[f.fight_id].fight = f.fight;
-      }
-    }
     applyLockState();
   }
 
-  // Picks render
   function renderYourPicks(){
-    if (!fights.length) { yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
-
-    const resultById = new Map(results.map(r => [r.fight_id, r]));
+    const keys = Object.keys(picksState);
+    if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
     const rows=[];
+    const fightByLabel  = new Map(fights.map(f => [f.fight, f]));
+    const fightById     = new Map(fights.map(f => [f.fight_id, f]));
+    const resultById    = new Map(results.map(r => [r.fight_id, r]));
+    const resultByLabel = new Map(results.map(r => [r.fight, r]));
 
-    for (const f of fights){
-      const fid = f.fight_id;
-      const p   = picksState[fid] || { fight: f.fight, winner:'', method:'', round:'' };
-      const r   = resultById.get(fid);
-      const dogN = dogBonusForPick(f, p.winner);
+    for(const k of keys){
+      const p = picksState[k];
+      const f = fightByLabel.get(k) || (p.fight_id ? fightById.get(p.fight_id) : null);
+      const r = p.fight_id ? resultById.get(p.fight_id) : resultByLabel.get(k);
+      const dogN = (p && f) ? dogBonusForPick(f, p.winner) : 0;
 
       let detailsHtml = '';
       if(r && r.finalized){
@@ -324,7 +311,7 @@
       rows.push(`
         <div class="pick-line">
           <div>
-            <div><strong>${escapeHtml(f.fight)}</strong></div>
+            <div><strong>${escapeHtml(k)}</strong></div>
             <div class="tiny">
               ${escapeHtml(p.winner||'—')}${p.method?` • ${escapeHtml(p.method)}`:''}${(p.method && p.method!=='Decision' && p.round)?` • ${escapeHtml(p.round)}`:''}${dogN>0?` • 🐶 +${dogN}`:''}
             </div>
@@ -336,7 +323,6 @@
     yourPicks.innerHTML = rows.join('');
   }
 
-  // Leaderboard
   function renderLeaderboard(rows){
     if(!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="3" class="tiny">No scores yet.</td></tr>`;
@@ -354,19 +340,20 @@
     }).join('');
   }
 
-  // Hydration with ID mapping
   async function hydrateUserPicksStrict(){
     const u = currentUsername();
     if (!u) { renderYourPicks(); return; }
     try{
-      const list = await getJSON(API.userpicks(u)); // [{fight_id,fight,winner,method,round}]
-      const next = { ...picksState };
+      const list = await getJSON(API.userpicks(u));
+      const next = {};
       if (Array.isArray(list)) {
         for (const row of list) {
           const fid = String(row.fight_id||'').trim();
-          if (!fid) continue;
-          next[fid] = {
-            fight: row.fight || labelById.get(fid) || (next[fid]?.fight || ''),
+          let label = row.fight || '';
+          if (fid && labelById.has(fid)) label = labelById.get(fid);
+          if (!label) continue;
+          next[label] = {
+            fight_id: fid || (idByLabel.get(label) || ''),
             winner: row.winner || '',
             method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
             round:  (row.method === 'Decision') ? '' : (row.round || '')
@@ -381,7 +368,6 @@
     renderYourPicks();
   }
 
-  // User lock
   async function refreshUserLock() {
     const username = currentUsername();
     if (!username) { userLocked = false; applyLockState(); return; }
@@ -395,170 +381,191 @@
     applyLockState();
   }
 
-  // Bind picks + submit
   function bindFightsAndSubmit(){
     fightsList.addEventListener('change', (ev)=>{
       const el = ev.target;
       const fightEl = el.closest('.fight'); if(!fightEl) return;
-      const fid = fightEl.dataset.id;
       const label = fightEl.dataset.key;
-      if (!fid) return;
+      const fid = fightEl.dataset.id || idByLabel.get(label) || '';
+      picksState[label] = picksState[label] || { fight_id: fid, winner:'', method:'', round:'' };
+      picksState[label].fight_id = fid;
 
-      const curr = picksState[fid] || { fight: label, winner:'', method:'', round:'' };
-      if(el.id.startsWith('w_')){ curr.winner = el.value; }
+      if(el.id.startsWith('w_')){ picksState[label].winner = el.value; }
       else if(el.id.startsWith('m_')){
-        curr.method = el.value;
+        picksState[label].method = el.value;
         const roundSel = fightEl.querySelector('select[id^="r_"]');
-        const isDec = el.value==='Decision';
-        if(roundSel){ roundSel.disabled = isDec; if(isDec) roundSel.value=''; }
-        if(isDec) curr.round = '';
-      } else if(el.id.startsWith('r_')){ curr.round = el.value; }
+        if(roundSel){ const isDec = el.value==='Decision'; roundSel.disabled = isDec; if(isDec) roundSel.value=''; }
+      } else if(el.id.startsWith('r_')){ picksState[label].round = el.value; }
 
-      curr.fight = label; // keep fresh
-      picksState[fid] = curr;
-
-      setSubmitHint('');
       renderYourPicks();
     });
 
     submitBtn.addEventListener('click', async ()=>{
-      // anti-double-click guard
-      if (submitBtn.disabled) return;
-
-      if (eventLocked) { setSubmitHint('Event is locked — no new submissions.'); return; }
-      if (userLocked) { setSubmitHint('Your picks are locked (already submitted).'); return; }
+      if (eventLocked) { showDebug('Event is locked — no new submissions.'); return; }
+      if (userLocked) { showDebug('Your picks are locked (already submitted).'); return; }
 
       const username = currentUsername();
       const pin = currentPin();
-      if(!username){ setSubmitHint('Enter a username.'); return; }
-      if(!isNumericPin(pin)){ setSubmitHint('PIN must be 4 digits.'); return; }
+      if(!username){ showDebug('Enter a username.'); return; }
+      if(!isNumericPin(pin)){ showDebug('PIN must be 4 digits.'); return; }
 
-      // --- STRICT VALIDATION: every fight must be fully picked (by fight_id) ---
       for (const f of fights) {
-        const fid = f.fight_id;
-        const ps = picksState[fid] || {};
+        const label = f.fight;
+        const ps = picksState[label] || {};
         const winner = (ps.winner || '').trim();
         const method = (ps.method || '').trim();
         const round  = (ps.round  || '').trim();
 
-        if (!winner) {
-          setSubmitHint(`Select a Winner for: ${f.fight}`);
-          const row = fightsList.querySelector(`.fight[data-id="${fid}"]`);
-          row?.scrollIntoView({behavior:'smooth', block:'center'});
-          row?.querySelector(`select[id^="w_"]`)?.focus();
-          return;
-        }
-        if (!method) {
-          setSubmitHint(`Select a Method for: ${f.fight}`);
-          const row = fightsList.querySelector(`.fight[data-id="${fid}"]`);
-          row?.scrollIntoView({behavior:'smooth', block:'center'});
-          row?.querySelector(`select[id^="m_"]`)?.focus();
-          return;
-        }
-        if (method !== 'Decision' && !round) {
-          setSubmitHint(`Select a Round for: ${f.fight}`);
-          const row = fightsList.querySelector(`.fight[data-id="${fid}"]`);
-          row?.scrollIntoView({behavior:'smooth', block:'center'});
-          row?.querySelector(`select[id^="r_"]`)?.focus();
-          return;
-        }
+        if (!winner) { showDebug(`Select a Winner for: ${label}`); return; }
+        if (!method) { showDebug(`Select a Method for: ${label}`); return; }
+        if (method !== 'Decision' && !round) { showDebug(`Select a Round for: ${label}`); return; }
         if (method === 'Decision' && ps.round) ps.round = '';
       }
 
-      // Build complete, validated payload from fights list (order preserved)
       const picksPayload = fights.map(f => {
-        const fid = f.fight_id;
-        const ps = picksState[fid] || {};
+        const label = f.fight;
+        const ps = picksState[label] || {};
         const method = METHOD_OPTIONS.includes(ps.method) ? ps.method : 'Decision';
         const round  = (method === 'Decision') ? '' : String(ps.round || '');
-        return {
-          fight_id: fid,
-          fight: f.fight,         // for readability/back-compat; server resolves to id anyway
-          winner: ps.winner,
-          method,
-          round
-        };
+        const fid    = (ps.fight_id || idByLabel.get(label) || '');
+        return { fight_id: fid, fight: label, winner: ps.winner, method, round };
       });
 
       const old = submitBtn.textContent;
       submitBtn.textContent = 'Submitting…'; submitBtn.disabled = true;
       try{
-        // Ensure action is present (proxy-safe)
-        const res = await postJSON(API.submit, { action:'submitpicks', username, pin, picks: picksPayload });
+        const res = await postJSON(API.submit, { username, pin, picks: picksPayload });
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
-
         hideDebug();
         lsSet(LS_USER, username); lsSet(LS_PIN, pin);
         userLocked = true; applyLockState();
 
-        // After submit, do a single fast rehydrate via bootstrap
+        // Rehydrate once after submit
         await loadBootstrap();
-
         submitBtn.textContent = 'Saved ✔';
         setTimeout(()=>{ submitBtn.textContent = old; }, 900);
         updateAuthUI();
-        setSubmitHint('');
       }catch(err){
-        setSubmitHint(String(err.message||err));
+        showDebug(String(err.message||err));
         submitBtn.textContent = old; submitBtn.disabled = eventLocked || userLocked;
       }
     });
   }
 
-  // ---------- Bootstrap loader ----------
-  async function loadBootstrap(){
-    const u = currentUsername();
-    const payload = await getJSON(API.bootstrap(u));
-
-    // meta
-    meta = payload.meta || {};
-    renderMeta();
-
-    // fights + maps
-    fights = Array.isArray(payload.fights) ? payload.fights : [];
-    idByLabel.clear(); labelById.clear();
-    for (const f of fights) {
-      idByLabel.set(f.fight, f.fight_id || '');
-      if (f.fight_id) labelById.set(f.fight_id, f.fight);
-    }
-    renderFights();
-
-    // results
-    results = Array.isArray(payload.results) ? payload.results : [];
-
-    // leaderboard
-    const lb = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
-    renderLeaderboard(lb);
-
-    // champs
-    champs = Array.isArray(payload.champion) ? payload.champion : [];
-    renderChampions(champs);
-
-    // user lock + picks (if present)
-    if (payload.user && payload.user.lock) {
-      userLocked = !!payload.user.lock.locked && payload.user.lock.reason === 'submitted';
-      applyLockState();
-    }
-    if (payload.user && Array.isArray(payload.user.picks)) {
-      const next = { ...picksState };
-      for (const row of payload.user.picks) {
-        const fid = String(row.fight_id||'').trim();
-        if (!fid) continue;
-        next[fid] = {
-          fight: row.fight || labelById.get(fid) || (next[fid]?.fight || ''),
-          winner: row.winner || '',
-          method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
-          round:  (row.method === 'Decision') ? '' : (row.round || '')
-        };
-      }
-      picksState = next;
-    }
-    renderYourPicks();
-    hideDebug();
-    setSubmitHint('');
+  function renderChampions(list){
+    if(!Array.isArray(list) || !list.length){ if(champBanner) champBanner.style.display='none'; return; }
+    const lastDate = list[list.length-1]?.date || '';
+    const recent = list.filter(x=> x.date===lastDate);
+    if (!recent.length) { champBanner.style.display='none'; return; }
+    champList.innerHTML = recent.map(c => `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
+    const fmtDate = (dIso)=>{ try{ const d=new Date(dIso); const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Toronto',year:'numeric',month:'short',day:'2-digit'}); return fmt.format(d);}catch{ return ''; } };
+    champWhen.textContent = `Won on ${fmtDate(lastDate)}`;
+    champBanner.style.display = '';
   }
 
-  // ---------- Lightweight live refresh (results + leaderboard only) ----------
+  // ---------- Bootstrap loader with graceful fallback ----------
+  async function loadBootstrap(){
+    const u = currentUsername();
+    try{
+      showDebug('Loading…');
+      const payload = await getJSON(API.bootstrap(u));
+      // meta
+      meta = payload.meta || {}; renderMeta();
+
+      // fights + maps
+      fights = Array.isArray(payload.fights) ? payload.fights : [];
+      idByLabel.clear(); labelById.clear();
+      for (const f of fights) {
+        idByLabel.set(f.fight, f.fight_id || '');
+        if (f.fight_id) labelById.set(f.fight_id, f.fight);
+      }
+      renderFights();
+
+      // results
+      results = Array.isArray(payload.results) ? payload.results : [];
+
+      // leaderboard
+      renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
+
+      // champs
+      renderChampions(Array.isArray(payload.champion) ? payload.champion : []);
+
+      // user lock + picks
+      if (payload.user && payload.user.lock) {
+        userLocked = !!payload.user.lock.locked && payload.user.lock.reason === 'submitted';
+        applyLockState();
+      }
+      if (payload.user && Array.isArray(payload.user.picks)) {
+        const next = {};
+        for (const row of payload.user.picks) {
+          const fid = String(row.fight_id||'').trim();
+          let label = row.fight || (fid && labelById.get(fid)) || '';
+          if (!label) continue;
+          next[label] = {
+            fight_id: fid || (idByLabel.get(label) || ''),
+            winner: row.winner || '',
+            method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
+            round:  (row.method === 'Decision') ? '' : (row.round || '')
+          };
+        }
+        picksState = next;
+      }
+      renderYourPicks();
+      hideDebug();
+    }catch(e){
+      // Fallback path: fetch pieces separately so UI still loads
+      showDebug('Server busy; loading pieces…');
+      const u = currentUsername();
+      const [m, fs, rs, lb, ch, lock, ups] = await Promise.allSettled([
+        getJSON(API.meta),
+        getJSON(API.fights),
+        getJSON(API.results),
+        getJSON(API.leaderboard),
+        getJSON(API.champion),
+        u ? getJSON(API.userlock(u)) : Promise.resolve({locked:false,reason:'open'}),
+        u ? getJSON(API.userpicks(u)) : Promise.resolve([])
+      ]);
+
+      meta = m.status==='fulfilled' ? m.value : {};
+      renderMeta();
+
+      fights = fs.status==='fulfilled' && Array.isArray(fs.value) ? fs.value : [];
+      idByLabel.clear(); labelById.clear();
+      for (const f of fights) {
+        idByLabel.set(f.fight, f.fight_id || '');
+        if (f.fight_id) labelById.set(f.fight_id, f.fight);
+      }
+      renderFights();
+
+      results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
+      renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
+      renderChampions(ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : []);
+
+      if (lock.status==='fulfilled') {
+        userLocked = !!lock.value.locked && lock.value.reason === 'submitted';
+        applyLockState();
+      }
+      if (ups.status==='fulfilled' && Array.isArray(ups.value)) {
+        const next = {};
+        for (const row of ups.value) {
+          const fid = String(row.fight_id||'').trim();
+          let label = row.fight || (fid && labelById.get(fid)) || '';
+          if (!label) continue;
+          next[label] = {
+            fight_id: fid || (idByLabel.get(label) || ''),
+            winner: row.winner || '',
+            method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
+            round:  (row.method === 'Decision') ? '' : (row.round || '')
+          };
+        }
+        picksState = next;
+      }
+      renderYourPicks();
+      setTimeout(hideDebug, 1200);
+    }
+  }
+
+  // Lightweight live refresh (results + leaderboard only)
   async function refreshLive(){
     try{
       const [resNew, lbNew] = await Promise.all([
@@ -569,34 +576,9 @@
       renderYourPicks();
       renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
     }catch(e){
+      // transient; show briefly
       showDebug(String(e && e.message ? e.message : e));
       setTimeout(hideDebug, 2500);
-    }
-  }
-
-  // (legacy helpers retained)
-  async function refreshMeta(){ meta = await getJSON(API.meta); renderMeta(); }
-  async function refreshFights(){
-    const data = await getJSON(API.fights);
-    fights = Array.isArray(data) ? data : [];
-    idByLabel.clear(); labelById.clear();
-    for (const f of fights) {
-      idByLabel.set(f.fight, f.fight_id || '');
-      if (f.fight_id) labelById.set(f.fight_id, f.fight);
-    }
-    if (!Array.isArray(data)) showDebug(`getfights returned non-array; raw: ${JSON.stringify(data).slice(0,200)}`);
-    renderFights();
-  }
-  async function refreshResults(){ results = await getJSON(API.results); }
-  async function refreshLeaderboard(){ const rows = await getJSON(API.leaderboard); renderLeaderboard(rows); }
-  async function refreshChampions(){ champs = await getJSON(API.champion); renderChampions(champs); }
-
-  // Aggregate refresh — use bootstrap for initial load
-  async function refreshAll(){
-    try{
-      await loadBootstrap();
-    }catch(err){
-      showDebug(String(err.message||err));
     }
   }
 
@@ -606,14 +588,20 @@
     if (u && q('#usernameInput')) q('#usernameInput').value = u;
   }
 
-  updateAuthUI();
-  bindAuthFormHandlers();
-  prefillUser();
-  bindFightsAndSubmit();
+  function init(){
+    updateAuthUI();
+    bindAuthFormHandlers();
+    prefillUser();
+    bindFightsAndSubmit();
+  }
 
-  // First paint: single fast call
-  refreshAll();
+  init();
 
-  // Then keep things fresh: results + leaderboard only
-  setInterval(refreshLive, 60000);
+  // First paint
+  loadBootstrap().then(()=>{
+    // Then keep things fresh: results + leaderboard only
+    setInterval(refreshLive, 60000);
+  });
+
 })();
+
