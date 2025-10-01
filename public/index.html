@@ -20,8 +20,13 @@
     .wrap{max-width:980px;margin:0 auto;padding:16px}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
     .brand{display:flex;align-items:center;gap:10px}
-    .logo{width:28px;height:28px;display:inline-block} /* (unused now, kept for safety) */
-    .title{font-size:20px;font-weight:700;letter-spacing:.3px} /* (unused now) */
+    /* New: simple text wordmark */
+    .wordmark{
+      font-size:20px;
+      font-weight:800;
+      letter-spacing:-0.02em;
+      line-height:28px;
+    }
     .meta{font-size:12px;color:var(--muted)}
 
     .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;margin:10px 0}
@@ -69,11 +74,9 @@
       background: transparent !important;
       border: 1px solid rgba(255,255,255,.06) !important;
     }
-
     .pick-line{
       border: 1px solid rgba(255,255,255,.06) !important;  /* was dashed */
     }
-
     .fight{
       background: transparent !important;
       border: 0 !important;
@@ -82,51 +85,16 @@
     .fight + .fight{
       border-top: 1px solid rgba(255,255,255,.06) !important; /* subtle divider between fights */
     }
-
-    .title{
-      font-weight: 800 !important;
-      letter-spacing: -0.02em !important;  /* stronger wordmark feel */
-    }
-
-    .panel{ margin: 16px 0 !important; }  /* more breathing room for flat layout */
-
-    .tag{
-      border-color: rgba(255,255,255,.12) !important;
-      color: var(--muted) !important;
-    }
-
-    /* Wordmark sizing in header */
-    .brand .wordmark{
-      height: 28px;
-      width: auto;
-      display: block;
-    }
+    .panel{ margin: 16px 0 !important; }
+    .tag{ border-color: rgba(255,255,255,.12) !important; color: var(--muted) !important; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <div class="brand">
-        <!-- Inline SVG wordmark: zero webfont, tiny, crisp -->
-        <svg class="wordmark" viewBox="0 0 900 70" aria-label="Fantasy Fight Picks" role="img" preserveAspectRatio="xMinYMid meet">
-          <style>
-            .wm {
-              font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-              font-weight: 800;
-              letter-spacing: -0.02em;
-              fill: #e8eaf0; /* var(--text) */
-            }
-            .wm-accent { stroke: #3a7afe; stroke-width: 2; opacity: .65; }
-            @media (max-width: 520px){
-              .wm { letter-spacing: -0.015em; }
-            }
-          </style>
-          <text class="wm" x="0" y="46">Fantasy </text>
-          <text class="wm" x="270" y="46">Fight</text>
-          <text class="wm" x="465" y="46"> Picks</text>
-          <!-- Subtle accent underline for “Fight”. Delete line below if you want zero flourish. -->
-          <line class="wm-accent" x1="272" y1="54" x2="462" y2="54" />
-        </svg>
+        <!-- Simple, reliable wordmark (no SVG positioning issues) -->
+        <div class="wordmark">Fantasy Fight Picks</div>
       </div>
       <div class="meta">
         <span id="statusText">status: …</span> •
@@ -137,7 +105,7 @@
     <!-- Debug banner -->
     <div id="debugBanner" class="debug"></div>
 
-    <!-- Champions: always-on “Reigning Champion(s)” if we have any -->
+    <!-- Champions -->
     <div id="champBanner" class="panel champ" aria-live="polite">
       <div class="section-title">Reigning Champion(s)</div>
       <ul id="champList"></ul>
@@ -145,9 +113,7 @@
     </div>
 
     <!-- Auth -->
-    <div class="panel" id="authPanel">
-      <!-- JS will render either the simple welcome line + sign out, or the sign-in form -->
-    </div>
+    <div class="panel" id="authPanel"></div>
 
     <!-- Scoring line -->
     <div class="panel">
@@ -189,7 +155,6 @@
 
   </div>
 
-  <!-- Single JS entry (cache-busted while testing) -->
   <script src="/script.js?v=bootstrap1" defer></script>
 </body>
 </html>
