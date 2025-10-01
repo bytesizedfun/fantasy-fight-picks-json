@@ -20,8 +20,8 @@
     .wrap{max-width:980px;margin:0 auto;padding:16px}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
     .brand{display:flex;align-items:center;gap:10px}
-    .logo{width:28px;height:28px;display:inline-block}
-    .title{font-size:20px;font-weight:700;letter-spacing:.3px}
+    .logo{width:28px;height:28px;display:inline-block} /* (unused now, kept for safety) */
+    .title{font-size:20px;font-weight:700;letter-spacing:.3px} /* (unused now) */
     .meta{font-size:12px;color:var(--muted)}
 
     .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;margin:10px 0}
@@ -94,18 +94,39 @@
       border-color: rgba(255,255,255,.12) !important;
       color: var(--muted) !important;
     }
+
+    /* Wordmark sizing in header */
+    .brand .wordmark{
+      height: 28px;
+      width: auto;
+      display: block;
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <div class="brand">
-        <!-- Tiny inline SVG logo (no extra request) -->
-        <svg class="logo" viewBox="0 0 24 24" fill="none" aria-label="FFP">
-          <rect x="2" y="2" width="20" height="20" rx="5" stroke="#3a7afe" />
-          <path d="M7 8h6M7 12h4M7 16h8" stroke="#3a7afe" stroke-width="2" stroke-linecap="round"/>
+        <!-- Inline SVG wordmark: zero webfont, tiny, crisp -->
+        <svg class="wordmark" viewBox="0 0 900 70" aria-label="Fantasy Fight Picks" role="img" preserveAspectRatio="xMinYMid meet">
+          <style>
+            .wm {
+              font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+              font-weight: 800;
+              letter-spacing: -0.02em;
+              fill: #e8eaf0; /* var(--text) */
+            }
+            .wm-accent { stroke: #3a7afe; stroke-width: 2; opacity: .65; }
+            @media (max-width: 520px){
+              .wm { letter-spacing: -0.015em; }
+            }
+          </style>
+          <text class="wm" x="0" y="46">Fantasy </text>
+          <text class="wm" x="270" y="46">Fight</text>
+          <text class="wm" x="465" y="46"> Picks</text>
+          <!-- Subtle accent underline for “Fight”. Delete line below if you want zero flourish. -->
+          <line class="wm-accent" x1="272" y1="54" x2="462" y2="54" />
         </svg>
-        <div class="title">Fantasy Fight Picks</div>
       </div>
       <div class="meta">
         <span id="statusText">status: …</span> •
