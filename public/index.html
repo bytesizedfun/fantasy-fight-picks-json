@@ -19,15 +19,31 @@
 
     .wrap{max-width:980px;margin:0 auto;padding:16px}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .brand{display:flex;align-items:center;gap:10px}
-    /* New: simple text wordmark */
-    .wordmark{
-      font-size:20px;
-      font-weight:800;
-      letter-spacing:-0.02em;
-      line-height:28px;
-    }
+    .brand{display:flex;align-items:center;gap:10px;position:relative}
+    .logo{width:28px;height:28px;display:inline-block}
+    .title{font-size:20px;font-weight:700;letter-spacing:.3px}
     .meta{font-size:12px;color:var(--muted)}
+
+    /* Crown overlay + champ names (hidden until JS reveals) */
+    .crown-badge{
+      display:none; /* JS toggles on when a champ exists */
+      position:absolute;
+      top:-6px;     /* nudge to sit on the logo corner */
+      left:18px;
+      font-size:14px;
+      line-height:1;
+      filter:drop-shadow(0 1px 0 #0008);
+      pointer-events:none;
+    }
+    .champ-names[hidden]{display:none !important;}
+    .champ-names{
+      margin-left:6px;
+      padding:2px 6px;
+      border:1px solid var(--border);
+      border-radius:6px;
+      font-size:12px;
+      color:var(--muted);
+    }
 
     .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;margin:10px 0}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -58,8 +74,7 @@
     .rank{font-weight:700}
     .pts{font-weight:700}
 
-    /* Champions banner */
-    .champ{display:none} /* shown by JS when champs exist */
+    .champ{display:none} /* kept for your existing banner; JS can show if you want */
     .champ ul{margin:6px 0 0 16px;padding:0}
     .champ li{margin:2px 0}
     .champ .when{color:var(--muted);font-size:12px;margin-top:4px}
@@ -68,33 +83,22 @@
     .pick-line{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px dashed var(--border);border-radius:6px}
 
     .debug{display:none;margin:10px 0;font-size:12px;color:#fff;background:#aa2e2e;border:1px solid #7d2020;padding:8px 10px;border-radius:6px}
-
-    /* --- FFP minimal flattening overrides --- */
-    .panel:not(.leaderboard){
-      background: transparent !important;
-      border: 1px solid rgba(255,255,255,.06) !important;
-    }
-    .pick-line{
-      border: 1px solid rgba(255,255,255,.06) !important;  /* was dashed */
-    }
-    .fight{
-      background: transparent !important;
-      border: 0 !important;
-      padding: 12px 0 !important;
-    }
-    .fight + .fight{
-      border-top: 1px solid rgba(255,255,255,.06) !important; /* subtle divider between fights */
-    }
-    .panel{ margin: 16px 0 !important; }
-    .tag{ border-color: rgba(255,255,255,.12) !important; color: var(--muted) !important; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <div class="brand">
-        <!-- Simple, reliable wordmark (no SVG positioning issues) -->
-        <div class="wordmark">Fantasy Fight Picks</div>
+        <!-- Tiny inline SVG logo (kept minimal; you can swap the path later) -->
+        <svg class="logo" viewBox="0 0 24 24" fill="none" aria-label="FFP">
+          <rect x="2" y="2" width="20" height="20" rx="5" stroke="#3a7afe" />
+          <path d="M7 8h6M7 12h4M7 16h8" stroke="#3a7afe" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+
+        <!-- Crown overlay + champ names (JS reveals only when champs exist) -->
+        <span id="crownBadge" class="crown-badge" aria-hidden="true" title="Reigning champion">👑</span>
+        <div class="title">Fantasy Fight Picks</div>
+        <span id="champNames" class="champ-names" hidden></span>
       </div>
       <div class="meta">
         <span id="statusText">status: …</span> •
@@ -105,7 +109,7 @@
     <!-- Debug banner -->
     <div id="debugBanner" class="debug"></div>
 
-    <!-- Champions -->
+    <!-- Champions panel (optional; you already had this) -->
     <div id="champBanner" class="panel champ" aria-live="polite">
       <div class="section-title">Reigning Champion(s)</div>
       <ul id="champList"></ul>
@@ -113,7 +117,9 @@
     </div>
 
     <!-- Auth -->
-    <div class="panel" id="authPanel"></div>
+    <div class="panel" id="authPanel">
+      <!-- JS will render either the simple welcome line + sign out, or the sign-in form -->
+    </div>
 
     <!-- Scoring line -->
     <div class="panel">
@@ -155,6 +161,7 @@
 
   </div>
 
-  <script src="/script.js?v=bootstrap1" defer></script>
+  <!-- Your JS will populate everything and call renderChampHeader(...) -->
+  <script src="/script.js" defer></script>
 </body>
 </html>
