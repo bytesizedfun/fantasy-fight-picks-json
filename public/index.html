@@ -14,7 +14,14 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";
+      background:var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale
+    }
     a{color:var(--accent);text-decoration:none}
 
     .wrap{max-width:980px;margin:0 auto;padding:16px}
@@ -28,7 +35,7 @@
     .crown-badge{
       display:none; /* JS toggles on when a champ exists */
       position:absolute;
-      top:-6px;     /* nudge to sit on the logo corner */
+      top:-6px;
       left:18px;
       font-size:14px;
       line-height:1;
@@ -38,50 +45,110 @@
     .champ-names[hidden]{display:none !important;}
     .champ-names{
       margin-left:6px;
-      padding:2px 6px;
-      border:1px solid var(--border);
-      border-radius:6px;
+      padding:0; /* drop the badge box */
+      border:0;
       font-size:12px;
       color:var(--muted);
     }
 
-    .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;margin:10px 0}
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:12px;
+      margin:10px 0
+    }
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .row>*{flex:1 1 220px}
     .label{font-size:12px;color:var(--muted);margin-bottom:6px}
-    input[type="text"],input[type="number"],select{width:100%;padding:10px 12px;border-radius:6px;border:1px solid var(--border);background:var(--panel2);color:var(--text);outline:none}
-    button{appearance:none;border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:10px 14px;border-radius:6px;cursor:pointer}
+    input[type="text"],input[type="number"],select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:var(--panel2);
+      color:var(--text);
+      outline:none
+    }
+    input:focus,select:focus{
+      outline:none;
+      box-shadow:0 0 0 2px color-mix(in oklab, var(--accent) 40%, transparent);
+      border-color:var(--accent);
+    }
+    button{
+      appearance:none;border:1px solid var(--border);
+      background:var(--panel2);color:var(--text);
+      padding:10px 14px;border-radius:8px;cursor:pointer
+    }
     button.primary{background:var(--accent);color:#fff;border:none}
     button:disabled{opacity:.6;cursor:not-allowed}
-    .section-title{font-size:16px;font-weight:700;margin:2px 0 8px}
+    .section-title{font-size:16px;font-weight:700;margin:0 0 8px}
     .tiny{font-size:12px;color:var(--muted)}
     .scoring{font-size:13px;color:var(--muted)}
     .list{display:grid;gap:10px}
-    .fight{padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--panel2)}
-    .fight .name{font-weight:600;margin-bottom:8px;font-size:14px}
-    .fight .grid{display:grid;gap:8px;grid-template-columns:repeat(4,minmax(0,1fr))}
-    @media (max-width:720px){.fight .grid{grid-template-columns:1fr 1fr}}
-    .tag{font-size:12px;padding:2px 6px;border-radius:6px;border:1px solid var(--border);color:var(--muted);display:inline-block}
 
-    /* Leaderboard: higher contrast + zebra + sticky header */
+    /* Fight cards: remove “bubble” chrome, go flat with a bottom rule */
+    .fight{
+      padding:12px 0;
+      background:transparent;
+      border:0;
+      border-bottom:1px solid var(--border);
+      border-radius:0
+    }
+    .fight .name{font-weight:700;margin-bottom:6px;font-size:15px;letter-spacing:.2px}
+    .fight .grid{display:grid;gap:6px;grid-template-columns:repeat(4,minmax(0,1fr))}
+    @media (max-width:720px){.fight .grid{grid-template-columns:1fr 1fr}}
+
+    /* Tags/chips: kill the boxes entirely */
+    .tag{
+      font-size:12px;
+      padding:0;
+      border:0;
+      border-radius:0;
+      color:var(--muted);
+      display:inline-block;
+      font-weight:600;
+      opacity:.9
+    }
+
+    /* Leaderboard: higher contrast + zebra + sticky header + light hover */
     .leaderboard{background:#0e1220;border-color:#2b3245}
     .leaderboard table{width:100%;border-collapse:collapse}
     .leaderboard thead th{position:sticky;top:0;background:#0e1220}
     .leaderboard th,.leaderboard td{border-bottom:1px solid #2b3245;padding:10px 8px;text-align:left;font-size:14px}
     .leaderboard tbody tr:nth-child(even){background:#0c1020}
+    .leaderboard tbody tr:hover{background:#11162a}
     .leaderboard .center{text-align:center}
     .lb-me{background:#182040 !important}
-    .rank{font-weight:700}
-    .pts{font-weight:700}
+    .rank{font-weight:800}
+    .pts{font-weight:800}
 
-    .champ{display:none} /* kept for your existing banner; JS can show if you want */
+    /* Champ panel kept for your existing banner; JS can show if you want */
+    .champ{display:none}
     .champ ul{margin:6px 0 0 16px;padding:0}
     .champ li{margin:2px 0}
     .champ .when{color:var(--muted);font-size:12px;margin-top:4px}
 
-    .picks{font-size:14px}
-    .pick-line{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px dashed var(--border);border-radius:6px}
+    /* Your Picks: replace dashed bubble cards with clean rows + dividers */
+    .picks .pick-line,
+    #yourPicks .pick-line{
+      border:0;
+      border-radius:0;
+      background:transparent;
+      padding:10px 0;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      box-shadow:inset 0 -1px 0 var(--border); /* subtle divider */
+    }
+    .picks .pick-line:last-child,
+    #yourPicks .pick-line:last-child{
+      box-shadow:none;
+    }
+    .picks .pick-line > *:first-child{flex:1 1 auto}
+    .picks .pick-line > *:last-child{flex:0 0 auto}
 
+    /* Debug banner unchanged (hidden by default) */
     .debug{display:none;margin:10px 0;font-size:12px;color:#fff;background:#aa2e2e;border:1px solid #7d2020;padding:8px 10px;border-radius:6px}
   </style>
 </head>
