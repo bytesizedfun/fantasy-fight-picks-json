@@ -31,24 +31,16 @@
     .title{font-size:20px;font-weight:700;letter-spacing:.3px}
     .meta{font-size:12px;color:var(--muted)}
 
-    /* Crown overlay + champ names (hidden until JS reveals) */
-    .crown-badge{
-      display:none; /* JS toggles on when a champ exists */
-      position:absolute;
-      top:-6px;
-      left:18px;
-      font-size:14px;
-      line-height:1;
-      filter:drop-shadow(0 1px 0 #0008);
-      pointer-events:none;
-    }
+    /* Crown overlay + champ names (we kill crown via CSS) */
+    .crown-badge{ display:none !important; }
     .champ-names[hidden]{display:none !important;}
     .champ-names{
       margin-left:6px;
-      padding:0; /* drop the badge box */
+      padding:0;
       border:0;
       font-size:12px;
-      color:var(--muted);
+      color:#cbb88a;          /* muted gold text only */
+      font-weight:700;
     }
 
     .panel{
@@ -146,33 +138,8 @@
     .picks .pick-line > *:first-child{flex:1 1 auto}
     .picks .pick-line > *:last-child{flex:0 0 auto}
 
-    /* === Champ UI: shimmer + leaderboard name glow === */
-    .shimmer-gold{
-      position: relative;
-      font-weight: 700;
-      color: #e7c873;                 /* warm muted gold */
-      text-shadow: 0 0 8px rgba(231,200,115,.25);
-    }
-    .shimmer-gold::after{
-      content:"";
-      position:absolute; inset:0;
-      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.18) 40%, transparent 80%);
-      -webkit-mask: linear-gradient(#000 0 0);
-              mask: linear-gradient(#000 0 0);
-      animation: shimmer 2.6s ease-in-out infinite;
-      pointer-events:none;
-      opacity:.35;
-    }
-    @keyframes shimmer{
-      0%{ transform: translateX(-80%); }
-      50%{ transform: translateX(20%); }
-      100%{ transform: translateX(120%); }
-    }
-    .lb-champ-name{
-      color:#f0d993;
-      text-shadow: 0 0 10px rgba(240,217,147,.35), 0 0 2px rgba(240,217,147,.6);
-      font-weight: 800;
-    }
+    /* === Minimal champ styles (no shimmer, no crown, bold only on leaderboard) === */
+    .lb-champ-name{ font-weight:800; }
 
     /* Debug banner */
     .debug{display:none;margin:10px 0;font-size:12px;color:#fff;background:#aa2e2e;border:1px solid #7d2020;padding:8px 10px;border-radius:6px}
@@ -188,7 +155,7 @@
           <path d="M7 8h6M7 12h4M7 16h8" stroke="#3a7afe" stroke-width="2" stroke-linecap="round"/>
         </svg>
 
-        <!-- Crown + champ names -->
+        <!-- Crown kept in DOM but forcibly hidden via CSS -->
         <span id="crownBadge" class="crown-badge" aria-hidden="true" title="Reigning champion">👑</span>
         <div class="title">Fantasy Fight Picks</div>
         <span id="champNames" class="champ-names" hidden></span>
