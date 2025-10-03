@@ -2,7 +2,7 @@
    - Proxy /api/* to Render
    - Tries /api/bootstrap first; if it 5xx/aborts, gracefully falls back to separate calls
    - Strict submit validation + button lock
-   - Champ UI: header banner (post-finalization) + leaderboard glow for champs (ties supported)
+   - Champ UI: header text (post-finalization) + leaderboard bold for champs (ties supported)
 */
 
 (() => {
@@ -18,11 +18,11 @@
   const yourPicks    = q('#yourPicks');
   const lbBody       = q('#lbBody');
 
-  // Header champ hooks (already in your HTML)
-  const crownBadge   = q('#crownBadge');   // 👑 near logo
-  const champNamesEl = q('#champNames');   // text container for names
+  // Header champ hooks
+  const crownBadge   = q('#crownBadge');   // kept but unused
+  const champNamesEl = q('#champNames');   // small text beside title
 
-  // Legacy champ panel (kept; we continue to support it)
+  // Legacy champ panel
   const champBanner  = q('#champBanner');
   const champList    = q('#champList');
   const champWhen    = q('#champWhen');
@@ -53,8 +53,8 @@
   let meta = null;
   let fights = [];
   let results = [];
-  let champs = [];           // full CHAMPIONS list (last 10 via backend)
-  let latestChampNames = []; // derived usernames for the most recent date only
+  let champs = [];           // CHAMPIONS rows (last 10 via backend)
+  let latestChampNames = []; // usernames for latest event (ties allowed)
 
   let picksState = {}; // { [fightLabel]: { fight_id, winner, method, round } }
   let eventLocked = false;
@@ -68,7 +68,6 @@
   function showDebug(msg){ if(debugBanner){ debugBanner.textContent=String(msg||''); debugBanner.style.display='block'; } }
   function hideDebug(){ if(debugBanner){ debugBanner.style.display='none'; } }
 
-  // Robust fetch with small retries on transient issues
   async function getJSON(url){
     const max = 3;
     for (let i=0;i<max;i++){
@@ -201,7 +200,11 @@
     const disable = eventLocked || userLocked;
     fightsList.querySelectorAll('select').forEach(sel => sel.disabled = disable);
     if (submitBtn) submitBtn.disabled = disable;
+
+    // Hide the whole Make Picks panel once submitted and clear any controls
     if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
+    if (userLocked) fightsList.innerHTML = '';
+
     if (yourPicksPanel) yourPicksPanel.style.display = '';
     if (submitHint) {
       if (eventLocked) submitHint.textContent = 'Event is locked — no new submissions.';
@@ -289,7 +292,16 @@
     `;
   }
   function renderFights(){
-    if (!Array.isArray(fights)) { showDebug(`getfights did not return an array`); fightsList.innerHTML = ''; return; }
+    // If the user has already submitted, do not render pick controls at all
+    if (userLocked) {
+      fightsList.innerHTML = '';
+      return;
+    }
+    if (!Array.isArray(fights)) {
+      showDebug(`getfights did not return an array`);
+      fightsList.innerHTML = '';
+      return;
+    }
     fightsList.innerHTML = fights.map(buildFightRow).join('');
     applyLockState();
   }
@@ -343,7 +355,6 @@
     const me = (lsGet(LS_USER,'') || '').toLowerCase();
     lbBody.innerHTML = rows.map(r=>{
       const isMe = me && (String(r.username||'').toLowerCase()===me);
-      // Wrap user text in a span so we can toggle champ glow without touching row styles
       const uname = escapeHtml(r.username);
       return `
         <tr class="${isMe?'lb-me':''}">
@@ -353,20 +364,17 @@
         </tr>`;
     }).join('');
 
-    // If we already know champs and the event is done, apply the glow now.
     if (allResultsFinalized(fights, results) && latestChampNames.length) {
-      applyLeaderboardChampGlow(latestChampNames);
+      applyLeaderboardChampBold(latestChampNames);
     }
   }
 
-  // ---------- Champ UI (header + leaderboard glow) ----------
+  // ---------- Champ UI (header + leaderboard bold) ----------
   function allResultsFinalized(fightsArr, resultsArr){
     const total = Array.isArray(fightsArr) ? fightsArr.length : 0;
     if (total === 0) return false;
     if (!Array.isArray(resultsArr) || resultsArr.length === 0) return false;
 
-    // A fight counts only when winner + method exist (your hard rule)
-    // We require every fight to be finalized.
     const byId = new Map(resultsArr.map(r => [r.fight_id, r]));
     for (const f of fightsArr) {
       const r = byId.get(f.fight_id) || null;
@@ -376,10 +384,7 @@
   }
 
   function extractLatestChampNames(list){
-    // list is the raw CHAMPIONS rows (date, username, points, comment)
     if (!Array.isArray(list) || list.length === 0) return { whenISO:'', names:[] };
-
-    // Find the max date (ISO). Some rows may have undefined date; ignore those.
     let best = '';
     for (const c of list) {
       const d = String(c.date||'').trim();
@@ -397,58 +402,50 @@
   }
 
   function renderChampHeader(names){
-    // Hide by default
-    if (crownBadge) crownBadge.style.display = 'none';
+    // No crowns, no shimmer. Title case label + names.
     if (champNamesEl) {
       champNamesEl.hidden = true;
       champNamesEl.textContent = '';
-      champNamesEl.classList.remove('shimmer-gold');
     }
+    if (crownBadge) crownBadge.style.display = 'none';
+
     const list = Array.isArray(names) ? names.filter(Boolean) : [];
     if (!list.length) return;
 
-    // Show crown + names (shimmer class is defined in the HTML/CSS I sent)
     if (champNamesEl) {
-      champNamesEl.textContent = list.join(', ');
+      champNamesEl.textContent = `Current Champ(s): ${list.join(', ')}`;
       champNamesEl.hidden = false;
-      champNamesEl.classList.add('shimmer-gold');
     }
-    if (crownBadge) crownBadge.style.display = 'inline';
   }
 
-  function applyLeaderboardChampGlow(champUsernames){
+  function applyLeaderboardChampBold(champUsernames){
     if (!Array.isArray(champUsernames) || champUsernames.length === 0) return;
     const champs = new Set(champUsernames.map(s => (s || '').trim().toLowerCase()));
     if (!lbBody) return;
     for (const tr of lbBody.querySelectorAll('tr')) {
-      const tds = tr.querySelectorAll('td');
-      if (tds.length < 2) continue;
-      const userCell = tds[1];
+      const userCell = tr.querySelectorAll('td')[1];
+      if (!userCell) continue;
       const label = userCell.querySelector('.lb-name');
       if (!label) continue;
       const text = (label.textContent || '').trim().toLowerCase();
-      label.classList.toggle('lb-champ-name', champs.has(text));
+      label.classList.toggle('lb-champ-name', champs.has(text)); // bold only (CSS)
     }
   }
 
   async function syncChampUI(){
-    // Only honor champs after ALL fights are finalized
     const done = allResultsFinalized(fights, results);
     if (!done) {
       renderChampHeader([]);
-      applyLeaderboardChampGlow([]);
+      applyLeaderboardChampBold([]);
       return;
     }
-
-    // Derive latest champs from already-fetched "champs" array
     const { whenISO, names } = extractLatestChampNames(champs);
     latestChampNames = names;
-
     renderChampHeader(names);
-    applyLeaderboardChampGlow(names);
+    applyLeaderboardChampBold(names);
   }
 
-  // ---------- Legacy banner (panel) for completeness ----------
+  // ---------- Legacy banner (panel) ----------
   function renderChampions(list){
     champs = Array.isArray(list) ? list : [];
     if(!Array.isArray(list) || !list.length){ if(champBanner) champBanner.style.display='none'; return; }
@@ -461,7 +458,6 @@
     const fmtDate = (dIso)=>{ try{ const d=new Date(dIso); const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Toronto',year:'numeric',month:'short',day:'2-digit'}); return fmt.format(d);}catch{ return ''; } };
     champWhen.textContent = `Won on ${fmtDate(whenISO)}`;
 
-    // Only show the panel AFTER results complete (you asked to gate post-finalization)
     if (allResultsFinalized(fights, results)) {
       champBanner.style.display = '';
     } else {
@@ -470,14 +466,17 @@
   }
 
   // ---------- Data loading ----------
-  function computeDogEnrichment(payloadFights){
-    // nothing to do here because backend already adds dogF1/dogF2,
-    // but keep the map builders in one place.
+  function computeMaps(payloadFights){
     idByLabel.clear(); labelById.clear();
     for (const f of (payloadFights||[])) {
       idByLabel.set(f.fight, f.fight_id || '');
       if (f.fight_id) labelById.set(f.fight_id, f.fight);
     }
+  }
+  function computeMapsAndRenderFights(payloadFights){
+    fights = Array.isArray(payloadFights) ? payloadFights : [];
+    computeMaps(fights);
+    renderFights();
   }
 
   async function hydrateUserPicksStrict(){
@@ -578,7 +577,12 @@
         if (!res || res.ok !== true) throw new Error(res && res.error ? res.error : 'Submit failed');
         hideDebug();
         lsSet(LS_USER, username); lsSet(LS_PIN, pin);
-        userLocked = true; applyLockState();
+
+        userLocked = true;
+        applyLockState();
+        // Hard hide & clear immediately so no controls linger
+        if (makePicksPanel) makePicksPanel.style.display = 'none';
+        fightsList.innerHTML = '';
 
         // Rehydrate once after submit
         await loadBootstrap();
@@ -595,7 +599,7 @@
   // ---------- Bootstrap ----------
   function computeMapsAndRenderFights(payloadFights){
     fights = Array.isArray(payloadFights) ? payloadFights : [];
-    computeDogEnrichment(fights);
+    computeMaps(fights);
     renderFights();
   }
 
@@ -604,22 +608,16 @@
     try{
       showDebug('Loading…');
       const payload = await getJSON(API.bootstrap(u));
-      // meta
+
       meta = payload.meta || {}; renderMeta();
 
-      // fights + maps
       computeMapsAndRenderFights(payload.fights);
 
-      // results
       results = Array.isArray(payload.results) ? payload.results : [];
-
-      // leaderboard
       renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
 
-      // champs
       renderChampions(Array.isArray(payload.champion) ? payload.champion : []);
 
-      // user lock + picks
       if (payload.user && payload.user.lock) {
         userLocked = !!payload.user.lock.locked && payload.user.lock.reason === 'submitted';
         applyLockState();
@@ -641,12 +639,12 @@
       }
       renderYourPicks();
 
-      // NEW: sync champ header + leaderboard glow (post-finalization only)
+      // Champ UI toggle
       await syncChampUI();
 
       hideDebug();
     }catch(e){
-      // Fallback path: fetch pieces separately so UI still loads
+      // Fallback path
       showDebug('Server busy; loading pieces…');
       const u = currentUsername();
       const [m, fs, rs, lb, ch, lock, ups] = await Promise.allSettled([
@@ -689,7 +687,6 @@
       }
       renderYourPicks();
 
-      // NEW: sync champ UI even on fallback
       await syncChampUI();
 
       setTimeout(hideDebug, 1200);
@@ -707,7 +704,6 @@
       renderYourPicks();
       renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
 
-      // Re-apply champ UI if event just crossed the finish line
       await syncChampUI();
     }catch(e){
       showDebug(String(e && e.message ? e.message : e));
@@ -721,19 +717,20 @@
     if (u && q('#usernameInput')) q('#usernameInput').value = u;
   }
 
+  function bindGlobal(){
+    // Expose for debugging if you need to inspect state live
+    Object.defineProperty(window, '__ffp', { get(){ return { fights, results, champs, meta, userLocked }; } });
+  }
+
   function init(){
     updateAuthUI();
     bindAuthFormHandlers();
     prefillUser();
     bindFightsAndSubmit();
+    bindGlobal();
   }
 
   init();
-
-  // First paint
-  loadBootstrap().then(()=>{
-    // Then keep things fresh: results + leaderboard only
-    setInterval(refreshLive, 60000);
-  });
+  loadBootstrap().then(()=>{ setInterval(refreshLive, 60000); });
 
 })();
