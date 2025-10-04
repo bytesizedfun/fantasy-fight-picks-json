@@ -5,12 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Fantasy Fight Picks</title>
   <meta name="description" content="Fast, lightweight UFC fantasy picks app." />
+
+  <!-- Favicon: SVG (transparent) + ICO fallback -->
+  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+    <defs>
+      <style>
+        .o{fill:none;stroke:%23E8E6E3;stroke-width:4;stroke-linejoin:round}
+        .g{fill:%23161a22;stroke:%23161a22;stroke-width:2;stroke-linejoin:round}
+        .r{fill:%23E10600}
+      </style>
+    </defs>
+    <!-- Octagon -->
+    <path class="o" d="M22 4h20l14 14v20L42 52H22L8 38V18z"/>
+    <!-- Glove base (black) -->
+    <path class="g" d="M20 38c0 3 2 6 5 6h10c6 0 11-5 11-11 0-3-2-6-5-7-1-8-6-9-10-9-7 0-11 4-11 9 0 2 1 4 2 5-1 1-2 3-2 7z"/>
+    <!-- Wrist wrap -->
+    <rect class="g" x="23" y="42" width="18" height="8" rx="2"/>
+    <!-- Red fingers (on black glove) -->
+    <rect class="r" x="24" y="20" width="6" height="8" rx="2"/>
+    <rect class="r" x="31" y="20" width="6" height="8" rx="2"/>
+    <rect class="r" x="38" y="21" width="6" height="8" rx="2"/>
+    <!-- Thumb pad -->
+    <path class="r" d="M22 32c0-3 3-5 6-5 2 0 3 1 3 3 0 3-3 5-6 5-2 0-3-1-3-3z"/>
+  </svg>' />
   <link rel="icon" href="/favicon.ico" />
+
+  <!-- Font: Teko (condensed, italic-capable) -->
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
     :root{
       --bg:#0f1115;--panel:#151821;--text:#e8eaf0;--muted:#9aa3b2;
-      --accent:#3a7afe;--border:#232736;--panel2:#0b0d12;
+      --accent:#E10600;--border:#232736;--panel2:#0b0d12;
       --good:#20bf6b;--warn:#ffae42;
+      --bone:#E8E6E3;--gold:#D9B24C;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -26,23 +55,31 @@
 
     .wrap{max-width:980px;margin:0 auto;padding:16px}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+
+    /* Brand row */
     .brand{display:flex;align-items:center;gap:10px;position:relative}
-    .logo{width:28px;height:28px;display:inline-block}
-    .title{font-size:20px;font-weight:700;letter-spacing:.3px}
+    .logo{width:24px;height:24px;display:inline-block}
+    .title{
+      font-family:"Teko",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      font-weight:700;
+      letter-spacing:.2px;
+      font-size:20px;
+      line-height:1;
+      display:flex;
+      align-items:baseline;
+      gap:.4ch;
+      font-style:italic;
+    }
+    .title .fantasy{color:var(--accent)}
+    .title .fightpicks{color:#fff}
     .meta{font-size:12px;color:var(--muted)}
 
-    /* Crown overlay + champ names (we kill crown via CSS) */
+    /* Crown overlay + champ names (kept hidden) */
     .crown-badge{ display:none !important; }
     .champ-names[hidden]{display:none !important;}
-    .champ-names{
-      margin-left:6px;
-      padding:0;
-      border:0;
-      font-size:12px;
-      color:#cbb88a;          /* muted gold text only */
-      font-weight:700;
-    }
+    .champ-names{ margin-left:6px; padding:0; border:0; font-size:12px; color:#cbb88a; font-weight:700; }
 
+    /* Panels */
     .panel{
       background:var(--panel);
       border:1px solid var(--border);
@@ -50,8 +87,17 @@
       padding:12px;
       margin:10px 0
     }
+    /* Centering containers (titles centered, content can be left inside) */
+    .panel.centered{ text-align:center }
+    .panel.centered .section-title{ text-align:center }
+    .panel.centered .row{ justify-content:center }
+    .panel.centered table{ margin:0 auto } /* table still left-aligns cells for readability */
+    .section-title{font-size:16px;font-weight:700;margin:0 0 8px;text-align:center}
+    .tiny{font-size:12px;color:var(--muted)}
+
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .row>*{flex:1 1 220px}
+    .row>*{flex:0 0 auto}
+
     .label{font-size:12px;color:var(--muted);margin-bottom:6px}
     input[type="text"],input[type="number"],select{
       width:100%;
@@ -74,36 +120,23 @@
     }
     button.primary{background:var(--accent);color:#fff;border:none}
     button:disabled{opacity:.6;cursor:not-allowed}
-    .section-title{font-size:16px;font-weight:700;margin:0 0 8px}
-    .tiny{font-size:12px;color:var(--muted)}
+
     .scoring{font-size:13px;color:var(--muted)}
     .list{display:grid;gap:10px}
 
-    /* Fight cards: flatter with a bottom rule */
+    /* Fight cards */
     .fight{
       padding:12px 0;
-      background:transparent;
-      border:0;
-      border-bottom:1px solid var(--border);
-      border-radius:0
+      background:transparent;border:0;border-bottom:1px solid var(--border);border-radius:0
     }
     .fight .name{font-weight:700;margin-bottom:6px;font-size:15px;letter-spacing:.2px}
     .fight .grid{display:grid;gap:6px;grid-template-columns:repeat(4,minmax(0,1fr))}
     @media (max-width:720px){.fight .grid{grid-template-columns:1fr 1fr}}
 
-    /* Tags/chips: kill the boxes entirely */
-    .tag{
-      font-size:12px;
-      padding:0;
-      border:0;
-      border-radius:0;
-      color:var(--muted);
-      display:inline-block;
-      font-weight:600;
-      opacity:.9
-    }
+    /* Chips */
+    .tag{font-size:12px;padding:0;border:0;border-radius:0;color:var(--muted);display:inline-block;font-weight:600;opacity:.9}
 
-    /* Leaderboard: higher contrast + zebra + sticky header + light hover */
+    /* Leaderboard */
     .leaderboard{background:#0e1220;border-color:#2b3245}
     .leaderboard table{width:100%;border-collapse:collapse}
     .leaderboard thead th{position:sticky;top:0;background:#0e1220}
@@ -115,22 +148,17 @@
     .rank{font-weight:800}
     .pts{font-weight:800}
 
-    /* Champ panel kept for your existing banner; JS can show if you want */
+    /* Champ panel (kept for logic) */
     .champ{display:none}
     .champ ul{margin:6px 0 0 16px;padding:0}
     .champ li{margin:2px 0}
     .champ .when{color:var(--muted);font-size:12px;margin-top:4px}
 
-    /* Your Picks: clean rows + dividers */
+    /* Your Picks rows */
     .picks .pick-line,
     #yourPicks .pick-line{
-      border:0;
-      border-radius:0;
-      background:transparent;
-      padding:10px 0;
-      display:flex;
-      align-items:center;
-      gap:12px;
+      border:0;border-radius:0;background:transparent;
+      padding:10px 0;display:flex;align-items:center;gap:12px;
       box-shadow:inset 0 -1px 0 var(--border);
     }
     .picks .pick-line:last-child,
@@ -138,7 +166,7 @@
     .picks .pick-line > *:first-child{flex:1 1 auto}
     .picks .pick-line > *:last-child{flex:0 0 auto}
 
-    /* === Minimal champ styles (no shimmer, no crown, bold only on leaderboard) === */
+    /* Champ name emphasis on leaderboard only */
     .lb-champ-name{ font-weight:800; }
 
     /* Debug banner */
@@ -149,17 +177,34 @@
   <div class="wrap">
     <header>
       <div class="brand">
-        <!-- Tiny inline SVG logo -->
-        <svg class="logo" viewBox="0 0 24 24" fill="none" aria-label="FFP">
-          <rect x="2" y="2" width="20" height="20" rx="5" stroke="#3a7afe" />
-          <path d="M7 8h6M7 12h4M7 16h8" stroke="#3a7afe" stroke-width="2" stroke-linecap="round"/>
+        <!-- New tiny inline SVG emblem (transparent, crisp at 24px) -->
+        <svg class="logo" viewBox="0 0 24 24" aria-label="Fantasy Fight Picks emblem" role="img">
+          <!-- Octagon -->
+          <path d="M7 2h10l5 5v10l-5 5H7l-5-5V7z" fill="none" stroke="#E8E6E3" stroke-width="2.4" stroke-linejoin="round"/>
+          <!-- Glove base (black) -->
+          <path d="M6.5 14.5c0 2 1.6 3.5 3.6 3.5h3.7c3.2 0 5.7-2.6 5.7-5.7 0-2-1.3-3.5-3-4.1-.5-3.8-3-4.7-5.1-4.7-3.7 0-5.9 2.2-5.9 4.8 0 1.1.5 2.2 1.2 3-1 1-1.2 2.1-1.2 3.2z" fill="#161a22" stroke="#161a22" stroke-width="0.8" />
+          <!-- Wrist wrap -->
+          <rect x="8.1" y="17.1" width="8" height="4" rx="1.2" fill="#161a22" />
+          <!-- Red fingers -->
+          <rect x="8.8" y="6.6" width="3" height="4" rx="1" fill="#E10600"/>
+          <rect x="12.1" y="6.6" width="3" height="4" rx="1" fill="#E10600"/>
+          <rect x="15.4" y="7.1" width="3" height="4" rx="1" fill="#E10600"/>
+          <!-- Thumb pad -->
+          <path d="M8 11.8c0-1.6 1.8-2.6 3.2-2.6 1 0 1.6.6 1.6 1.6 0 1.7-1.8 2.7-3.2 2.7-1 0-1.6-.6-1.6-1.7z" fill="#E10600"/>
         </svg>
 
         <!-- Crown kept in DOM but forcibly hidden via CSS -->
         <span id="crownBadge" class="crown-badge" aria-hidden="true" title="Reigning champion">👑</span>
-        <div class="title">Fantasy Fight Picks</div>
+
+        <!-- Wordmark -->
+        <div class="title">
+          <span class="fantasy">Fantasy</span>
+          <span class="fightpicks">Fight Picks</span>
+        </div>
+
         <span id="champNames" class="champ-names" hidden></span>
       </div>
+
       <div class="meta">
         <span id="statusText">status: …</span> •
         <span id="lockoutText">lockout: …</span>
@@ -179,31 +224,35 @@
     <!-- Auth -->
     <div class="panel" id="authPanel"></div>
 
-    <!-- Scoring line -->
-    <div class="panel">
+    <!-- Scoring line (centered) -->
+    <div class="panel centered">
       <div class="scoring">
-        Scoring: +3 Winner • +2 Method (if Winner is correct) • +1 Round (only if Winner + Method are correct and not Decision) • 🐶 Underdog bonus by odds.
+        <strong style="color:var(--bone)">Scoring</strong>:
+        <span style="color:var(--gold)">+1</span> <strong style="color:var(--bone)">Winner</strong> •
+        <span style="color:var(--gold)">+1</span> <strong style="color:var(--bone)">Method</strong> (if Winner is correct) •
+        <span style="color:var(--gold)">+1</span> <strong style="color:var(--bone)">Round</strong> (only if Winner + Method are correct and not Decision) •
+        <span style="color:var(--gold)">+2</span> <strong style="color:var(--bone)">Underdog</strong> bonus.
       </div>
     </div>
 
-    <!-- Fights & Picks -->
-    <div class="panel" id="makePicksPanel">
+    <!-- Fights & Picks (centered container; grid items stay natural) -->
+    <div class="panel centered" id="makePicksPanel">
       <div class="section-title">Make Your Picks</div>
-      <div id="fightsList" class="list"></div>
+      <div id="fightsList" class="list" style="text-align:left"></div>
       <div class="row" style="margin-top:10px;">
         <button id="submitBtn" class="primary">Submit Picks</button>
-        <span class="tiny" id="submitHint">Picks lock at event start.</span>
       </div>
+      <div class="tiny" id="submitHint">Picks lock at event start. Submitting locks your picks.</div>
     </div>
 
-    <!-- Your Picks -->
-    <div class="panel" id="yourPicksPanel">
+    <!-- Your Picks (centered section, left-aligned content) -->
+    <div class="panel centered" id="yourPicksPanel">
       <div class="section-title">Your Picks</div>
-      <div id="yourPicks" class="list"></div>
+      <div id="yourPicks" class="list" style="text-align:left"></div>
     </div>
 
-    <!-- Leaderboard -->
-    <div class="panel leaderboard">
+    <!-- Leaderboard (centered section; table cells left) -->
+    <div class="panel leaderboard centered">
       <div class="section-title">Leaderboard</div>
       <table>
         <thead>
