@@ -6,33 +6,17 @@
   <title>Fantasy Fight Picks</title>
   <meta name="description" content="Fast, lightweight UFC fantasy picks app." />
 
-  <!-- Favicon: SVG (transparent) + ICO fallback -->
-  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-    <defs>
-      <style>
-        .o{fill:none;stroke:%23E8E6E3;stroke-width:4;stroke-linejoin:round}
-        .g{fill:%23161a22;stroke:%23161a22;stroke-width:2;stroke-linejoin:round}
-        .r{fill:%23E10600}
-      </style>
-    </defs>
-    <!-- Octagon -->
-    <path class="o" d="M22 4h20l14 14v20L42 52H22L8 38V18z"/>
-    <!-- Glove base (black) -->
-    <path class="g" d="M20 38c0 3 2 6 5 6h10c6 0 11-5 11-11 0-3-2-6-5-7-1-8-6-9-10-9-7 0-11 4-11 9 0 2 1 4 2 5-1 1-2 3-2 7z"/>
-    <!-- Wrist wrap -->
-    <rect class="g" x="23" y="42" width="18" height="8" rx="2"/>
-    <!-- Red fingers (on black glove) -->
-    <rect class="r" x="24" y="20" width="6" height="8" rx="2"/>
-    <rect class="r" x="31" y="20" width="6" height="8" rx="2"/>
-    <rect class="r" x="38" y="21" width="6" height="8" rx="2"/>
-    <!-- Thumb pad -->
-    <path class="r" d="M22 32c0-3 3-5 6-5 2 0 3 1 3 3 0 3-3 5-6 5-2 0-3-1-3-3z"/>
-  </svg>' />
+  <!-- FAVICONS — USE THE EXACT IMAGE YOU PROVIDED -->
+  <!-- Put your file at /assets/ffp-fist-octagon.png (transparent or not—exact match) -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/ffp-fist-octagon.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/ffp-fist-octagon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/ffp-fist-octagon.png" />
+  <link rel="icon" href="/assets/ffp-fist-octagon.png" />
+  <!-- Optional legacy .ico fallback, keep if you already serve one -->
   <link rel="icon" href="/favicon.ico" />
 
-  <!-- Font: Teko (condensed, italic-capable) -->
-  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- Font for the tougher condensed header wordmark -->
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&display=swap" rel="stylesheet">
 
   <style>
     :root{
@@ -58,17 +42,12 @@
 
     /* Brand row */
     .brand{display:flex;align-items:center;gap:10px;position:relative}
-    .logo{width:24px;height:24px;display:inline-block}
+    .logo{width:24px;height:24px;display:inline-block;border-radius:6px;overflow:hidden}
+    .logo img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:auto}
     .title{
       font-family:"Teko",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      font-weight:700;
-      letter-spacing:.2px;
-      font-size:20px;
-      line-height:1;
-      display:flex;
-      align-items:baseline;
-      gap:.4ch;
-      font-style:italic;
+      font-weight:700;letter-spacing:.2px;font-size:20px;line-height:1;
+      display:flex;align-items:baseline;gap:.4ch;font-style:italic;
     }
     .title .fantasy{color:var(--accent)}
     .title .fightpicks{color:#fff}
@@ -77,7 +56,7 @@
     /* Crown overlay + champ names (kept hidden) */
     .crown-badge{ display:none !important; }
     .champ-names[hidden]{display:none !important;}
-    .champ-names{ margin-left:6px; padding:0; border:0; font-size:12px; color:#cbb88a; font-weight:700; }
+    .champ-names{ margin-left:6px; font-size:12px; color:#cbb88a; font-weight:700; }
 
     /* Panels */
     .panel{
@@ -87,11 +66,11 @@
       padding:12px;
       margin:10px 0
     }
-    /* Centering containers (titles centered, content can be left inside) */
+    /* Centering containers (titles centered, content left inside if needed) */
     .panel.centered{ text-align:center }
     .panel.centered .section-title{ text-align:center }
     .panel.centered .row{ justify-content:center }
-    .panel.centered table{ margin:0 auto } /* table still left-aligns cells for readability */
+    .panel.centered table{ margin:0 auto } /* table still left-aligns cells */
     .section-title{font-size:16px;font-weight:700;margin:0 0 8px;text-align:center}
     .tiny{font-size:12px;color:var(--muted)}
 
@@ -126,8 +105,7 @@
 
     /* Fight cards */
     .fight{
-      padding:12px 0;
-      background:transparent;border:0;border-bottom:1px solid var(--border);border-radius:0
+      padding:12px 0;background:transparent;border:0;border-bottom:1px solid var(--border);border-radius:0
     }
     .fight .name{font-weight:700;margin-bottom:6px;font-size:15px;letter-spacing:.2px}
     .fight .grid{display:grid;gap:6px;grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -177,23 +155,12 @@
   <div class="wrap">
     <header>
       <div class="brand">
-        <!-- New tiny inline SVG emblem (transparent, crisp at 24px) -->
-        <svg class="logo" viewBox="0 0 24 24" aria-label="Fantasy Fight Picks emblem" role="img">
-          <!-- Octagon -->
-          <path d="M7 2h10l5 5v10l-5 5H7l-5-5V7z" fill="none" stroke="#E8E6E3" stroke-width="2.4" stroke-linejoin="round"/>
-          <!-- Glove base (black) -->
-          <path d="M6.5 14.5c0 2 1.6 3.5 3.6 3.5h3.7c3.2 0 5.7-2.6 5.7-5.7 0-2-1.3-3.5-3-4.1-.5-3.8-3-4.7-5.1-4.7-3.7 0-5.9 2.2-5.9 4.8 0 1.1.5 2.2 1.2 3-1 1-1.2 2.1-1.2 3.2z" fill="#161a22" stroke="#161a22" stroke-width="0.8" />
-          <!-- Wrist wrap -->
-          <rect x="8.1" y="17.1" width="8" height="4" rx="1.2" fill="#161a22" />
-          <!-- Red fingers -->
-          <rect x="8.8" y="6.6" width="3" height="4" rx="1" fill="#E10600"/>
-          <rect x="12.1" y="6.6" width="3" height="4" rx="1" fill="#E10600"/>
-          <rect x="15.4" y="7.1" width="3" height="4" rx="1" fill="#E10600"/>
-          <!-- Thumb pad -->
-          <path d="M8 11.8c0-1.6 1.8-2.6 3.2-2.6 1 0 1.6.6 1.6 1.6 0 1.7-1.8 2.7-3.2 2.7-1 0-1.6-.6-1.6-1.7z" fill="#E10600"/>
-        </svg>
+        <!-- EXACT HEADER EMBLEM (your PNG) -->
+        <span class="logo" aria-label="Fantasy Fight Picks emblem" role="img">
+          <img src="/assets/ffp-fist-octagon.png" alt="Fantasy Fight Picks emblem" />
+        </span>
 
-        <!-- Crown kept in DOM but forcibly hidden via CSS -->
+        <!-- Crown kept in DOM but hidden by CSS -->
         <span id="crownBadge" class="crown-badge" aria-hidden="true" title="Reigning champion">👑</span>
 
         <!-- Wordmark -->
@@ -235,7 +202,7 @@
       </div>
     </div>
 
-    <!-- Fights & Picks (centered container; grid items stay natural) -->
+    <!-- Fights & Picks (centered section; grid content left) -->
     <div class="panel centered" id="makePicksPanel">
       <div class="section-title">Make Your Picks</div>
       <div id="fightsList" class="list" style="text-align:left"></div>
@@ -245,13 +212,13 @@
       <div class="tiny" id="submitHint">Picks lock at event start. Submitting locks your picks.</div>
     </div>
 
-    <!-- Your Picks (centered section, left-aligned content) -->
+    <!-- Your Picks -->
     <div class="panel centered" id="yourPicksPanel">
       <div class="section-title">Your Picks</div>
       <div id="yourPicks" class="list" style="text-align:left"></div>
     </div>
 
-    <!-- Leaderboard (centered section; table cells left) -->
+    <!-- Leaderboard -->
     <div class="panel leaderboard centered">
       <div class="section-title">Leaderboard</div>
       <table>
