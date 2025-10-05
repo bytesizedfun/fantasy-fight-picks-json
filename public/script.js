@@ -201,9 +201,11 @@
     fightsList.querySelectorAll('select').forEach(sel => sel.disabled = disable);
     if (submitBtn) submitBtn.disabled = disable;
 
-    // Hide the whole Make Picks panel once submitted and clear any controls
-    if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
-    if (userLocked) fightsList.innerHTML = '';
+    // Hide the whole Make Picks panel on either condition:
+    // - userLocked (submitted) OR eventLocked (global lockout)
+    const shouldHidePicks = userLocked || eventLocked;
+    if (makePicksPanel) makePicksPanel.style.display = shouldHidePicks ? 'none' : '';
+    if (shouldHidePicks) fightsList.innerHTML = '';
 
     if (yourPicksPanel) yourPicksPanel.style.display = '';
     if (submitHint) {
@@ -292,8 +294,8 @@
     `;
   }
   function renderFights(){
-    // If the user has already submitted, do not render pick controls at all
-    if (userLocked) {
+    // If the user has already submitted, or event is locked, do not render pick controls at all
+    if (userLocked || eventLocked) {
       fightsList.innerHTML = '';
       return;
     }
@@ -719,7 +721,7 @@
 
   function bindGlobal(){
     // Expose for debugging if you need to inspect state live
-    Object.defineProperty(window, '__ffp', { get(){ return { fights, results, champs, meta, userLocked }; } });
+    Object.defineProperty(window, '__ffp', { get(){ return { fights, results, champs, meta, userLocked, eventLocked }; } });
   }
 
   function init(){
@@ -731,6 +733,6 @@
   }
 
   init();
-  loadBootstrap().then(()=>{ setInterval(refreshLive, 60000); });
+  loadBootstrap().then(()=>{ setInterval(refreshLive, 15000); }); // 15s: results + leaderboard in same tick
 
 })();
