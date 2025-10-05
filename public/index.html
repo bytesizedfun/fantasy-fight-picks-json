@@ -6,30 +6,27 @@
   <title>Fantasy Fight Picks</title>
   <meta name="description" content="Fast, lightweight UFC fantasy picks app." />
 
-  <!-- FAVICONS (served from /public) -->
+  <!-- FAVICONS — use your existing logo file -->
   <link rel="icon" type="image/png" sizes="32x32" href="/ffp-fist-octagon.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/ffp-fist-octagon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/ffp-fist-octagon.png" />
   <link rel="icon" href="/favicon.ico" />
 
-  <!-- Brand typeface (sporty) -->
+  <!-- Brand typeface -->
   <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&display=swap" rel="stylesheet">
 
   <style>
-    /* =========================
-       Arena Charcoal — Palette B
-       ========================= */
     :root{
       --bg:#121417;
       --panel:#181B20;
       --text:#EAECEF;
       --muted:#8D97A8;
-      --gold:#C5A55A;
-      --red:#D84D3F;
+
+      /* brand accent = logo red */
+      --brand:#D84D3F;
       --success:#24B27B;
       --graphite:#323844;
       --divider:#242A34;
-      --warn:#FFB547;
 
       --radius:16px;
       --gap:16px;
@@ -45,12 +42,10 @@
       font-family: ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
       -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
     }
-    a{color:var(--gold);text-decoration:none}
+    a{color:var(--brand);text-decoration:none}
     .wrap{max-width:1100px;margin:0 auto;padding:14px 16px 40px}
 
-    /* =========================
-       Header / Brand
-       ========================= */
+    /* header / brand */
     .ffp-header{
       position:sticky; top:0; z-index:30;
       background:linear-gradient(180deg, rgba(18,20,23,.96), rgba(18,20,23,.82));
@@ -66,10 +61,9 @@
     .logo{display:block; line-height:0;}
     .logo img{
       display:block;
-      height:72px; width:auto;
+      height:92px; width:auto;
       filter: drop-shadow(0 10px 24px rgba(0,0,0,.45));
     }
-    @media (min-width:720px){ .logo img{ height:92px; } }
     @media (min-width:1100px){ .logo img{ height:108px; } }
 
     .title{
@@ -90,33 +84,27 @@
       padding:0 0 10px;
       color:var(--muted);
       font-size:13px;
-      border-top:1px solid transparent;
     }
     #statusText, #lockoutText{ text-align:center; }
 
-    /* champion names inline with brand (kept for JS) */
     .champ-names[hidden]{display:none !important;}
     .champ-names{
       display:inline-block;
       margin-left:4px;
-      color:var(--gold);
+      color:var(--brand);
       font-weight:700;
       font-size:clamp(14px, 2.4vw, 18px);
       text-transform:uppercase;
       letter-spacing:.3px;
     }
-    /* hide legacy crown badge (we’ll use ribbon below) */
     .crown-badge{ display:none !important; }
 
-    /* =========================
-       Sections / Cards
-       ========================= */
     .page{ max-width:1100px; margin:0 auto; padding:0 16px; }
-    .section-title, h1, h2{ 
+    .section-title, h1, h2{
       font-family:"Teko", ui-sans-serif, system-ui, sans-serif;
-      text-transform:uppercase; letter-spacing:.4px; 
-      text-align:center; 
-      margin:8px 0 10px; 
+      text-transform:uppercase; letter-spacing:.4px;
+      text-align:center;
+      margin:8px 0 10px;
       font-size:clamp(18px, 3.6vw, 28px);
     }
 
@@ -128,22 +116,17 @@
       margin:12px auto;
       box-shadow: var(--shadow);
     }
-    /* Flatten any non-essential wrappers */
-    .card--flat{
-      background:transparent; border-color:transparent; box-shadow:none; padding:0; margin:6px 0;
-    }
+    .card--flat{ background:transparent; border-color:transparent; box-shadow:none; padding:0; margin:6px 0; }
 
-    /* =========================
-       Champion Ribbon (improved)
-       ========================= */
+    /* champion ribbon */
     #champBanner{
-      display:none; /* JS will show when applicable */
+      display:none;
       max-width:1100px;
       margin:14px auto 10px;
       padding:10px 14px;
       text-align:center;
-      background:linear-gradient(90deg, rgba(197,165,90,.16), rgba(197,165,90,.06));
-      border:1px solid rgba(197,165,90,.38);
+      background:linear-gradient(90deg, rgba(216,77,63,.16), rgba(216,77,63,.06));
+      border:1px solid rgba(216,77,63,.38);
       border-radius:14px;
       color:var(--text);
     }
@@ -151,9 +134,7 @@
     #champList li{ display:inline; margin:0 6px; color:var(--muted); }
     #champWhen{ display:block; margin-top:4px; color:var(--muted); font-size:12px; }
 
-    /* =========================
-       Forms / Inputs / Buttons
-       ========================= */
+    /* forms / buttons */
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .row>*{flex:1 1 220px}
 
@@ -166,8 +147,8 @@
       outline:none;
     }
     input:focus,select:focus{
-      box-shadow:0 0 0 2px rgba(197,165,90,.28);
-      border-color:var(--gold);
+      box-shadow:0 0 0 2px rgba(216,77,63,.28);
+      border-color:var(--brand);
     }
 
     button{
@@ -175,22 +156,25 @@
       border:1px solid var(--divider);
       background:#13171d; color:var(--text);
       padding:12px 16px; border-radius:14px; cursor:pointer; font-weight:700;
-      transition:transform .04s ease;
+      transition:transform .04s ease, filter .12s ease;
     }
     button:hover{ transform:translateY(-1px); }
-    button.primary{ background:var(--gold); color:#111; border:none; }
+    button.primary{ background:var(--brand); color:#111; border:none; }
     button:disabled{opacity:.6;cursor:not-allowed}
 
+    .submit-row{
+      display:flex; align-items:center; justify-content:center; gap:12px;
+      margin-top:10px;
+    }
     @media (max-width:720px){
       button{ width:100%; }
+      .submit-row{ flex-direction:column; }
     }
 
     .tiny{font-size:12px;color:var(--muted)}
     .scoring{font-size:13px;color:var(--muted); text-align:center;}
 
-    /* =========================
-       Fight list (compact, clean)
-       ========================= */
+    /* fights */
     .list{display:grid;gap:10px}
     .fight{
       padding:12px 0;
@@ -202,9 +186,7 @@
     @media (max-width:720px){ .fight .grid{ grid-template-columns:1fr 1fr; } }
     .tag{ font-size:12px; color:var(--muted); font-weight:600; opacity:.9 }
 
-    /* =========================
-       Your Picks
-       ========================= */
+    /* your picks */
     #yourPicks .pick-line{
       padding:10px 0;
       display:flex; align-items:center; gap:12px;
@@ -214,13 +196,8 @@
     #yourPicks .pick-line > *:first-child{flex:1 1 auto}
     #yourPicks .pick-line > *:last-child{flex:0 0 auto}
 
-    /* =========================
-       Leaderboard (sharper)
-       ========================= */
-    .leaderboard{
-      background:#151a20;
-      border-color:var(--graphite);
-    }
+    /* leaderboard */
+    .leaderboard{ background:#151a20; border-color:var(--graphite); }
     .leaderboard table{ width:100%; border-collapse:collapse }
     .leaderboard thead th{
       position:sticky; top:0; z-index:1;
@@ -237,7 +214,6 @@
     .lb-me{ background:#172034 !important; }
     .lb-champ-name{ font-weight:800; }
 
-    /* Debug banner */
     .debug{
       display:none; margin:10px 0; font-size:12px;
       color:#fff; background:#8a2e2e; border:1px solid #6d2222;
@@ -246,15 +222,13 @@
   </style>
 </head>
 <body>
-  <!-- Sticky header -->
+  <!-- sticky header -->
   <div class="ffp-header">
     <div class="brand">
       <a class="logo" href="/" aria-label="Fantasy Fight Picks">
-        <!-- Swap the file in /public with the SAME name; CSS scales it -->
         <img src="/ffp-fist-octagon.png" alt="Fantasy Fight Picks emblem">
       </a>
       <div class="title">Fantasy Fight Picks <span id="champNames" class="champ-names" hidden></span></div>
-      <!-- Kept for JS compatibility but visually hidden via CSS -->
       <span id="crownBadge" class="crown-badge" aria-hidden="true">👑</span>
     </div>
     <div class="meta">
@@ -265,44 +239,40 @@
   </div>
 
   <div class="wrap page">
-    <!-- Debug banner -->
     <div id="debugBanner" class="debug"></div>
 
-    <!-- Champion ribbon (shown only after event complete; JS controls display) -->
+    <!-- champion ribbon -->
     <div id="champBanner" aria-live="polite">
-      <span class="champ-crown" aria-hidden="true">👑</span>
-      <span id="champNamesRibbon"></span>
       <ul id="champList"></ul>
       <div id="champWhen"></div>
     </div>
 
-    <!-- Auth -->
+    <!-- auth -->
     <div class="panel" id="authPanel"></div>
 
-    <!-- Scoring (flattened) -->
+    <!-- scoring -->
     <div class="card--flat">
       <div class="scoring">
         Scoring: +3 Winner • +2 Method (if Winner is correct) • +1 Round (only if Winner + Method are correct and not Decision) • 🐶 Underdog bonus (by odds).
       </div>
     </div>
 
-    <!-- Fights & Picks -->
+    <!-- picks -->
     <div class="panel" id="makePicksPanel">
       <div class="section-title">Make Your Picks</div>
       <div id="fightsList" class="list"></div>
-      <div class="row" style="margin-top:10px;">
+      <div class="submit-row">
         <button id="submitBtn" class="primary">Submit Picks</button>
-        <span class="tiny" id="submitHint">Picks lock at event start.</span>
       </div>
     </div>
 
-    <!-- Your Picks -->
+    <!-- your picks -->
     <div class="panel" id="yourPicksPanel">
       <div class="section-title">Your Picks</div>
       <div id="yourPicks" class="list"></div>
     </div>
 
-    <!-- Leaderboard -->
+    <!-- leaderboard -->
     <div class="panel leaderboard">
       <div class="section-title">Leaderboard</div>
       <table>
