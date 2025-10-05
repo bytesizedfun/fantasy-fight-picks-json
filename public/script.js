@@ -3,6 +3,9 @@
    - Tries /api/bootstrap first; if it 5xx/aborts, gracefully falls back to separate calls
    - Strict submit validation + button lock
    - Champ UI: header text (post-finalization) + leaderboard bold for champs (ties supported)
+   - Fixes:
+     (4) Hide picks panel entirely when event is locked OR after submission (no disabled re-show)
+     (5) Refresh leaderboard in lock-step with results; 10s poll when locked, 60s otherwise
 */
 
 (() => {
@@ -63,6 +66,11 @@
   const idByLabel = new Map();   // canonical label -> fight_id
   const labelById = new Map();   // fight_id -> canonical label
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
+
+  // poll timer (5: tighter while locked)
+  let livePollTimer = null;
+  const POLL_WHEN_LOCKED_MS = 10_000;
+  const POLL_WHEN_OPEN_MS   = 60_000;
 
   // ---------- Utils ----------
   function showDebug(msg){ if(debugBanner){ debugBanner.textContent=String(msg||''); debugBanner.style.display='block'; } }
@@ -197,23 +205,37 @@
 
   // ---------- Lock + friendly lockout display ----------
   function applyLockState(){
-    const disable = eventLocked || userLocked;
-    fightsList.querySelectorAll('select').forEach(sel => sel.disabled = disable);
-    if (submitBtn) submitBtn.disabled = disable;
+    // Compute display/hide policy: HIDE the Make Picks panel entirely on either lock
+    const hideMake = eventLocked || userLocked;
 
-    // Hide the whole Make Picks panel on either condition:
-    // - userLocked (submitted) OR eventLocked (global lockout)
-    const shouldHidePicks = userLocked || eventLocked;
-    if (makePicksPanel) makePicksPanel.style.display = shouldHidePicks ? 'none' : '';
-    if (shouldHidePicks) fightsList.innerHTML = '';
+    // Disable/enable controls defensively (even if hidden)
+    fightsList.querySelectorAll('select').forEach(sel => sel.disabled = hideMake);
+    if (submitBtn) submitBtn.disabled = hideMake;
 
+    // Hide or show the whole Make Picks panel (+ clear controls when hidden)
+    if (makePicksPanel) {
+      if (hideMake) {
+        makePicksPanel.style.display = 'none';
+        fightsList.innerHTML = '';
+      } else {
+        makePicksPanel.style.display = '';
+      }
+    }
+
+    // Always show "Your Picks" so user sees checkmarks/points progress
     if (yourPicksPanel) yourPicksPanel.style.display = '';
+
+    // Hint text
     if (submitHint) {
       if (eventLocked) submitHint.textContent = 'Event is locked — no new submissions.';
       else if (userLocked) submitHint.textContent = 'Your picks are locked (already submitted).';
       else submitHint.textContent = 'Picks lock at event start. Submitting locks your picks.';
     }
+
+    // Adjust live poll cadence: tighter while locked
+    resetLivePollInterval();
   }
+
   function friendlyLockout(meta){
     const tz='America/Toronto';
     const local=String(meta.lockout_local||'').trim();
@@ -226,11 +248,13 @@
       return `${fmt.format(d)} ET`;
     }catch{ return iso; }
   }
+
   function renderMeta(){
     if(!meta) return;
-    statusText.textContent = `status: ${meta.status || 'open'}`;
-    lockoutText.textContent = `lockout: ${friendlyLockout(meta)}`;
-    eventLocked = (String(meta.status||'').toLowerCase() !== 'open');
+    const st = String(meta.status || 'open').toLowerCase();  // default to open
+    if (statusText) statusText.textContent = `status: ${st}`;
+    if (lockoutText) lockoutText.textContent = `lockout: ${friendlyLockout(meta)}`;
+    eventLocked = (st !== 'open');
     applyLockState();
   }
 
@@ -293,8 +317,9 @@
       </div>
     `;
   }
+
   function renderFights(){
-    // If the user has already submitted, or event is locked, do not render pick controls at all
+    // Do not render pick controls if user already submitted or event is locked
     if (userLocked || eventLocked) {
       fightsList.innerHTML = '';
       return;
@@ -305,7 +330,7 @@
       return;
     }
     fightsList.innerHTML = fights.map(buildFightRow).join('');
-    applyLockState();
+    // Controls are enabled since both locks are false here
   }
 
   function renderYourPicks(){
@@ -404,7 +429,6 @@
   }
 
   function renderChampHeader(names){
-    // No crowns, no shimmer. Title case label + names.
     if (champNamesEl) {
       champNamesEl.hidden = true;
       champNamesEl.textContent = '';
@@ -461,9 +485,9 @@
     champWhen.textContent = `Won on ${fmtDate(whenISO)}`;
 
     if (allResultsFinalized(fights, results)) {
-      champBanner.style.display = '';
+      champBanner.style.display='';
     } else {
-      champBanner.style.display = 'none';
+      champBanner.style.display='none';
     }
   }
 
@@ -580,13 +604,11 @@
         hideDebug();
         lsSet(LS_USER, username); lsSet(LS_PIN, pin);
 
+        // Lock user immediately and hide picks
         userLocked = true;
         applyLockState();
-        // Hard hide & clear immediately so no controls linger
-        if (makePicksPanel) makePicksPanel.style.display = 'none';
-        fightsList.innerHTML = '';
 
-        // Rehydrate once after submit
+        // Rehydrate once after submit to pull latest leaderboard and echo picks server-side
         await loadBootstrap();
         submitBtn.textContent = 'Saved ✔';
         setTimeout(()=>{ submitBtn.textContent = old; }, 900);
@@ -599,19 +621,15 @@
   }
 
   // ---------- Bootstrap ----------
-  function computeMapsAndRenderFights(payloadFights){
-    fights = Array.isArray(payloadFights) ? payloadFights : [];
-    computeMaps(fights);
-    renderFights();
-  }
-
   async function loadBootstrap(){
     const u = currentUsername();
     try{
       showDebug('Loading…');
       const payload = await getJSON(API.bootstrap(u));
 
-      meta = payload.meta || {}; renderMeta();
+      meta = payload.meta || {}; 
+      if (!meta.status) meta.status = 'open';   // default-to-open
+      renderMeta();
 
       computeMapsAndRenderFights(payload.fights);
 
@@ -641,7 +659,6 @@
       }
       renderYourPicks();
 
-      // Champ UI toggle
       await syncChampUI();
 
       hideDebug();
@@ -659,7 +676,8 @@
         u ? getJSON(API.userpicks(u)) : Promise.resolve([])
       ]);
 
-      meta = m.status==='fulfilled' ? m.value : {};
+      meta = m.status==='fulfilled' ? (m.value || {}) : {};
+      if (!meta.status) meta.status = 'open';
       renderMeta();
 
       computeMapsAndRenderFights(fs.status==='fulfilled' ? fs.value : []);
@@ -695,7 +713,7 @@
     }
   }
 
-  // Lightweight live refresh (results + leaderboard only)
+  // ---------- Live results/leaderboard refresh ----------
   async function refreshLive(){
     try{
       const [resNew, lbNew] = await Promise.all([
@@ -713,6 +731,16 @@
     }
   }
 
+  function resetLivePollInterval(){
+    const want = (eventLocked ? POLL_WHEN_LOCKED_MS : POLL_WHEN_OPEN_MS);
+    if (livePollTimer) {
+      // if timer exists and interval is same, skip; else reset
+      clearInterval(livePollTimer);
+      livePollTimer = null;
+    }
+    livePollTimer = setInterval(refreshLive, want);
+  }
+
   // ---------- Init ----------
   function prefillUser(){
     const u = lsGet(LS_USER,'');
@@ -720,7 +748,6 @@
   }
 
   function bindGlobal(){
-    // Expose for debugging if you need to inspect state live
     Object.defineProperty(window, '__ffp', { get(){ return { fights, results, champs, meta, userLocked, eventLocked }; } });
   }
 
@@ -733,6 +760,6 @@
   }
 
   init();
-  loadBootstrap().then(()=>{ setInterval(refreshLive, 15000); }); // 15s: results + leaderboard in same tick
+  loadBootstrap().then(()=>{ resetLivePollInterval(); });
 
 })();
