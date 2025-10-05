@@ -10,187 +10,277 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/ffp-fist-octagon.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/ffp-fist-octagon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/ffp-fist-octagon.png" />
-  <!-- keep legacy .ico if you already ship one -->
   <link rel="icon" href="/favicon.ico" />
 
+  <!-- Brand typeface (sporty) -->
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&display=swap" rel="stylesheet">
+
   <style>
+    /* =========================
+       Arena Charcoal — Palette B
+       ========================= */
     :root{
-      --bg:#0f1115;--panel:#151821;--text:#e8eaf0;--muted:#9aa3b2;
-      --accent:#3a7afe;--border:#232736;--panel2:#0b0d12;
-      --good:#20bf6b;--warn:#ffae42;
+      --bg:#121417;
+      --panel:#181B20;
+      --text:#EAECEF;
+      --muted:#8D97A8;
+      --gold:#C5A55A;
+      --red:#D84D3F;
+      --success:#24B27B;
+      --graphite:#323844;
+      --divider:#242A34;
+      --warn:#FFB547;
+
+      --radius:16px;
+      --gap:16px;
+      --shadow: 0 8px 30px rgba(0,0,0,.35);
     }
+
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
-      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";
-      background:var(--bg);
       color:var(--text);
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale
+      background:radial-gradient(1200px 800px at 50% -10%, #171b20 0%, var(--bg) 60%);
+      font-family: ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
     }
-    a{color:var(--accent);text-decoration:none}
+    a{color:var(--gold);text-decoration:none}
+    .wrap{max-width:1100px;margin:0 auto;padding:14px 16px 40px}
 
-    .wrap{max-width:980px;margin:0 auto;padding:16px}
-    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .brand{display:flex;align-items:center;gap:10px;position:relative}
+    /* =========================
+       Header / Brand
+       ========================= */
+    .ffp-header{
+      position:sticky; top:0; z-index:30;
+      background:linear-gradient(180deg, rgba(18,20,23,.96), rgba(18,20,23,.82));
+      border-bottom:1px solid var(--divider);
+      backdrop-filter:blur(8px);
+    }
+    .brand{
+      max-width:1100px; margin:0 auto;
+      padding:12px 16px;
+      display:flex; align-items:center; justify-content:center; gap:14px;
+      text-align:center;
+    }
+    .logo{display:block; line-height:0;}
+    .logo img{
+      display:block;
+      height:72px; width:auto;
+      filter: drop-shadow(0 10px 24px rgba(0,0,0,.45));
+    }
+    @media (min-width:720px){ .logo img{ height:92px; } }
+    @media (min-width:1100px){ .logo img{ height:108px; } }
 
-    /* logo image (uses your exact PNG from /public) */
-    .logo{width:28px;height:28px;display:inline-block;border-radius:6px;overflow:hidden}
-    .logo img{display:block;width:100%;height:100%;object-fit:contain}
+    .title{
+      font-family:"Teko", ui-sans-serif, system-ui, sans-serif;
+      font-weight:700;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+      line-height:.9;
+      color:var(--text);
+      font-size:clamp(28px, 6vw, 58px);
+      margin:0 6px;
+      text-align:center;
+    }
 
-    .title{font-size:20px;font-weight:700;letter-spacing:.3px}
-    .meta{font-size:12px;color:var(--muted)}
+    .meta{
+      width:100%;
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      padding:0 0 10px;
+      color:var(--muted);
+      font-size:13px;
+      border-top:1px solid transparent;
+    }
+    #statusText, #lockoutText{ text-align:center; }
 
-    /* Crown overlay + champ names (we kill crown via CSS) */
-    .crown-badge{ display:none !important; }
+    /* champion names inline with brand (kept for JS) */
     .champ-names[hidden]{display:none !important;}
     .champ-names{
-      margin-left:6px;
-      padding:0;
-      border:0;
-      font-size:12px;
-      color:#cbb88a;          /* muted gold text only */
+      display:inline-block;
+      margin-left:4px;
+      color:var(--gold);
       font-weight:700;
+      font-size:clamp(14px, 2.4vw, 18px);
+      text-transform:uppercase;
+      letter-spacing:.3px;
+    }
+    /* hide legacy crown badge (we’ll use ribbon below) */
+    .crown-badge{ display:none !important; }
+
+    /* =========================
+       Sections / Cards
+       ========================= */
+    .page{ max-width:1100px; margin:0 auto; padding:0 16px; }
+    .section-title, h1, h2{ 
+      font-family:"Teko", ui-sans-serif, system-ui, sans-serif;
+      text-transform:uppercase; letter-spacing:.4px; 
+      text-align:center; 
+      margin:8px 0 10px; 
+      font-size:clamp(18px, 3.6vw, 28px);
     }
 
     .panel{
       background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:8px;
-      padding:12px;
-      margin:10px 0
+      border:1px solid var(--divider);
+      border-radius:14px;
+      padding:14px;
+      margin:12px auto;
+      box-shadow: var(--shadow);
     }
+    /* Flatten any non-essential wrappers */
+    .card--flat{
+      background:transparent; border-color:transparent; box-shadow:none; padding:0; margin:6px 0;
+    }
+
+    /* =========================
+       Champion Ribbon (improved)
+       ========================= */
+    #champBanner{
+      display:none; /* JS will show when applicable */
+      max-width:1100px;
+      margin:14px auto 10px;
+      padding:10px 14px;
+      text-align:center;
+      background:linear-gradient(90deg, rgba(197,165,90,.16), rgba(197,165,90,.06));
+      border:1px solid rgba(197,165,90,.38);
+      border-radius:14px;
+      color:var(--text);
+    }
+    #champList{ display:inline; list-style:none; margin:0; padding:0; }
+    #champList li{ display:inline; margin:0 6px; color:var(--muted); }
+    #champWhen{ display:block; margin-top:4px; color:var(--muted); font-size:12px; }
+
+    /* =========================
+       Forms / Inputs / Buttons
+       ========================= */
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .row>*{flex:1 1 220px}
+
     .label{font-size:12px;color:var(--muted);margin-bottom:6px}
     input[type="text"],input[type="number"],select{
-      width:100%;
-      padding:10px 12px;
-      border-radius:8px;
-      border:1px solid var(--border);
-      background:var(--panel2);
-      color:var(--text);
-      outline:none
+      width:100%; padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--divider);
+      background:#13171d; color:var(--text);
+      outline:none;
     }
     input:focus,select:focus{
-      outline:none;
-      box-shadow:0 0 0 2px color-mix(in oklab, var(--accent) 40%, transparent);
-      border-color:var(--accent);
+      box-shadow:0 0 0 2px rgba(197,165,90,.28);
+      border-color:var(--gold);
     }
-    button{
-      appearance:none;border:1px solid var(--border);
-      background:var(--panel2);color:var(--text);
-      padding:10px 14px;border-radius:8px;cursor:pointer
-    }
-    button.primary{background:var(--accent);color:#fff;border:none}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .section-title{font-size:16px;font-weight:700;margin:0 0 8px}
-    .tiny{font-size:12px;color:var(--muted)}
-    .scoring{font-size:13px;color:var(--muted)}
-    .list{display:grid;gap:10px}
 
-    /* Fight cards: flatter with a bottom rule */
+    button{
+      appearance:none;
+      border:1px solid var(--divider);
+      background:#13171d; color:var(--text);
+      padding:12px 16px; border-radius:14px; cursor:pointer; font-weight:700;
+      transition:transform .04s ease;
+    }
+    button:hover{ transform:translateY(-1px); }
+    button.primary{ background:var(--gold); color:#111; border:none; }
+    button:disabled{opacity:.6;cursor:not-allowed}
+
+    @media (max-width:720px){
+      button{ width:100%; }
+    }
+
+    .tiny{font-size:12px;color:var(--muted)}
+    .scoring{font-size:13px;color:var(--muted); text-align:center;}
+
+    /* =========================
+       Fight list (compact, clean)
+       ========================= */
+    .list{display:grid;gap:10px}
     .fight{
       padding:12px 0;
-      background:transparent;
-      border:0;
-      border-bottom:1px solid var(--border);
-      border-radius:0
+      border-bottom:1px solid var(--divider);
     }
-    .fight .name{font-weight:700;margin-bottom:6px;font-size:15px;letter-spacing:.2px}
-    .fight .grid{display:grid;gap:6px;grid-template-columns:repeat(4,minmax(0,1fr))}
-    @media (max-width:720px){.fight .grid{grid-template-columns:1fr 1fr}}
+    .fight:last-child{ border-bottom:0; }
+    .fight .name{ font-weight:800; margin-bottom:6px; font-size:15px; letter-spacing:.2px; }
+    .fight .grid{ display:grid; gap:8px; grid-template-columns:repeat(4, minmax(0,1fr)); }
+    @media (max-width:720px){ .fight .grid{ grid-template-columns:1fr 1fr; } }
+    .tag{ font-size:12px; color:var(--muted); font-weight:600; opacity:.9 }
 
-    /* Tags/chips: kill the boxes entirely */
-    .tag{
-      font-size:12px;
-      padding:0;
-      border:0;
-      border-radius:0;
-      color:var(--muted);
-      display:inline-block;
-      font-weight:600;
-      opacity:.9
-    }
-
-    /* Leaderboard: higher contrast + zebra + sticky header + light hover */
-    .leaderboard{background:#0e1220;border-color:#2b3245}
-    .leaderboard table{width:100%;border-collapse:collapse}
-    .leaderboard thead th{position:sticky;top:0;background:#0e1220}
-    .leaderboard th,.leaderboard td{border-bottom:1px solid #2b3245;padding:10px 8px;text-align:left;font-size:14px}
-    .leaderboard tbody tr:nth-child(even){background:#0c1020}
-    .leaderboard tbody tr:hover{background:#11162a}
-    .leaderboard .center{text-align:center}
-    .lb-me{background:#182040 !important}
-    .rank{font-weight:800}
-    .pts{font-weight:800}
-
-    /* Champ panel kept for your existing banner; JS can show if you want */
-    .champ{display:none}
-    .champ ul{margin:6px 0 0 16px;padding:0}
-    .champ li{margin:2px 0}
-    .champ .when{color:var(--muted);font-size:12px;margin-top:4px}
-
-    /* Your Picks: clean rows + dividers */
-    .picks .pick-line,
+    /* =========================
+       Your Picks
+       ========================= */
     #yourPicks .pick-line{
-      border:0;
-      border-radius:0;
-      background:transparent;
       padding:10px 0;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      box-shadow:inset 0 -1px 0 var(--border);
+      display:flex; align-items:center; gap:12px;
+      box-shadow:inset 0 -1px 0 var(--divider);
     }
-    .picks .pick-line:last-child,
     #yourPicks .pick-line:last-child{ box-shadow:none; }
-    .picks .pick-line > *:first-child{flex:1 1 auto}
-    .picks .pick-line > *:last-child{flex:0 0 auto}
+    #yourPicks .pick-line > *:first-child{flex:1 1 auto}
+    #yourPicks .pick-line > *:last-child{flex:0 0 auto}
 
-    /* === Minimal champ styles (no shimmer, no crown, bold only on leaderboard) === */
+    /* =========================
+       Leaderboard (sharper)
+       ========================= */
+    .leaderboard{
+      background:#151a20;
+      border-color:var(--graphite);
+    }
+    .leaderboard table{ width:100%; border-collapse:collapse }
+    .leaderboard thead th{
+      position:sticky; top:0; z-index:1;
+      background:#141920; color:var(--text);
+      border-bottom:1px solid var(--graphite);
+      font-weight:800; text-transform:uppercase; letter-spacing:.3px;
+    }
+    .leaderboard th,.leaderboard td{ padding:10px 8px; font-size:14px; }
+    .leaderboard tbody tr:nth-child(even){ background:#12171f; }
+    .leaderboard tbody tr:hover{ background:#151d27; }
+    .leaderboard .center{ text-align:center; }
+    .rank{ font-weight:800; }
+    .pts{ font-weight:800; }
+    .lb-me{ background:#172034 !important; }
     .lb-champ-name{ font-weight:800; }
 
     /* Debug banner */
-    .debug{display:none;margin:10px 0;font-size:12px;color:#fff;background:#aa2e2e;border:1px solid #7d2020;padding:8px 10px;border-radius:6px}
+    .debug{
+      display:none; margin:10px 0; font-size:12px;
+      color:#fff; background:#8a2e2e; border:1px solid #6d2222;
+      padding:8px 10px; border-radius:8px;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <!-- Use the exact PNG from /public -->
-        <span class="logo" aria-label="Fantasy Fight Picks emblem" role="img">
-          <img src="/ffp-fist-octagon.png" alt="Fantasy Fight Picks emblem">
-        </span>
+  <!-- Sticky header -->
+  <div class="ffp-header">
+    <div class="brand">
+      <a class="logo" href="/" aria-label="Fantasy Fight Picks">
+        <!-- Swap the file in /public with the SAME name; CSS scales it -->
+        <img src="/ffp-fist-octagon.png" alt="Fantasy Fight Picks emblem">
+      </a>
+      <div class="title">Fantasy Fight Picks <span id="champNames" class="champ-names" hidden></span></div>
+      <!-- Kept for JS compatibility but visually hidden via CSS -->
+      <span id="crownBadge" class="crown-badge" aria-hidden="true">👑</span>
+    </div>
+    <div class="meta">
+      <span id="statusText">status: …</span>
+      <span>•</span>
+      <span id="lockoutText">lockout: …</span>
+    </div>
+  </div>
 
-        <!-- Crown kept in DOM but forcibly hidden via CSS -->
-        <span id="crownBadge" class="crown-badge" aria-hidden="true" title="Reigning champion">👑</span>
-        <div class="title">Fantasy Fight Picks</div>
-        <span id="champNames" class="champ-names" hidden></span>
-      </div>
-      <div class="meta">
-        <span id="statusText">status: …</span> •
-        <span id="lockoutText">lockout: …</span>
-      </div>
-    </header>
-
+  <div class="wrap page">
     <!-- Debug banner -->
     <div id="debugBanner" class="debug"></div>
 
-    <!-- Champions panel (optional legacy) -->
-    <div id="champBanner" class="panel champ" aria-live="polite">
-      <div class="section-title">Reigning Champion(s)</div>
+    <!-- Champion ribbon (shown only after event complete; JS controls display) -->
+    <div id="champBanner" aria-live="polite">
+      <span class="champ-crown" aria-hidden="true">👑</span>
+      <span id="champNamesRibbon"></span>
       <ul id="champList"></ul>
-      <div id="champWhen" class="when"></div>
+      <div id="champWhen"></div>
     </div>
 
     <!-- Auth -->
     <div class="panel" id="authPanel"></div>
 
-    <!-- Scoring line (underdog bonus depends on odds) -->
-    <div class="panel">
+    <!-- Scoring (flattened) -->
+    <div class="card--flat">
       <div class="scoring">
         Scoring: +3 Winner • +2 Method (if Winner is correct) • +1 Round (only if Winner + Method are correct and not Decision) • 🐶 Underdog bonus (by odds).
       </div>
@@ -226,7 +316,6 @@
         <tbody id="lbBody"></tbody>
       </table>
     </div>
-
   </div>
 
   <script src="/script.js" defer></script>
