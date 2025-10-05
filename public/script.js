@@ -3,9 +3,7 @@
    - Tries /api/bootstrap first; if it 5xx/aborts, gracefully falls back to separate calls
    - Strict submit validation + button lock
    - Champ UI: header text (post-finalization) + leaderboard bold for champs (ties supported)
-   - Fixes:
-     (4) Hide picks panel entirely when event is locked OR after submission (no disabled re-show)
-     (5) Refresh leaderboard in lock-step with results; 10s poll when locked, 60s otherwise
+   - LIVE mode: 3s refresh while event locked & not finalized; 30s otherwise
 */
 
 (() => {
@@ -40,6 +38,10 @@
   const submitBtn    = q('#submitBtn');
   const submitHint   = q('#submitHint');
 
+  // Live hints (optional elements — safe if missing)
+  const liveBadge    = q('#liveBadge');        // small “LIVE” chip
+  const updatedText  = q('#updatedText');      // “Last updated: …”
+
   // ---- API via Render proxy ----
   const API = {
     meta:        `/api/meta`,
@@ -67,14 +69,17 @@
   const labelById = new Map();   // fight_id -> canonical label
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
 
-  // poll timer (5: tighter while locked)
-  let livePollTimer = null;
-  const POLL_WHEN_LOCKED_MS = 10_000;
-  const POLL_WHEN_OPEN_MS   = 60_000;
-
   // ---------- Utils ----------
   function showDebug(msg){ if(debugBanner){ debugBanner.textContent=String(msg||''); debugBanner.style.display='block'; } }
   function hideDebug(){ if(debugBanner){ debugBanner.style.display='none'; } }
+  function touchUpdated(){
+    if (!updatedText) return;
+    try {
+      const now = new Date();
+      const fmt = new Intl.DateTimeFormat('en-CA', { hour:'numeric', minute:'2-digit', second:'2-digit' });
+      updatedText.textContent = `Last updated: ${fmt.format(now)}`;
+    } catch {}
+  }
 
   async function getJSON(url){
     const max = 3;
@@ -162,6 +167,7 @@
         updateAuthUI();
         await refreshUserLock();
         await hydrateUserPicksStrict();
+        renderFights(); // ensure picks panel appears after you save user
       });
     }
     const signOutBtn = q('#signOutBtn');
@@ -169,6 +175,7 @@
       signOutBtn.addEventListener('click', ()=>{
         lsDel(LS_USER); lsDel(LS_PIN);
         userLocked = false; picksState = {};
+        renderFights();
         renderYourPicks(); updateAuthUI(); applyLockState();
       });
     }
@@ -205,37 +212,26 @@
 
   // ---------- Lock + friendly lockout display ----------
   function applyLockState(){
-    // Compute display/hide policy: HIDE the Make Picks panel entirely on either lock
-    const hideMake = eventLocked || userLocked;
+    const disable = eventLocked || userLocked;
+    fightsList.querySelectorAll('select').forEach(sel => sel.disabled = disable);
+    if (submitBtn) submitBtn.disabled = disable;
 
-    // Disable/enable controls defensively (even if hidden)
-    fightsList.querySelectorAll('select').forEach(sel => sel.disabled = hideMake);
-    if (submitBtn) submitBtn.disabled = hideMake;
+    // Hide the whole Make Picks panel once submitted and clear any controls
+    if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
+    if (userLocked) fightsList.innerHTML = '';
 
-    // Hide or show the whole Make Picks panel (+ clear controls when hidden)
-    if (makePicksPanel) {
-      if (hideMake) {
-        makePicksPanel.style.display = 'none';
-        fightsList.innerHTML = '';
-      } else {
-        makePicksPanel.style.display = '';
-      }
-    }
-
-    // Always show "Your Picks" so user sees checkmarks/points progress
     if (yourPicksPanel) yourPicksPanel.style.display = '';
-
-    // Hint text
     if (submitHint) {
       if (eventLocked) submitHint.textContent = 'Event is locked — no new submissions.';
       else if (userLocked) submitHint.textContent = 'Your picks are locked (already submitted).';
       else submitHint.textContent = 'Picks lock at event start. Submitting locks your picks.';
     }
 
-    // Adjust live poll cadence: tighter while locked
-    resetLivePollInterval();
+    // LIVE badge on during locked + not finalized
+    if (liveBadge) {
+      liveBadge.hidden = !(eventLocked && !allResultsFinalized(fights, results));
+    }
   }
-
   function friendlyLockout(meta){
     const tz='America/Toronto';
     const local=String(meta.lockout_local||'').trim();
@@ -248,13 +244,11 @@
       return `${fmt.format(d)} ET`;
     }catch{ return iso; }
   }
-
   function renderMeta(){
     if(!meta) return;
-    const st = String(meta.status || 'open').toLowerCase();  // default to open
-    if (statusText) statusText.textContent = `status: ${st}`;
-    if (lockoutText) lockoutText.textContent = `lockout: ${friendlyLockout(meta)}`;
-    eventLocked = (st !== 'open');
+    statusText.textContent = `status: ${meta.status || 'open'}`;
+    lockoutText.textContent = `lockout: ${friendlyLockout(meta)}`;
+    eventLocked = (String(meta.status||'').toLowerCase() !== 'open');
     applyLockState();
   }
 
@@ -317,10 +311,9 @@
       </div>
     `;
   }
-
   function renderFights(){
-    // Do not render pick controls if user already submitted or event is locked
-    if (userLocked || eventLocked) {
+    // If the user has already submitted, do not render pick controls at all
+    if (userLocked) {
       fightsList.innerHTML = '';
       return;
     }
@@ -330,7 +323,7 @@
       return;
     }
     fightsList.innerHTML = fights.map(buildFightRow).join('');
-    // Controls are enabled since both locks are false here
+    applyLockState();
   }
 
   function renderYourPicks(){
@@ -429,6 +422,7 @@
   }
 
   function renderChampHeader(names){
+    // No crowns, no shimmer. Title case label + names.
     if (champNamesEl) {
       champNamesEl.hidden = true;
       champNamesEl.textContent = '';
@@ -485,9 +479,9 @@
     champWhen.textContent = `Won on ${fmtDate(whenISO)}`;
 
     if (allResultsFinalized(fights, results)) {
-      champBanner.style.display='';
+      champBanner.style.display = '';
     } else {
-      champBanner.style.display='none';
+      champBanner.style.display = 'none';
     }
   }
 
@@ -604,11 +598,13 @@
         hideDebug();
         lsSet(LS_USER, username); lsSet(LS_PIN, pin);
 
-        // Lock user immediately and hide picks
         userLocked = true;
         applyLockState();
+        // Hard hide & clear immediately so no controls linger
+        if (makePicksPanel) makePicksPanel.style.display = 'none';
+        fightsList.innerHTML = '';
 
-        // Rehydrate once after submit to pull latest leaderboard and echo picks server-side
+        // Rehydrate once after submit
         await loadBootstrap();
         submitBtn.textContent = 'Saved ✔';
         setTimeout(()=>{ submitBtn.textContent = old; }, 900);
@@ -621,15 +617,19 @@
   }
 
   // ---------- Bootstrap ----------
+  function computeMapsAndRenderFights(payloadFights){
+    fights = Array.isArray(payloadFights) ? payloadFights : [];
+    computeMaps(fights);
+    renderFights();
+  }
+
   async function loadBootstrap(){
     const u = currentUsername();
     try{
       showDebug('Loading…');
       const payload = await getJSON(API.bootstrap(u));
 
-      meta = payload.meta || {}; 
-      if (!meta.status) meta.status = 'open';   // default-to-open
-      renderMeta();
+      meta = payload.meta || {}; renderMeta();
 
       computeMapsAndRenderFights(payload.fights);
 
@@ -659,9 +659,10 @@
       }
       renderYourPicks();
 
+      // Champ UI toggle
       await syncChampUI();
 
-      hideDebug();
+      hideDebug(); touchUpdated();
     }catch(e){
       // Fallback path
       showDebug('Server busy; loading pieces…');
@@ -676,8 +677,7 @@
         u ? getJSON(API.userpicks(u)) : Promise.resolve([])
       ]);
 
-      meta = m.status==='fulfilled' ? (m.value || {}) : {};
-      if (!meta.status) meta.status = 'open';
+      meta = m.status==='fulfilled' ? m.value : {};
       renderMeta();
 
       computeMapsAndRenderFights(fs.status==='fulfilled' ? fs.value : []);
@@ -709,36 +709,42 @@
 
       await syncChampUI();
 
-      setTimeout(hideDebug, 1200);
+      setTimeout(hideDebug, 800);
+      touchUpdated();
     }
   }
 
-  // ---------- Live results/leaderboard refresh ----------
+  // Lightweight live refresh (results + leaderboard only) with adaptive cadence
   async function refreshLive(){
-    try{
-      const [resNew, lbNew] = await Promise.all([
-        getJSON(API.results),
-        getJSON(API.leaderboard)
-      ]);
-      results = Array.isArray(resNew) ? resNew : [];
-      renderYourPicks();
-      renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
+    const [resNew, lbNew] = await Promise.all([
+      getJSON(API.results),
+      getJSON(API.leaderboard)
+    ]);
+    results = Array.isArray(resNew) ? resNew : [];
+    renderYourPicks();
+    renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
 
-      await syncChampUI();
-    }catch(e){
-      showDebug(String(e && e.message ? e.message : e));
-      setTimeout(hideDebug, 2500);
-    }
+    await syncChampUI();
+    touchUpdated();
+    applyLockState(); // adjust LIVE badge if we just finalized
   }
 
-  function resetLivePollInterval(){
-    const want = (eventLocked ? POLL_WHEN_LOCKED_MS : POLL_WHEN_OPEN_MS);
-    if (livePollTimer) {
-      // if timer exists and interval is same, skip; else reset
-      clearInterval(livePollTimer);
-      livePollTimer = null;
+  // ---- Adaptive live refresher ----
+  let _liveTimer = null;
+  function _resultsSig(arr){
+    try {
+      return JSON.stringify((arr||[]).map(r => [r.fight_id, r.winner, r.method, r.round, !!r.finalized]));
+    } catch { return String(Date.now()); }
+  }
+  async function tickLive(){
+    try {
+      await refreshLive(); // pulls results + leaderboard and re-renders both
+    } finally {
+      const live = eventLocked && !allResultsFinalized(fights, results);
+      const delay = live ? 3000 : 30000; // 3s in LIVE, 30s otherwise
+      if (_liveTimer) clearTimeout(_liveTimer);
+      _liveTimer = setTimeout(tickLive, delay);
     }
-    livePollTimer = setInterval(refreshLive, want);
   }
 
   // ---------- Init ----------
@@ -760,6 +766,11 @@
   }
 
   init();
-  loadBootstrap().then(()=>{ resetLivePollInterval(); });
+  loadBootstrap().then(async ()=>{
+    // Immediate first pass for current data
+    await refreshLive();
+    // Start adaptive live loop
+    tickLive();
+  });
 
 })();
