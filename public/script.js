@@ -5,6 +5,7 @@
    - Champ UI: header text (post-finalization) + leaderboard bold for champs (ties supported)
    - LIVE mode: 3s refresh while event locked & not finalized; 30s otherwise
    - 2025-10-07: Hardened champ banner logic + resilient champions fetch (pre-lockout)
+   - 2025-10-07 (later): Championship belt rendering (SVG) with same visibility logic as banner
 */
 
 (() => {
@@ -24,10 +25,15 @@
   const crownBadge   = q('#crownBadge');   // kept but unused
   const champNamesEl = q('#champNames');   // small text beside title
 
-  // Legacy champ panel
+  // Legacy champ panel (ribbon)
   const champBanner  = q('#champBanner');
   const champList    = q('#champList');
   const champWhen    = q('#champWhen');
+
+  // NEW: Championship belt (SVG)
+  const champBelt    = q('#champBelt');
+  const beltNameEl   = q('#beltName');
+  const beltWhenEl   = q('#beltWhen');
 
   const debugBanner  = q('#debugBanner');
   const statusText   = q('#statusText');
@@ -92,7 +98,7 @@
     return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
   }
 
-  // Show banner up to the exact lockout minute, and again after full finalization.
+  // Show banner/belt up to the exact lockout minute, and again after full finalization.
   function shouldShowChampBanner(){
     const lockMs = lockoutMs(meta);
     const nowMs  = Date.now();
@@ -286,6 +292,7 @@
   function buildFightRow(f){
     const key = f.fight;
     const theFid = f.fight_id || '';
+    theFid; // silence linter
     const dog1 = f.dogF1 || 0, dog2 = f.dogF2 || 0;
     const selWinnerId = `w_${hashKey(key)}`;
     const selMethodId = `m_${hashKey(key)}`;
@@ -300,7 +307,7 @@
     for(let i=1;i<=roundsN;i++){ const sel=String(roundVal)===String(i)?'selected':''; roundOpts += `<option value="${i}" ${sel}>${i}</option>`; }
 
     return `
-      <div class="fight" data-key="${escapeHtml(key)}" data-id="${escapeHtml(theFid)}">
+      <div class="fight" data-key="${escapeHtml(key)}" data-id="${escapeHtml(f.fight_id || '')}">
         <div class="name">${escapeHtml(key)}</div>
         <div class="grid">
           <div>
@@ -487,14 +494,25 @@
     applyLeaderboardChampBold(names);
   }
 
-  // ---------- Legacy banner (panel) ----------
+  // ---------- Champions (banner + belt) ----------
   function renderChampions(list){
     champs = Array.isArray(list) ? list : [];
-    if(!Array.isArray(list) || !list.length){ if(champBanner) champBanner.style.display='none'; return; }
+
+    // If no champs rows at all, hide both banner and belt.
+    if(!Array.isArray(list) || !list.length){
+      if(champBanner) champBanner.style.display='none';
+      if (champBelt)   champBelt.style.display='none';
+      return;
+    }
 
     const { whenISO, names } = extractLatestChampNames(list);
-    if (!whenISO || !names.length) { if (champBanner) champBanner.style.display='none'; return; }
+    if (!whenISO || !names.length) {
+      if (champBanner) champBanner.style.display='none';
+      if (champBelt)   champBelt.style.display='none';
+      return;
+    }
 
+    // --- Ribbon content ---
     const recent = list.filter(x => String(x.date||'').trim() === whenISO);
     if (champList) champList.innerHTML = recent.map(c => `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
     if (champWhen) {
@@ -502,8 +520,33 @@
       champWhen.textContent = `Won on ${fmtDate(whenISO)}`;
     }
 
+    // --- Belt content ---
+    if (champBelt && beltNameEl && beltWhenEl) {
+      // Name(s): join ties with a dot
+      const nameStr = names.join(' • ');
+      beltNameEl.textContent = nameStr;
+
+      // Adaptive font size for long strings / ties
+      const len = nameStr.length;
+      let fs = 28;
+      if (names.length > 1) fs = 24;
+      if (len > 18) fs = 24;
+      if (len > 26) fs = 20;
+      if (len > 36) fs = 18;
+      beltNameEl.setAttribute('font-size', String(fs));
+
+      // Pretty date under the belt
+      try {
+        const d = new Date(whenISO);
+        const fmt = new Intl.DateTimeFormat('en-CA',{ timeZone:'America/Toronto', year:'numeric', month:'short', day:'2-digit' });
+        beltWhenEl.textContent = `Won on ${fmt.format(d)}`;
+      } catch { beltWhenEl.textContent = ''; }
+    }
+
+    // Visibility (same rule for banner + belt)
     const show = shouldShowChampBanner();
-    if (champBanner) champBanner.style.display = show ? '' : 'none';
+    if (champBanner) champBanner.style.display = show ? '' : 'none';   // CSS default is block
+    if (champBelt)   champBelt.style.display   = show ? 'block' : 'none';
   }
 
   // ---------- Data loading ----------
@@ -785,7 +828,7 @@
     }
   }
 
-  // schedule a precise banner flip at lockout
+  // schedule a precise banner/belt flip at lockout
   function scheduleChampFlipAtLockout(){
     const t = lockoutMs(meta);
     const delay = t - Date.now();
@@ -819,7 +862,7 @@
     await refreshLive();
     // Start adaptive live loop
     tickLive();
-    // exact-time champ ribbon flip
+    // exact-time champ ribbon/belt flip
     scheduleChampFlipAtLockout();
   });
 
