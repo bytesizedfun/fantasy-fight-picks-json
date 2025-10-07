@@ -120,7 +120,7 @@
 
     /* champion ribbon */
     #champBanner{
-      display:block; /* was none; default visible so JS can hide/show reliably */
+      display:block; /* default visible; JS will hide/show based on lockout/finalization */
       max-width:1100px;
       margin:14px auto 10px;
       padding:10px 14px;
@@ -133,6 +133,26 @@
     #champList{ display:inline; list-style:none; margin:0; padding:0; }
     #champList li{ display:inline; margin:0 6px; color:var(--muted); }
     #champWhen{ display:block; margin-top:4px; color:var(--muted); font-size:12px; }
+
+    /* champion belt */
+    #champBelt{
+      display:none;            /* JS will flip this on/off with same lockout logic */
+      max-width:900px;
+      margin:12px auto 18px;
+      padding:8px 10px;
+    }
+    #champBelt svg{
+      width:100%; height:auto; display:block;
+    }
+    @media (prefers-reduced-motion: no-preference){
+      #champBelt svg #beltName{
+        animation: beltGlow 2.4s ease-in-out infinite alternate;
+      }
+    }
+    @keyframes beltGlow{
+      from { fill:#1d1200; }
+      to   { fill:#3b2a05; }
+    }
 
     /* forms / buttons */
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -249,6 +269,65 @@
     <div id="champBanner" aria-live="polite">
       <ul id="champList"></ul>
       <div id="champWhen"></div>
+    </div>
+
+    <!-- champion belt (SVG; JS fills name/date and toggles visibility) -->
+    <div id="champBelt" aria-hidden="true">
+      <svg viewBox="0 0 900 260" role="img" aria-label="Champion Belt">
+        <defs>
+          <linearGradient id="strap" x1="0" x2="1">
+            <stop offset="0%"  stop-opacity="1" stop-color="#2b2f39"/>
+            <stop offset="50%" stop-opacity="1" stop-color="#1e232c"/>
+            <stop offset="100%" stop-opacity="1" stop-color="#2b2f39"/>
+          </linearGradient>
+          <radialGradient id="gold" cx="50%" cy="45%" r="75%">
+            <stop offset="0%"  stop-color="#fff5c8"/>
+            <stop offset="45%" stop-color="#f2cf66"/>
+            <stop offset="100%" stop-color="#a07319"/>
+          </radialGradient>
+          <radialGradient id="goldDim" cx="50%" cy="50%" r="75%">
+            <stop offset="0%"  stop-color="#ffe9a5"/>
+            <stop offset="60%" stop-color="#d6a741"/>
+            <stop offset="100%" stop-color="#7a5a17"/>
+          </radialGradient>
+          <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity=".35"/>
+          </filter>
+        </defs>
+
+        <!-- strap -->
+        <path d="M40,110 C110,70 200,50 300,50 H600 C700,50 790,70 860,110
+                 C875,120 875,140 860,150 C790,190 700,210 600,210 H300
+                 C200,210 110,190 40,150 C25,140 25,120 40,110 Z"
+              fill="url(#strap)" filter="url(#softShadow)"/>
+
+        <!-- side plates -->
+        <g>
+          <circle cx="190" cy="130" r="46" fill="url(#goldDim)" stroke="#5b4a19" stroke-width="4"/>
+          <circle cx="710" cy="130" r="46" fill="url(#goldDim)" stroke="#5b4a19" stroke-width="4"/>
+          <text x="190" y="136" text-anchor="middle" font-size="18" font-weight="800" fill="#352200">FFP</text>
+          <text x="710" y="136" text-anchor="middle" font-size="18" font-weight="800" fill="#352200">FFP</text>
+        </g>
+
+        <!-- center plate -->
+        <g>
+          <circle cx="450" cy="130" r="84" fill="url(#gold)" stroke="#6b541e" stroke-width="6"/>
+          <circle cx="450" cy="130" r="72" fill="transparent" stroke="#fff2b6" stroke-opacity=".55" stroke-width="3"/>
+
+          <text x="450" y="108" text-anchor="middle" font-size="32" aria-hidden="true">👑</text>
+
+          <text x="450" y="130" text-anchor="middle"
+                font-family="Teko, ui-sans-serif, system-ui, sans-serif"
+                font-size="26" letter-spacing="1.5"
+                fill="#2b1a00">CHAMPION</text>
+
+          <text id="beltName" x="450" y="156" text-anchor="middle"
+                font-size="28" font-weight="800" fill="#1d1200"></text>
+        </g>
+
+        <text id="beltWhen" x="450" y="232" text-anchor="middle"
+              font-size="14" fill="#c7b072" opacity=".9"></text>
+      </svg>
     </div>
 
     <!-- auth -->
