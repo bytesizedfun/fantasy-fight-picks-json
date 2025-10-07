@@ -4,6 +4,7 @@
    - Strict submit validation + button lock
    - Champ UI: header text (post-finalization) + leaderboard bold for champs (ties supported)
    - LIVE mode: 3s refresh while event locked & not finalized; 30s otherwise
+   - 2025-10-07: Hardened champ banner logic + resilient champions fetch (pre-lockout)
 */
 
 (() => {
@@ -65,6 +66,8 @@
   let eventLocked = false;
   let userLocked = false;
 
+  let _fetchedChampsOnce = false; // guard to avoid repeated pulls pre-lockout
+
   const idByLabel = new Map();   // canonical label -> fight_id
   const labelById = new Map();   // fight_id -> canonical label
   const METHOD_OPTIONS = ['KO/TKO', 'Submission', 'Decision'];
@@ -81,10 +84,17 @@
     } catch {}
   }
 
-  // NEW: drive champ banner by lockout to-the-minute (and by finalization)
+  // Parse lockout robustly. If we can't get a finite ms, treat as +Infinity so preEvent is true (keep banner up pre-lockout).
+  function lockoutMs(metaObj){
+    const iso = String(metaObj?.lockout_iso || '').trim();
+    if (!iso) return Number.POSITIVE_INFINITY;
+    const t = new Date(iso).getTime();
+    return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+  }
+
+  // Show banner up to the exact lockout minute, and again after full finalization.
   function shouldShowChampBanner(){
-    const iso = String(meta?.lockout_iso || '').trim();
-    const lockMs = iso ? new Date(iso).getTime() : Number.POSITIVE_INFINITY;
+    const lockMs = lockoutMs(meta);
     const nowMs  = Date.now();
     const preEvent   = nowMs < lockMs;                 // show up to the exact lockout minute
     const finalized  = allResultsFinalized(fights, results);
@@ -223,12 +233,12 @@
   // ---------- Lock + friendly lockout display ----------
   function applyLockState(){
     const disable = eventLocked || userLocked;
-    fightsList.querySelectorAll('select').forEach(sel => sel.disabled = disable);
+    if (fightsList) fightsList.querySelectorAll('select').forEach(sel => sel.disabled = disable);
     if (submitBtn) submitBtn.disabled = disable;
 
     // Hide the whole Make Picks panel once submitted and clear any controls
     if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
-    if (userLocked) fightsList.innerHTML = '';
+    if (userLocked && fightsList) fightsList.innerHTML = '';
 
     if (yourPicksPanel) yourPicksPanel.style.display = '';
     if (submitHint) {
@@ -242,11 +252,11 @@
       liveBadge.hidden = !(eventLocked && !allResultsFinalized(fights, results));
     }
   }
-  function friendlyLockout(meta){
+  function friendlyLockout(metaObj){
     const tz='America/Toronto';
-    const local=String(meta.lockout_local||'').trim();
+    const local=String(metaObj?.lockout_local||'').trim();
     if(local) return `${local} ET`;
-    const iso=String(meta.lockout_iso||'').trim();
+    const iso=String(metaObj?.lockout_iso||'').trim();
     if(!iso) return 'unset';
     try{
       const d=new Date(iso);
@@ -256,8 +266,8 @@
   }
   function renderMeta(){
     if(!meta) return;
-    statusText.textContent = `status: ${meta.status || 'open'}`;
-    lockoutText.textContent = `lockout: ${friendlyLockout(meta)}`;
+    if (statusText) statusText.textContent = `status: ${meta.status || 'open'}`;
+    if (lockoutText) lockoutText.textContent = `lockout: ${friendlyLockout(meta)}`;
     eventLocked = (String(meta.status||'').toLowerCase() !== 'open');
     applyLockState();
   }
@@ -324,20 +334,21 @@
   function renderFights(){
     // If the user has already submitted, do not render pick controls at all
     if (userLocked) {
-      fightsList.innerHTML = '';
+      if (fightsList) fightsList.innerHTML = '';
       return;
     }
     if (!Array.isArray(fights)) {
       showDebug(`getfights did not return an array`);
-      fightsList.innerHTML = '';
+      if (fightsList) fightsList.innerHTML = '';
       return;
     }
-    fightsList.innerHTML = fights.map(buildFightRow).join('');
+    if (fightsList) fightsList.innerHTML = fights.map(buildFightRow).join('');
     applyLockState();
   }
 
   function renderYourPicks(){
-    const keys = Object.keys(picksState);
+    const keys = Object.keys(picksState || {});
+    if(!yourPicks) return;
     if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
     const rows=[];
     const fightByLabel  = new Map(fights.map(f => [f.fight, f]));
@@ -378,6 +389,7 @@
 
   // ---------- Leaderboard ----------
   function renderLeaderboard(rows){
+    if(!lbBody) return;
     if(!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="3" class="tiny">No scores yet.</td></tr>`;
       return;
@@ -450,7 +462,7 @@
 
   function applyLeaderboardChampBold(champUsernames){
     if (!Array.isArray(champUsernames) || champUsernames.length === 0) return;
-    const champs = new Set(champUsernames.map(s => (s || '').trim().toLowerCase()));
+    const champsSet = new Set(champUsernames.map(s => (s || '').trim().toLowerCase()));
     if (!lbBody) return;
     for (const tr of lbBody.querySelectorAll('tr')) {
       const userCell = tr.querySelectorAll('td')[1];
@@ -458,7 +470,7 @@
       const label = userCell.querySelector('.lb-name');
       if (!label) continue;
       const text = (label.textContent || '').trim().toLowerCase();
-      label.classList.toggle('lb-champ-name', champs.has(text)); // bold only (CSS)
+      label.classList.toggle('lb-champ-name', champsSet.has(text)); // bold only (CSS)
     }
   }
 
@@ -550,25 +562,27 @@
   }
 
   function bindFightsAndSubmit(){
-    fightsList.addEventListener('change', (ev)=>{
-      const el = ev.target;
-      const fightEl = el.closest('.fight'); if(!fightEl) return;
-      const label = fightEl.dataset.key;
-      const fid = fightEl.dataset.id || idByLabel.get(label) || '';
-      picksState[label] = picksState[label] || { fight_id: fid, winner:'', method:'', round:'' };
-      picksState[label].fight_id = fid;
+    if (fightsList) {
+      fightsList.addEventListener('change', (ev)=>{
+        const el = ev.target;
+        const fightEl = el.closest('.fight'); if(!fightEl) return;
+        const label = fightEl.dataset.key;
+        const fid = fightEl.dataset.id || idByLabel.get(label) || '';
+        picksState[label] = picksState[label] || { fight_id: fid, winner:'', method:'', round:'' };
+        picksState[label].fight_id = fid;
 
-      if(el.id.startsWith('w_')){ picksState[label].winner = el.value; }
-      else if(el.id.startsWith('m_')){
-        picksState[label].method = el.value;
-        const roundSel = fightEl.querySelector('select[id^="r_"]');
-        if(roundSel){ const isDec = el.value==='Decision'; roundSel.disabled = isDec; if(isDec) roundSel.value=''; }
-      } else if(el.id.startsWith('r_')){ picksState[label].round = el.value; }
+        if(el.id.startsWith('w_')){ picksState[label].winner = el.value; }
+        else if(el.id.startsWith('m_')){
+          picksState[label].method = el.value;
+          const roundSel = fightEl.querySelector('select[id^="r_"]');
+          if(roundSel){ const isDec = el.value==='Decision'; roundSel.disabled = isDec; if(isDec) roundSel.value=''; }
+        } else if(el.id.startsWith('r_')){ picksState[label].round = el.value; }
 
-      renderYourPicks();
-    });
+        renderYourPicks();
+      });
+    }
 
-    submitBtn.addEventListener('click', async ()=>{
+    if (submitBtn) submitBtn.addEventListener('click', async ()=>{
       if (eventLocked) { showDebug('Event is locked — no new submissions.'); return; }
       if (userLocked) { showDebug('Your picks are locked (already submitted).'); return; }
 
@@ -611,7 +625,7 @@
         applyLockState();
         // Hard hide & clear immediately so no controls linger
         if (makePicksPanel) makePicksPanel.style.display = 'none';
-        fightsList.innerHTML = '';
+        if (fightsList) fightsList.innerHTML = '';
 
         // Rehydrate once after submit
         await loadBootstrap();
@@ -626,12 +640,6 @@
   }
 
   // ---------- Bootstrap ----------
-  function computeMapsAndRenderFights(payloadFights){
-    fights = Array.isArray(payloadFights) ? payloadFights : [];
-    computeMaps(fights);
-    renderFights();
-  }
-
   async function loadBootstrap(){
     const u = currentUsername();
     try{
@@ -645,7 +653,18 @@
       results = Array.isArray(payload.results) ? payload.results : [];
       renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
 
-      renderChampions(Array.isArray(payload.champion) ? payload.champion : []);
+      // First pass champs from bootstrap
+      const bootChamps = Array.isArray(payload.champion) ? payload.champion : [];
+      renderChampions(bootChamps);
+
+      // If bootstrap didn't include champs, pull them once now
+      if ((!Array.isArray(bootChamps) || bootChamps.length === 0) && !_fetchedChampsOnce) {
+        try {
+          const ch = await getJSON(API.champion);
+          _fetchedChampsOnce = true;
+          renderChampions(Array.isArray(ch) ? ch : []);
+        } catch {/* silent */}
+      }
 
       if (payload.user && payload.user.lock) {
         userLocked = !!payload.user.lock.locked && payload.user.lock.reason === 'submitted';
@@ -668,7 +687,7 @@
       }
       renderYourPicks();
 
-      // Champ UI toggle
+      // Champ UI toggle (post-finalization header + bolding)
       await syncChampUI();
 
       hideDebug(); touchUpdated();
@@ -693,7 +712,8 @@
 
       results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
       renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
-      renderChampions(ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : []);
+      const chArr = ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : [];
+      renderChampions(chArr);
 
       if (lock.status==='fulfilled') {
         userLocked = !!lock.value.locked && lock.value.reason === 'submitted';
@@ -733,6 +753,15 @@
     renderYourPicks();
     renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
 
+    // Backstop: if we're pre-lockout and champs are still empty (e.g., bootstrap lacked champs), fetch once.
+    if (shouldShowChampBanner() && (!Array.isArray(champs) || champs.length === 0) && !_fetchedChampsOnce) {
+      try {
+        const ch = await getJSON(API.champion);
+        _fetchedChampsOnce = true;
+        renderChampions(Array.isArray(ch) ? ch : []);
+      } catch {/* ignore */}
+    }
+
     await syncChampUI();
     touchUpdated();
     applyLockState(); // adjust LIVE badge if we just finalized
@@ -756,11 +785,11 @@
     }
   }
 
-  // NEW: schedule a precise banner flip at lockout
+  // schedule a precise banner flip at lockout
   function scheduleChampFlipAtLockout(){
-    const iso = String(meta?.lockout_iso || '').trim();
-    if (!iso) return;
-    const delay = new Date(iso).getTime() - Date.now();
+    const t = lockoutMs(meta);
+    const delay = t - Date.now();
+    if (!Number.isFinite(t)) return;  // if Infinity (unknown), skip precise flip
     if (delay > 0 && delay < 48*3600*1000) {           // ignore absurdly far times
       setTimeout(()=>{ renderChampions(champs); }, delay + 250); // tiny buffer
     }
@@ -790,7 +819,7 @@
     await refreshLive();
     // Start adaptive live loop
     tickLive();
-    // NEW: exact-time champ ribbon flip
+    // exact-time champ ribbon flip
     scheduleChampFlipAtLockout();
   });
 
