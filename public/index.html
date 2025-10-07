@@ -35,6 +35,7 @@
 
     *{box-sizing:border-box}
     html,body{height:100%}
+    html{ -webkit-text-size-adjust:100%; } /* prevent iOS text auto-zoom */
     body{
       margin:0;
       color:var(--text);
@@ -149,7 +150,9 @@
       border:1px solid var(--divider);
       background:#13171d; color:var(--text);
       outline:none;
+      font-size:16px; /* prevent iOS auto-zoom */
     }
+    button{ font-size:16px; } /* consistent tap targets */
     input:focus,select:focus{
       box-shadow:0 0 0 2px rgba(216,77,63,.28);
       border-color:var(--brand);
