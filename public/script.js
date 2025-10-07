@@ -6,6 +6,7 @@
    - LIVE mode: 3s refresh while event locked & not finalized; 30s otherwise
    - 2025-10-07: Hardened champ logic + resilient champions fetch
    - 2025-10-07: Championship belt (SVG) replaces old ribbon banner entirely
+   - 2025-10-07: Suppress noisy fallback banner + mobile zoom fix (via CSS)
 */
 
 (() => {
@@ -286,8 +287,6 @@
   function labelWithDog(name, dogN){ return dogN>0 ? `${name} (🐶 +${dogN})` : name; }
   function buildFightRow(f){
     const key = f.fight;
-    const theFid = f.fight_id || '';
-    theFid;
     const dog1 = f.dogF1 || 0, dog2 = f.dogF2 || 0;
     const selWinnerId = `w_${hashKey(key)}`;
     const selMethodId = `m_${hashKey(key)}`;
@@ -339,7 +338,7 @@
       return;
     }
     if (!Array.isArray(fights)) {
-      showDebug(`getfights did not return an array`);
+      console.warn('getfights did not return an array');
       if (fightsList) fightsList.innerHTML = '';
       return;
     }
@@ -650,7 +649,7 @@
   async function loadBootstrap(){
     const u = currentUsername();
     try{
-      showDebug('Loading…');
+      // Quiet during normal load
       const payload = await getJSON(API.bootstrap(u));
 
       meta = payload.meta || {}; renderMeta();
@@ -699,89 +698,93 @@
 
       hideDebug(); touchUpdated();
     }catch(e){
-      // Fallback path
-      showDebug('Server busy; loading pieces…');
+      // Fallback path (quiet banner; log instead)
+      console.warn('Bootstrap failed, falling back to individual endpoints:', e?.message || e);
       const u = currentUsername();
-      const [m, fs, rs, lb, ch, lock, ups] = await Promise.allSettled([
-        getJSON(API.meta),
-        getJSON(API.fights),
-        getJSON(API.results),
-        getJSON(API.leaderboard),
-        getJSON(API.champion),
-        u ? getJSON(API.userlock(u)) : Promise.resolve({locked:false,reason:'open'}),
-        u ? getJSON(API.userpicks(u)) : Promise.resolve([])
-      ]);
+      try{
+        const [m, fs, rs, lb, ch, lock, ups] = await Promise.allSettled([
+          getJSON(API.meta),
+          getJSON(API.fights),
+          getJSON(API.results),
+          getJSON(API.leaderboard),
+          getJSON(API.champion),
+          u ? getJSON(API.userlock(u)) : Promise.resolve({locked:false,reason:'open'}),
+          u ? getJSON(API.userpicks(u)) : Promise.resolve([])
+        ]);
 
-      meta = m.status==='fulfilled' ? m.value : {};
-      renderMeta();
+        meta = m.status==='fulfilled' ? m.value : {};
+        renderMeta();
 
-      computeMapsAndRenderFights(fs.status==='fulfilled' ? fs.value : []);
+        computeMapsAndRenderFights(fs.status==='fulfilled' ? fs.value : []);
 
-      results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
-      renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
+        results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
+        renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
 
-      const chArr = ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : [];
-      renderChampions(chArr);
+        const chArr = ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : [];
+        renderChampions(chArr);
 
-      if (lock.status==='fulfilled') {
-        userLocked = !!lock.value.locked && lock.value.reason === 'submitted';
-        applyLockState();
-      }
-      if (ups.status==='fulfilled' && Array.isArray(ups.value)) {
-        const next = {};
-        for (const row of ups.value) {
-          const fid = String(row.fight_id||'').trim();
-          let label = row.fight || (fid && labelById.get(fid)) || '';
-          if (!label) continue;
-          next[label] = {
-            fight_id: fid || (idByLabel.get(label) || ''),
-            winner: row.winner || '',
-            method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
-            round:  (row.method === 'Decision') ? '' : (row.round || '')
-          };
+        if (lock.status==='fulfilled') {
+          userLocked = !!lock.value.locked && lock.value.reason === 'submitted';
+          applyLockState();
         }
-        picksState = next;
+        if (ups.status==='fulfilled' && Array.isArray(ups.value)) {
+          const next = {};
+          for (const row of ups.value) {
+            const fid = String(row.fight_id||'').trim();
+            let label = row.fight || (fid && labelById.get(fid)) || '';
+            if (!label) continue;
+            next[label] = {
+              fight_id: fid || (idByLabel.get(label) || ''),
+              winner: row.winner || '',
+              method: METHOD_OPTIONS.includes(row.method) ? row.method : (row.winner ? 'Decision' : ''),
+              round:  (row.method === 'Decision') ? '' : (row.round || '')
+            };
+          }
+          picksState = next;
+        }
+        renderYourPicks();
+
+        await syncChampUI();
+
+      } finally {
+        // Always hide banner quickly after fallback
+        setTimeout(hideDebug, 600);
+        touchUpdated();
       }
-      renderYourPicks();
-
-      await syncChampUI();
-
-      setTimeout(hideDebug, 800);
-      touchUpdated();
     }
   }
 
   // Lightweight live refresh (results + leaderboard only) with adaptive cadence
   async function refreshLive(){
-    const [resNew, lbNew] = await Promise.all([
-      getJSON(API.results),
-      getJSON(API.leaderboard)
-    ]);
-    results = Array.isArray(resNew) ? resNew : [];
-    renderYourPicks();
-    renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
+    try{
+      const [resNew, lbNew] = await Promise.all([
+        getJSON(API.results),
+        getJSON(API.leaderboard)
+      ]);
+      results = Array.isArray(resNew) ? resNew : [];
+      renderYourPicks();
+      renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
 
-    // Backstop: pre-lockout and champs empty? fetch once.
-    if (shouldShowChampBelt() && (!Array.isArray(champs) || champs.length === 0) && !_fetchedChampsOnce) {
-      try {
-        const ch = await getJSON(API.champion);
-        _fetchedChampsOnce = true;
-        renderChampions(Array.isArray(ch) ? ch : []);
-      } catch {/* ignore */}
+      // Backstop: pre-lockout and champs empty? fetch once.
+      if (shouldShowChampBelt() && (!Array.isArray(champs) || champs.length === 0) && !_fetchedChampsOnce) {
+        try {
+          const ch = await getJSON(API.champion);
+          _fetchedChampsOnce = true;
+          renderChampions(Array.isArray(ch) ? ch : []);
+        } catch {/* ignore */}
+      }
+
+      await syncChampUI();
+      touchUpdated();
+      applyLockState();
+    } catch (e) {
+      console.warn('refreshLive() transient error:', e?.message || e);
+      // keep last-known-good state; next tick will try again
     }
-
-    await syncChampUI();
-    touchUpdated();
-    applyLockState();
   }
 
   // ---- Adaptive live refresher ----
   let _liveTimer = null;
-  function _resultsSig(arr){
-    try {
-      return JSON.stringify((arr||[]).map(r => [r.fight_id, r.winner, r.method, r.round, !!r.finalized]));
-    } catch { return String(Date.now()); }
-  }
   async function tickLive(){
     try {
       await refreshLive();
