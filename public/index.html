@@ -118,25 +118,9 @@
     }
     .card--flat{ background:transparent; border-color:transparent; box-shadow:none; padding:0; margin:6px 0; }
 
-    /* champion ribbon */
-    #champBanner{
-      display:block; /* default visible; JS will hide/show based on lockout/finalization */
-      max-width:1100px;
-      margin:14px auto 10px;
-      padding:10px 14px;
-      text-align:center;
-      background:linear-gradient(90deg, rgba(216,77,63,.16), rgba(216,77,63,.06));
-      border:1px solid rgba(216,77,63,.38);
-      border-radius:14px;
-      color:var(--text);
-    }
-    #champList{ display:inline; list-style:none; margin:0; padding:0; }
-    #champList li{ display:inline; margin:0 6px; color:var(--muted); }
-    #champWhen{ display:block; margin-top:4px; color:var(--muted); font-size:12px; }
-
     /* champion belt */
     #champBelt{
-      display:none;            /* JS will flip this on/off with same lockout logic */
+      display:none;            /* JS toggles visibility */
       max-width:900px;
       margin:12px auto 18px;
       padding:8px 10px;
@@ -264,12 +248,6 @@
 
   <div class="wrap page">
     <div id="debugBanner" class="debug"></div>
-
-    <!-- champion ribbon -->
-    <div id="champBanner" aria-live="polite">
-      <ul id="champList"></ul>
-      <div id="champWhen"></div>
-    </div>
 
     <!-- champion belt (SVG; JS fills name/date and toggles visibility) -->
     <div id="champBelt" aria-hidden="true">
