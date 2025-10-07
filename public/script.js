@@ -466,22 +466,30 @@
   }
 
   // ---------- Legacy banner (panel) ----------
+  // SURGICAL: Show champ banner while event is OPEN; after lock, show only when finalized (original behavior).
   function renderChampions(list){
     champs = Array.isArray(list) ? list : [];
-    if(!Array.isArray(list) || !list.length){ if(champBanner) champBanner.style.display='none'; return; }
+    if (!champBanner || !champList || !champWhen) return;
 
-    const { whenISO, names } = extractLatestChampNames(list);
-    if (!whenISO || !names.length) { champBanner.style.display='none'; return; }
+    const { whenISO, names } = extractLatestChampNames(champs);
 
-    const recent = list.filter(x => String(x.date||'').trim() === whenISO);
+    // If no champ data at all, hide.
+    if (!whenISO || !names.length) { champBanner.style.display = 'none'; return; }
+
+    // Populate banner from latest champs
+    const recent = champs.filter(x => String(x.date||'').trim() === whenISO);
     champList.innerHTML = recent.map(c => `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
     const fmtDate = (dIso)=>{ try{ const d=new Date(dIso); const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Toronto',year:'numeric',month:'short',day:'2-digit'}); return fmt.format(d);}catch{ return ''; } };
     champWhen.textContent = `Won on ${fmtDate(whenISO)}`;
 
-    if (allResultsFinalized(fights, results)) {
+    // Visibility rule:
+    // - status === 'open' (pre-event week): show reigning champs.
+    // - otherwise (locked/live/complete): show only when event is fully finalized.
+    const status = String(meta && meta.status || 'open').toLowerCase();
+    if (status === 'open') {
       champBanner.style.display = '';
     } else {
-      champBanner.style.display = 'none';
+      champBanner.style.display = allResultsFinalized(fights, results) ? '' : 'none';
     }
   }
 
