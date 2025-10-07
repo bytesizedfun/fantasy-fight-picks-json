@@ -39,8 +39,8 @@
   const submitHint   = q('#submitHint');
 
   // Live hints (optional elements — safe if missing)
-  const liveBadge    = q('#liveBadge');        // small “LIVE” chip (optional)
-  const updatedText  = q('#updatedText');      // “Last updated: …” (optional)
+  const liveBadge    = q('#liveBadge');        // small “LIVE” chip
+  const updatedText  = q('#updatedText');      // “Last updated: …”
 
   // ---- API via Render proxy ----
   const API = {
@@ -232,11 +232,11 @@
       liveBadge.hidden = !(eventLocked && !allResultsFinalized(fights, results));
     }
   }
-  function friendlyLockout(metaObj){
+  function friendlyLockout(meta){
     const tz='America/Toronto';
-    const local=String(metaObj.lockout_local||'').trim();
+    const local=String(meta.lockout_local||'').trim();
     if(local) return `${local} ET`;
-    const iso=String(metaObj.lockout_iso||'').trim();
+    const iso=String(meta.lockout_iso||'').trim();
     if(!iso) return 'unset';
     try{
       const d=new Date(iso);
@@ -328,7 +328,7 @@
 
   function renderYourPicks(){
     const keys = Object.keys(picksState);
-    if(!keys.length){ yourPicks.innerHTML = `<div class="tiny" style="text-align:center">No picks yet.</div>`; return; }
+    if(!keys.length){ yourPicks.innerHTML = `<div class="tiny">No picks yet.</div>`; return; }
     const rows=[];
     const fightByLabel  = new Map(fights.map(f => [f.fight, f]));
     const fightById     = new Map(fights.map(f => [f.fight_id, f]));
@@ -369,7 +369,7 @@
   // ---------- Leaderboard ----------
   function renderLeaderboard(rows){
     if(!Array.isArray(rows) || !rows.length){
-      lbBody.innerHTML = `<tr><td colspan="3" class="tiny" style="text-align:center">No scores yet.</td></tr>`;
+      lbBody.innerHTML = `<tr><td colspan="3" class="tiny">No scores yet.</td></tr>`;
       return;
     }
     const me = (lsGet(LS_USER,'') || '').toLowerCase();
@@ -422,7 +422,7 @@
   }
 
   function renderChampHeader(names){
-    // No crowns, no shimmer. Title case label + names.
+    // Keep header names for post-finalization only
     if (champNamesEl) {
       champNamesEl.hidden = true;
       champNamesEl.textContent = '';
@@ -440,7 +440,7 @@
 
   function applyLeaderboardChampBold(champUsernames){
     if (!Array.isArray(champUsernames) || champUsernames.length === 0) return;
-    const champsSet = new Set(champUsernames.map(s => (s || '').trim().toLowerCase()));
+    const champs = new Set(champUsernames.map(s => (s || '').trim().toLowerCase()));
     if (!lbBody) return;
     for (const tr of lbBody.querySelectorAll('tr')) {
       const userCell = tr.querySelectorAll('td')[1];
@@ -448,13 +448,14 @@
       const label = userCell.querySelector('.lb-name');
       if (!label) continue;
       const text = (label.textContent || '').trim().toLowerCase();
-      label.classList.toggle('lb-champ-name', champsSet.has(text)); // bold only (CSS)
+      label.classList.toggle('lb-champ-name', champs.has(text)); // bold only (CSS)
     }
   }
 
   async function syncChampUI(){
     const done = allResultsFinalized(fights, results);
     if (!done) {
+      // Do NOT show header champs pre-finalization
       renderChampHeader([]);
       applyLeaderboardChampBold([]);
       return;
@@ -465,28 +466,35 @@
     applyLeaderboardChampBold(names);
   }
 
-  // ---------- Champion ribbon (legacy panel) ----------
+  // ---------- Champion ribbon (panel) ----------
   function renderChampions(list){
     champs = Array.isArray(list) ? list : [];
-    // If no champs data at all, hide.
-    if (!champs.length) { if(champBanner) champBanner.style.display='none'; return; }
+
+    // If no champion rows at all, hide ribbon
+    if(!Array.isArray(champs) || !champs.length){
+      if(champBanner) champBanner.style.display='none';
+      return;
+    }
 
     const { whenISO, names } = extractLatestChampNames(champs);
-    const finalized = allResultsFinalized(fights, results);
+    if (!whenISO || !names.length) {
+      if (champBanner) champBanner.style.display='none';
+      return;
+    }
+
+    // Always render content
+    if (champList) {
+      const recent = champs.filter(x => String(x.date||'').trim() === whenISO);
+      champList.innerHTML = recent.map(c => `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
+    }
+    if (champWhen) {
+      const fmtDate = (dIso)=>{ try{ const d=new Date(dIso); const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Toronto',year:'numeric',month:'short',day:'2-digit'}); return fmt.format(d);}catch{ return ''; } };
+      champWhen.textContent = `Won on ${fmtDate(whenISO)}`;
+    }
+
+    // SHOW while event is OPEN; hide once lock hits
     const isOpen = String(meta?.status || 'open').toLowerCase() === 'open';
-
-    // NEW RULE:
-    // - If event is OPEN -> show banner (reigning/most recent champs) even if not finalized
-    // - If event is LOCKED -> only show when finalized (as before)
-    const shouldShow = isOpen || finalized;
-    if (!shouldShow || !whenISO || !names.length) { champBanner.style.display = 'none'; return; }
-
-    const recent = champs.filter(x => String(x.date||'').trim() === whenISO);
-    champList.innerHTML = recent.map(c => `<li>${escapeHtml(c.username)} — ${c.points} pts</li>`).join('');
-    const fmtDate = (dIso)=>{ try{ const d=new Date(dIso); const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Toronto',year:'numeric',month:'short',day:'2-digit'}); return fmt.format(d);}catch{ return ''; } };
-    champWhen.textContent = `Won on ${fmtDate(whenISO)}`;
-
-    champBanner.style.display = '';
+    if (champBanner) champBanner.style.display = isOpen ? '' : 'none';
   }
 
   // ---------- Data loading ----------
@@ -640,7 +648,7 @@
       results = Array.isArray(payload.results) ? payload.results : [];
       renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
 
-      // Important: render champs AFTER meta so open/locked logic works
+      // CHAMPIONS (ribbon): show during OPEN if present
       renderChampions(Array.isArray(payload.champion) ? payload.champion : []);
 
       if (payload.user && payload.user.lock) {
@@ -664,22 +672,22 @@
       }
       renderYourPicks();
 
-      // Champ UI toggle (header names & bold in table when finalized)
+      // Header champs + leaderboard bold only after finalization
       await syncChampUI();
 
       hideDebug(); touchUpdated();
     }catch(e){
       // Fallback path
       showDebug('Server busy; loading pieces…');
-      const u2 = currentUsername();
+      const u = currentUsername();
       const [m, fs, rs, lb, ch, lock, ups] = await Promise.allSettled([
         getJSON(API.meta),
         getJSON(API.fights),
         getJSON(API.results),
         getJSON(API.leaderboard),
         getJSON(API.champion),
-        u2 ? getJSON(API.userlock(u2)) : Promise.resolve({locked:false,reason:'open'}),
-        u2 ? getJSON(API.userpicks(u2)) : Promise.resolve([])
+        u ? getJSON(API.userlock(u)) : Promise.resolve({locked:false,reason:'open'}),
+        u ? getJSON(API.userpicks(u)) : Promise.resolve([])
       ]);
 
       meta = m.status==='fulfilled' ? m.value : {};
@@ -690,7 +698,7 @@
       results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
       renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
 
-      // Important: render champs AFTER meta
+      // CHAMPIONS (ribbon): show during OPEN if present
       renderChampions(ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : []);
 
       if (lock.status==='fulfilled') {
