@@ -1,3 +1,6 @@
+Here’s your **fully updated `script.js`** with the surgical All-Time support wired in (toggle-ready, bootstrap + fallback aware, live-refresh friendly). Drop this in as-is.
+
+```js
 /* Fantasy Fight Picks — frontend (lean bootstrap + robust retries)
    - Proxy /api/* to Render
    - Tries /api/bootstrap first; if it 5xx/aborts, gracefully falls back to separate calls
@@ -7,6 +10,7 @@
    - 2025-10-07: Hardened champ logic + resilient champions fetch
    - 2025-10-07: Championship belt (SVG) replaces old ribbon banner entirely
    - 2025-10-07: Suppress noisy fallback banner + mobile zoom fix (via CSS)
+   - 2025-10-07: All-Time leaderboard (toggle + bootstrap + fallback + live refresh)
 */
 
 (() => {
@@ -21,6 +25,11 @@
   const fightsList   = q('#fightsList');
   const yourPicks    = q('#yourPicks');
   const lbBody       = q('#lbBody');
+
+  // Optional toggle button for Event ⟷ All-Time
+  const lbToggleBtn  = q('#lbToggleBtn');     // optional — safe if missing
+  let lbMode = 'event';                       // 'event' | 'alltime'
+  let alltime = [];                           // cached ALL-TIME rows
 
   // Header champ hooks
   const crownBadge   = q('#crownBadge');   // kept but unused
@@ -52,6 +61,7 @@
     results:     `/api/results`,
     leaderboard: `/api/leaderboard`,
     champion:    `/api/champion`,
+    alltime:     `/api/alltime`, // NEW
     userlock:    (u) => `/api/userlock?username=${encodeURIComponent(u || '')}`,
     userpicks:   (u) => `/api/userpicks?username=${encodeURIComponent(u || '')}`,
     submit:      `/api/submitpicks`,
@@ -387,8 +397,11 @@
     yourPicks.innerHTML = rows.join('');
   }
 
-  // ---------- Leaderboard ----------
+  // ---------- Leaderboard (Event) ----------
   function renderLeaderboard(rows){
+    // Cache latest event leaderboard for the dispatcher
+    window.__lbRows = Array.isArray(rows) ? rows : [];
+
     if(!lbBody) return;
     if(!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="3" class="tiny">No scores yet.</td></tr>`;
@@ -408,6 +421,49 @@
 
     if (allResultsFinalized(fights, results) && latestChampNames.length) {
       applyLeaderboardChampBold(latestChampNames);
+    }
+  }
+
+  // ---------- All-Time renderer + dispatcher ----------
+  function renderAllTimeBoard(rows){
+    if (!lbBody) return;
+    if (!Array.isArray(rows) || !rows.length){
+      lbBody.innerHTML = `<tr><td colspan="5" class="tiny">No all-time data yet.</td></tr>`;
+      return;
+    }
+
+    const header = `
+      <tr class="lb-head">
+        <th class="center rank">#</th>
+        <th>User</th>
+        <th class="center">Events Won</th>
+        <th class="center">Events Played</th>
+        <th class="center">Win %</th>
+      </tr>`;
+
+    const me = (lsGet(LS_USER,'') || '').toLowerCase();
+    const rowsHtml = rows.map(r=>{
+      const isMe = me && (String(r.username||'').toLowerCase() === me);
+      const uname = escapeHtml(r.username || '');
+      const pct = (Number(r.win_rate||0)).toFixed(1);
+      return `
+        <tr class="${isMe?'lb-me':''}">
+          <td class="center rank">${r.rank || ''}</td>
+          <td><span class="lb-name">${uname}</span></td>
+          <td class="center">${Number(r.crowns||0)}</td>
+          <td class="center">${Number(r.events_played||0)}</td>
+          <td class="center">${pct}%</td>
+        </tr>`;
+    }).join('');
+
+    lbBody.innerHTML = header + rowsHtml;
+  }
+
+  function renderLeaderboardMode(){
+    if (lbMode === 'alltime') {
+      renderAllTimeBoard(alltime);
+    } else {
+      renderLeaderboard(Array.isArray(window.__lbRows) ? window.__lbRows : []);
     }
   }
 
@@ -483,6 +539,8 @@
     }
 
     const { whenISO, names } = extractLatestChampNames(list);
+    latestChampNames = names || [];
+
     if (!whenISO || !names.length) {
       if (champBelt) champBelt.style.display='none';
       return;
@@ -645,6 +703,29 @@
     });
   }
 
+  // ---------- Leaderboard toggle wiring ----------
+  function bindLeaderboardToggle(){
+    if (!lbToggleBtn) return;
+    lbToggleBtn.addEventListener('click', async ()=>{
+      lbMode = (lbMode === 'event') ? 'alltime' : 'event';
+
+      if (lbMode === 'alltime' && (!Array.isArray(alltime) || alltime.length === 0)) {
+        try {
+          const rows = await getJSON(API.alltime);
+          alltime = Array.isArray(rows) ? rows : [];
+        } catch(e){
+          showDebug(`all-time: ${String(e.message||e)}`);
+        }
+      }
+
+      try {
+        lbToggleBtn.textContent = (lbMode === 'alltime') ? 'Show Event Leaderboard' : 'Show All-Time';
+      } catch(_) {}
+
+      renderLeaderboardMode();
+    });
+  }
+
   // ---------- Bootstrap ----------
   async function loadBootstrap(){
     const u = currentUsername();
@@ -657,7 +738,14 @@
       computeMapsAndRenderFights(payload.fights);
 
       results = Array.isArray(payload.results) ? payload.results : [];
-      renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
+
+      // Cache both boards
+      const lbRows = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
+      alltime = Array.isArray(payload.alltime) ? payload.alltime : [];
+
+      // Render via dispatcher so current mode decides what's shown
+      renderLeaderboard(lbRows);
+      renderLeaderboardMode();
 
       // Champs from bootstrap
       const bootChamps = Array.isArray(payload.champion) ? payload.champion : [];
@@ -702,14 +790,15 @@
       console.warn('Bootstrap failed, falling back to individual endpoints:', e?.message || e);
       const u = currentUsername();
       try{
-        const [m, fs, rs, lb, ch, lock, ups] = await Promise.allSettled([
+        const [m, fs, rs, lb, ch, lock, ups, at] = await Promise.allSettled([
           getJSON(API.meta),
           getJSON(API.fights),
           getJSON(API.results),
           getJSON(API.leaderboard),
           getJSON(API.champion),
           u ? getJSON(API.userlock(u)) : Promise.resolve({locked:false,reason:'open'}),
-          u ? getJSON(API.userpicks(u)) : Promise.resolve([])
+          u ? getJSON(API.userpicks(u)) : Promise.resolve([]),
+          getJSON(API.alltime)
         ]);
 
         meta = m.status==='fulfilled' ? m.value : {};
@@ -718,7 +807,12 @@
         computeMapsAndRenderFights(fs.status==='fulfilled' ? fs.value : []);
 
         results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
-        renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
+
+        const lbRows = lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : [];
+        alltime = at.status==='fulfilled' && Array.isArray(at.value) ? at.value : [];
+
+        renderLeaderboard(lbRows);
+        renderLeaderboardMode();
 
         const chArr = ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : [];
         renderChampions(chArr);
@@ -763,7 +857,19 @@
       ]);
       results = Array.isArray(resNew) ? resNew : [];
       renderYourPicks();
+
+      // Update event board cache & render according to mode
       renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
+      renderLeaderboardMode();
+
+      // After event completes, opportunistically refresh all-time once
+      if (allResultsFinalized(fights, results)) {
+        try {
+          const atRows = await getJSON(API.alltime);
+          alltime = Array.isArray(atRows) ? atRows : alltime;
+          if (lbMode === 'alltime') renderLeaderboardMode();
+        } catch(_) {}
+      }
 
       // Backstop: pre-lockout and champs empty? fetch once.
       if (shouldShowChampBelt() && (!Array.isArray(champs) || champs.length === 0) && !_fetchedChampsOnce) {
@@ -812,8 +918,15 @@
     if (u && q('#usernameInput')) q('#usernameInput').value = u;
   }
 
+  async function syncChampUI(){
+    // Header champs: only after results finalized to avoid spoilers
+    const done = allResultsFinalized(fights, results);
+    const names = done ? latestChampNames : [];
+    renderChampHeader(names);
+  }
+
   function bindGlobal(){
-    Object.defineProperty(window, '__ffp', { get(){ return { fights, results, champs, meta, userLocked, eventLocked }; } });
+    Object.defineProperty(window, '__ffp', { get(){ return { fights, results, champs, meta, userLocked, eventLocked, lbMode, alltime }; } });
   }
 
   function init(){
@@ -821,6 +934,7 @@
     bindAuthFormHandlers();
     prefillUser();
     bindFightsAndSubmit();
+    bindLeaderboardToggle(); // NEW
     bindGlobal();
   }
 
@@ -832,3 +946,4 @@
   });
 
 })();
+```
