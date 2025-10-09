@@ -1,6 +1,3 @@
-Here’s your **fully updated `script.js`** with the surgical All-Time support wired in (toggle-ready, bootstrap + fallback aware, live-refresh friendly). Drop this in as-is.
-
-```js
 /* Fantasy Fight Picks — frontend (lean bootstrap + robust retries)
    - Proxy /api/* to Render
    - Tries /api/bootstrap first; if it 5xx/aborts, gracefully falls back to separate calls
@@ -10,7 +7,7 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
    - 2025-10-07: Hardened champ logic + resilient champions fetch
    - 2025-10-07: Championship belt (SVG) replaces old ribbon banner entirely
    - 2025-10-07: Suppress noisy fallback banner + mobile zoom fix (via CSS)
-   - 2025-10-07: All-Time leaderboard (toggle + bootstrap + fallback + live refresh)
+   - 2025-10-07 (safe patch): All-Time leaderboard added behind a toggle; no change to initial load path
 */
 
 (() => {
@@ -26,10 +23,10 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
   const yourPicks    = q('#yourPicks');
   const lbBody       = q('#lbBody');
 
-  // Optional toggle button for Event ⟷ All-Time
-  const lbToggleBtn  = q('#lbToggleBtn');     // optional — safe if missing
-  let lbMode = 'event';                       // 'event' | 'alltime'
-  let alltime = [];                           // cached ALL-TIME rows
+  // Optional toggle button for Event ⟷ All-Time (safe if missing)
+  const lbToggleBtn  = q('#lbToggleBtn');
+  let lbMode = 'event';          // 'event' | 'alltime'
+  let alltime = [];              // cached ALL-TIME rows (fetched on demand)
 
   // Header champ hooks
   const crownBadge   = q('#crownBadge');   // kept but unused
@@ -61,7 +58,7 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
     results:     `/api/results`,
     leaderboard: `/api/leaderboard`,
     champion:    `/api/champion`,
-    alltime:     `/api/alltime`, // NEW
+    alltime:     `/api/alltime`, // NEW (used only when toggled)
     userlock:    (u) => `/api/userlock?username=${encodeURIComponent(u || '')}`,
     userpicks:   (u) => `/api/userpicks?username=${encodeURIComponent(u || '')}`,
     submit:      `/api/submitpicks`,
@@ -399,9 +396,6 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
 
   // ---------- Leaderboard (Event) ----------
   function renderLeaderboard(rows){
-    // Cache latest event leaderboard for the dispatcher
-    window.__lbRows = Array.isArray(rows) ? rows : [];
-
     if(!lbBody) return;
     if(!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="3" class="tiny">No scores yet.</td></tr>`;
@@ -424,7 +418,7 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
     }
   }
 
-  // ---------- All-Time renderer + dispatcher ----------
+  // ---------- All-Time (render only when toggled) ----------
   function renderAllTimeBoard(rows){
     if (!lbBody) return;
     if (!Array.isArray(rows) || !rows.length){
@@ -457,14 +451,6 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
     }).join('');
 
     lbBody.innerHTML = header + rowsHtml;
-  }
-
-  function renderLeaderboardMode(){
-    if (lbMode === 'alltime') {
-      renderAllTimeBoard(alltime);
-    } else {
-      renderLeaderboard(Array.isArray(window.__lbRows) ? window.__lbRows : []);
-    }
   }
 
   // ---------- Champ UI (header + leaderboard bold) ----------
@@ -703,26 +689,41 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
     });
   }
 
-  // ---------- Leaderboard toggle wiring ----------
+  // ---------- Toggle wiring (fetch All-Time only when asked) ----------
   function bindLeaderboardToggle(){
     if (!lbToggleBtn) return;
+    try {
+      // Initial label (optional)
+      lbToggleBtn.textContent = (lbMode === 'alltime') ? 'Show Event Leaderboard' : (lbToggleBtn.textContent || 'Show All-Time');
+    } catch(_) {}
+
     lbToggleBtn.addEventListener('click', async ()=>{
       lbMode = (lbMode === 'event') ? 'alltime' : 'event';
 
-      if (lbMode === 'alltime' && (!Array.isArray(alltime) || alltime.length === 0)) {
+      if (lbMode === 'alltime') {
+        // Lazy fetch (no impact on normal boot)
+        if (!Array.isArray(alltime) || alltime.length === 0) {
+          try {
+            const rows = await getJSON(API.alltime);
+            alltime = Array.isArray(rows) ? rows : [];
+          } catch(e){
+            showDebug(`all-time: ${String(e.message||e)}`);
+          }
+        }
+        renderAllTimeBoard(alltime);
+      } else {
+        // Back to normal event leaderboard (existing cache/state)
         try {
-          const rows = await getJSON(API.alltime);
-          alltime = Array.isArray(rows) ? rows : [];
+          const rows = await getJSON(API.leaderboard);
+          renderLeaderboard(Array.isArray(rows) ? rows : []);
         } catch(e){
-          showDebug(`all-time: ${String(e.message||e)}`);
+          showDebug(`leaderboard: ${String(e.message||e)}`);
         }
       }
 
       try {
         lbToggleBtn.textContent = (lbMode === 'alltime') ? 'Show Event Leaderboard' : 'Show All-Time';
       } catch(_) {}
-
-      renderLeaderboardMode();
     });
   }
 
@@ -739,13 +740,8 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
 
       results = Array.isArray(payload.results) ? payload.results : [];
 
-      // Cache both boards
-      const lbRows = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
-      alltime = Array.isArray(payload.alltime) ? payload.alltime : [];
-
-      // Render via dispatcher so current mode decides what's shown
-      renderLeaderboard(lbRows);
-      renderLeaderboardMode();
+      // Render event leaderboard as before (no dispatcher here)
+      renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
 
       // Champs from bootstrap
       const bootChamps = Array.isArray(payload.champion) ? payload.champion : [];
@@ -781,7 +777,7 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
       }
       renderYourPicks();
 
-      // Champ UI toggle (post-finalization header + bolding)
+      // Header champs after finalization only
       await syncChampUI();
 
       hideDebug(); touchUpdated();
@@ -790,15 +786,14 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
       console.warn('Bootstrap failed, falling back to individual endpoints:', e?.message || e);
       const u = currentUsername();
       try{
-        const [m, fs, rs, lb, ch, lock, ups, at] = await Promise.allSettled([
+        const [m, fs, rs, lb, ch, lock, ups] = await Promise.allSettled([
           getJSON(API.meta),
           getJSON(API.fights),
           getJSON(API.results),
           getJSON(API.leaderboard),
           getJSON(API.champion),
           u ? getJSON(API.userlock(u)) : Promise.resolve({locked:false,reason:'open'}),
-          u ? getJSON(API.userpicks(u)) : Promise.resolve([]),
-          getJSON(API.alltime)
+          u ? getJSON(API.userpicks(u)) : Promise.resolve([])
         ]);
 
         meta = m.status==='fulfilled' ? m.value : {};
@@ -807,12 +802,9 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
         computeMapsAndRenderFights(fs.status==='fulfilled' ? fs.value : []);
 
         results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
+        renderYourPicks();
 
-        const lbRows = lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : [];
-        alltime = at.status==='fulfilled' && Array.isArray(at.value) ? at.value : [];
-
-        renderLeaderboard(lbRows);
-        renderLeaderboardMode();
+        renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
 
         const chArr = ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : [];
         renderChampions(chArr);
@@ -835,8 +827,8 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
             };
           }
           picksState = next;
+          renderYourPicks();
         }
-        renderYourPicks();
 
         await syncChampUI();
 
@@ -857,19 +849,7 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
       ]);
       results = Array.isArray(resNew) ? resNew : [];
       renderYourPicks();
-
-      // Update event board cache & render according to mode
       renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
-      renderLeaderboardMode();
-
-      // After event completes, opportunistically refresh all-time once
-      if (allResultsFinalized(fights, results)) {
-        try {
-          const atRows = await getJSON(API.alltime);
-          alltime = Array.isArray(atRows) ? atRows : alltime;
-          if (lbMode === 'alltime') renderLeaderboardMode();
-        } catch(_) {}
-      }
 
       // Backstop: pre-lockout and champs empty? fetch once.
       if (shouldShowChampBelt() && (!Array.isArray(champs) || champs.length === 0) && !_fetchedChampsOnce) {
@@ -926,7 +906,7 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
   }
 
   function bindGlobal(){
-    Object.defineProperty(window, '__ffp', { get(){ return { fights, results, champs, meta, userLocked, eventLocked, lbMode, alltime }; } });
+    Object.defineProperty(window, '__ffp', { get(){ return { fights, results, champs, meta, userLocked, eventLocked, lbMode }; } });
   }
 
   function init(){
@@ -934,7 +914,7 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
     bindAuthFormHandlers();
     prefillUser();
     bindFightsAndSubmit();
-    bindLeaderboardToggle(); // NEW
+    bindLeaderboardToggle(); // NEW safe toggle
     bindGlobal();
   }
 
@@ -946,4 +926,3 @@ Here’s your **fully updated `script.js`** with the surgical All-Time support w
   });
 
 })();
-```
