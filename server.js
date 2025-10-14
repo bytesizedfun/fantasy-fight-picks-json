@@ -240,6 +240,10 @@ app.get("/api/fights", cachedGetHandler(async () => gasGET("getfights")));
 app.get("/api/results", cachedGetHandler(async () => gasGET("getresults")));
 app.get("/api/leaderboard", cachedGetHandler(async () => gasGET("getleaderboard")));
 app.get("/api/champion", cachedGetHandler(async () => gasGET("getchampion")));
+
+// ✅ ADDED: All-Time mapping
+app.get("/api/alltime", cachedGetHandler(async () => gasGET("getalltime")));
+
 app.get(
   "/api/userlock",
   cachedGetHandler(async (req) => gasGET("getuserlock", { username: req.query.username || "" }))
@@ -281,6 +285,11 @@ app.get(
         return gasGET("getuserlock", { username });
       case "getuserpicks":
         return gasGET("getuserpicks", { username });
+
+      // ✅ ADDED: All-Time in action-switch too (useful for parity)
+      case "getalltime":
+        return gasGET("getalltime");
+
       default:
         return { ok: false, error: "Unknown action" };
     }
@@ -316,7 +325,8 @@ app.post("/api/setevent", async (req, res) => {
       "/api/champion",
       "/api/bootstrap",
       "/api/userpicks",
-      "/api/userlock"
+      "/api/userlock",
+      "/api/alltime" // optional: clear alltime cache when event changes
     );
     return res.json(out);
   } catch (e) {
