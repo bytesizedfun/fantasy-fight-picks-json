@@ -9,6 +9,7 @@
    - 2025-10-07: Suppress noisy fallback banner + mobile zoom fix (via CSS)
    - 2025-10-07 (safe patch): All-Time leaderboard added behind a toggle; no change to initial load path
    - 2025-10-13: Lockout hard-kill of pick selectors; All-Time toggle made single-click & debounced
+   - 2025-10-13: All-Time simplified to: User | Events Played | Events Won | Win %
 */
 
 (() => {
@@ -59,7 +60,7 @@
     results:     `/api/results`,
     leaderboard: `/api/leaderboard`,
     champion:    `/api/champion`,
-    alltime:     `/api/alltime`, // NEW (used when toggled)
+    alltime:     `/api/alltime`,
     userlock:    (u) => `/api/userlock?username=${encodeURIComponent(u || '')}`,
     userpicks:   (u) => `/api/userpicks?username=${encodeURIComponent(u || '')}`,
     submit:      `/api/submitpicks`,
@@ -131,7 +132,7 @@
         return data;
       } catch(e) {
         const m = String(e && e.message || e || '');
-        const transient = /NetworkError|Failed to fetch|aborted|timeout|timed out/i.test(m);
+               const transient = /NetworkError|Failed to fetch|aborted|timeout|timed out/i.test(m);
         if (transient && i < max-1) {
           await new Promise(s=>setTimeout(s, 300*(i+1)));
           continue;
@@ -242,7 +243,6 @@
 
   // ---------- Lock + friendly lockout display ----------
   function hardKillPickForm(){
-    // Physically remove inputs so they can't "re-hydrate" via later renders.
     if (makePicksPanel) makePicksPanel.style.display = 'none';
     if (fightsList) fightsList.innerHTML = '';
   }
@@ -252,11 +252,9 @@
     if (fightsList) fightsList.querySelectorAll('select').forEach(sel => sel.disabled = disable);
     if (submitBtn) submitBtn.disabled = disable;
 
-    // After lockout begins, we ONLY show Your Picks summary. Never show selector UI again.
     if (eventLocked) {
       hardKillPickForm();
     } else {
-      // Pre-lockout behavior: hide Make Picks after user submits, otherwise show it.
       if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
       if (userLocked && fightsList) fightsList.innerHTML = '';
     }
@@ -268,7 +266,6 @@
       else submitHint.textContent = 'Picks lock at event start. Submitting locks your picks.';
     }
 
-    // LIVE badge on during locked + not finalized
     if (liveBadge) {
       liveBadge.hidden = !(eventLocked && !allResultsFinalized(fights, results));
     }
@@ -312,7 +309,7 @@
     const selRoundId  = `r_${hashKey(key)}`;
     const p = picksState[key] || {};
     const winnerVal = p.winner || '';
-    const methodVal = p.method || '';
+       const methodVal = p.method || '';
     const roundVal  = p.round  || '';
     const roundsN = Number(f.rounds||3);
     const roundDisabled = methodVal === 'Decision';
@@ -352,7 +349,6 @@
     `;
   }
   function renderFights(){
-    // Never render pick selectors after lockout; also hide if user already submitted.
     if (userLocked || eventLocked) {
       if (fightsList) fightsList.innerHTML = '';
       return;
@@ -431,20 +427,19 @@
     }
   }
 
-  // ---------- All-Time (render only when toggled) ----------
+  // ---------- All-Time (simplified: User | Events Played | Events Won | Win %) ----------
   function renderAllTimeBoard(rows){
     if (!lbBody) return;
     if (!Array.isArray(rows) || !rows.length){
-      lbBody.innerHTML = `<tr><td colspan="5" class="tiny">No all-time data yet.</td></tr>`;
+      lbBody.innerHTML = `<tr><td colspan="4" class="tiny">No all-time data yet.</td></tr>`;
       return;
     }
 
     const header = `
       <tr class="lb-head">
-        <th class="center rank">#</th>
         <th>User</th>
-        <th class="center">Events Won</th>
         <th class="center">Events Played</th>
+        <th class="center">Events Won</th>
         <th class="center">Win %</th>
       </tr>`;
 
@@ -452,13 +447,14 @@
     const rowsHtml = rows.map(r=>{
       const isMe = me && (String(r.username||'').toLowerCase() === me);
       const uname = escapeHtml(r.username || '');
+      const played = Number(r.events_played||0);
+      const won = Number(r.crowns||0);
       const pct = (Number(r.win_rate||0)).toFixed(1);
       return `
         <tr class="${isMe?'lb-me':''}">
-          <td class="center rank">${r.rank || ''}</td>
           <td><span class="lb-name">${uname}</span></td>
-          <td class="center">${Number(r.crowns||0)}</td>
-          <td class="center">${Number(r.events_played||0)}</td>
+          <td class="center">${played}</td>
+          <td class="center">${won}</td>
           <td class="center">${pct}%</td>
         </tr>`;
     }).join('');
@@ -519,7 +515,7 @@
     const champsSet = new Set(champUsernames.map(s => (s || '').trim().toLowerCase()));
     if (!lbBody) return;
     for (const tr of lbBody.querySelectorAll('tr')) {
-      const userCell = tr.querySelectorAll('td')[1];
+      const userCell = tr.querySelectorAll('td')[1] || tr.querySelectorAll('td')[0];
       if (!userCell) continue;
       const label = userCell.querySelector('.lb-name');
       if (!label) continue;
@@ -706,7 +702,7 @@
   let _lbLoading = false;
   function lbSpinner(){
     if (!lbBody) return;
-    const cols = (lbMode === 'alltime') ? 5 : 3;
+    const cols = (lbMode === 'alltime') ? 4 : 3; // simplified all-time has 4 columns now
     lbBody.innerHTML = `<tr><td colspan="${cols}" class="tiny">Loading…</td></tr>`;
   }
   function bindLeaderboardToggle(){
@@ -747,7 +743,6 @@
       }
     };
 
-    // Attach both to be resilient across devices/browsers; they both hit the same debounced handler.
     lbToggleBtn.addEventListener('pointerup', handler);
     lbToggleBtn.addEventListener('click', handler);
   }
@@ -756,7 +751,6 @@
   async function loadBootstrap(){
     const u = currentUsername();
     try{
-      // Quiet during normal load
       const payload = await getJSON(API.bootstrap(u));
 
       meta = payload.meta || {}; renderMeta();
@@ -765,14 +759,12 @@
 
       results = Array.isArray(payload.results) ? payload.results : [];
 
-      // Render event leaderboard as before (no dispatcher here)
+      // Event leaderboard (unchanged)
       renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
 
-      // Champs from bootstrap
       const bootChamps = Array.isArray(payload.champion) ? payload.champion : [];
       renderChampions(bootChamps);
 
-      // If bootstrap didn't include champs, pull them once now
       if ((!Array.isArray(bootChamps) || bootChamps.length === 0) && !_fetchedChampsOnce) {
         try {
           const ch = await getJSON(API.champion);
@@ -802,12 +794,10 @@
       }
       renderYourPicks();
 
-      // Header champs after finalization only
       await syncChampUI();
 
       hideDebug(); touchUpdated();
     }catch(e){
-      // Fallback path (quiet banner; log instead)
       console.warn('Bootstrap failed, falling back to individual endpoints:', e?.message || e);
       const u = currentUsername();
       try{
@@ -858,7 +848,6 @@
         await syncChampUI();
 
       } finally {
-        // Always hide banner quickly after fallback
         setTimeout(hideDebug, 600);
         touchUpdated();
       }
@@ -876,7 +865,6 @@
       renderYourPicks();
       renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
 
-      // Backstop: pre-lockout and champs empty? fetch once.
       if (shouldShowChampBelt() && (!Array.isArray(champs) || champs.length === 0) && !_fetchedChampsOnce) {
         try {
           const ch = await getJSON(API.champion);
@@ -890,7 +878,6 @@
       applyLockState();
     } catch (e) {
       console.warn('refreshLive() transient error:', e?.message || e);
-      // keep last-known-good state; next tick will try again
     }
   }
 
@@ -924,7 +911,6 @@
   }
 
   async function syncChampUI(){
-    // Header champs: only after results finalized to avoid spoilers
     const done = allResultsFinalized(fights, results);
     const names = done ? latestChampNames : [];
     renderChampHeader(names);
@@ -935,14 +921,14 @@
   }
 
   function init(){
-    if (window.__ffpInit) return; // double-init guard to prevent triple-click style bugs
+    if (window.__ffpInit) return; // double-init guard
     window.__ffpInit = true;
 
     updateAuthUI();
     bindAuthFormHandlers();
     prefillUser();
     bindFightsAndSubmit();
-    bindLeaderboardToggle(); // reliable toggle
+    bindLeaderboardToggle();
     bindGlobal();
   }
 
