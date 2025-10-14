@@ -8,6 +8,7 @@
    - 2025-10-07: Championship belt (SVG) replaces old ribbon banner entirely
    - 2025-10-07: Suppress noisy fallback banner + mobile zoom fix (via CSS)
    - 2025-10-07 (safe patch): All-Time leaderboard added behind a toggle; no change to initial load path
+   - 2025-10-13: Lockout hard-kill of pick selectors; All-Time toggle made single-click & debounced
 */
 
 (() => {
@@ -26,7 +27,7 @@
   // Optional toggle button for Event ⟷ All-Time (safe if missing)
   const lbToggleBtn  = q('#lbToggleBtn');
   let lbMode = 'event';          // 'event' | 'alltime'
-  let alltime = [];              // cached ALL-TIME rows (fetched on demand)
+  let alltime = [];              // cached ALL-TIME rows (we still re-fetch on each toggle for freshness)
 
   // Header champ hooks
   const crownBadge   = q('#crownBadge');   // kept but unused
@@ -58,7 +59,7 @@
     results:     `/api/results`,
     leaderboard: `/api/leaderboard`,
     champion:    `/api/champion`,
-    alltime:     `/api/alltime`, // NEW (used only when toggled)
+    alltime:     `/api/alltime`, // NEW (used when toggled)
     userlock:    (u) => `/api/userlock?username=${encodeURIComponent(u || '')}`,
     userpicks:   (u) => `/api/userpicks?username=${encodeURIComponent(u || '')}`,
     submit:      `/api/submitpicks`,
@@ -240,14 +241,25 @@
   }
 
   // ---------- Lock + friendly lockout display ----------
+  function hardKillPickForm(){
+    // Physically remove inputs so they can't "re-hydrate" via later renders.
+    if (makePicksPanel) makePicksPanel.style.display = 'none';
+    if (fightsList) fightsList.innerHTML = '';
+  }
+
   function applyLockState(){
     const disable = eventLocked || userLocked;
     if (fightsList) fightsList.querySelectorAll('select').forEach(sel => sel.disabled = disable);
     if (submitBtn) submitBtn.disabled = disable;
 
-    // Hide the whole Make Picks panel once submitted and clear any controls
-    if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
-    if (userLocked && fightsList) fightsList.innerHTML = '';
+    // After lockout begins, we ONLY show Your Picks summary. Never show selector UI again.
+    if (eventLocked) {
+      hardKillPickForm();
+    } else {
+      // Pre-lockout behavior: hide Make Picks after user submits, otherwise show it.
+      if (makePicksPanel) makePicksPanel.style.display = userLocked ? 'none' : '';
+      if (userLocked && fightsList) fightsList.innerHTML = '';
+    }
 
     if (yourPicksPanel) yourPicksPanel.style.display = '';
     if (submitHint) {
@@ -340,7 +352,8 @@
     `;
   }
   function renderFights(){
-    if (userLocked) {
+    // Never render pick selectors after lockout; also hide if user already submitted.
+    if (userLocked || eventLocked) {
       if (fightsList) fightsList.innerHTML = '';
       return;
     }
@@ -689,42 +702,54 @@
     });
   }
 
-  // ---------- Toggle wiring (fetch All-Time only when asked) ----------
+  // ---------- Toggle wiring (reliable, single-click, debounced) ----------
+  let _lbLoading = false;
+  function lbSpinner(){
+    if (!lbBody) return;
+    const cols = (lbMode === 'alltime') ? 5 : 3;
+    lbBody.innerHTML = `<tr><td colspan="${cols}" class="tiny">Loading…</td></tr>`;
+  }
   function bindLeaderboardToggle(){
     if (!lbToggleBtn) return;
-    try {
-      // Initial label (optional)
-      lbToggleBtn.textContent = (lbMode === 'alltime') ? 'Show Event Leaderboard' : (lbToggleBtn.textContent || 'Show All-Time');
-    } catch(_) {}
+    try { lbToggleBtn.style.pointerEvents = 'auto'; } catch(_){}
+    try { lbToggleBtn.textContent = (lbMode === 'alltime') ? 'Show Event Leaderboard' : (lbToggleBtn.textContent || 'Show All-Time'); } catch(_){}
 
-    lbToggleBtn.addEventListener('click', async ()=>{
-      lbMode = (lbMode === 'event') ? 'alltime' : 'event';
+    if (lbToggleBtn.dataset.bound === '1') return; // prevent duplicate bind if script is re-inserted
+    lbToggleBtn.dataset.bound = '1';
 
-      if (lbMode === 'alltime') {
-        // Lazy fetch (no impact on normal boot)
-        if (!Array.isArray(alltime) || alltime.length === 0) {
-          try {
-            const rows = await getJSON(API.alltime);
-            alltime = Array.isArray(rows) ? rows : [];
-          } catch(e){
-            showDebug(`all-time: ${String(e.message||e)}`);
-          }
-        }
-        renderAllTimeBoard(alltime);
-      } else {
-        // Back to normal event leaderboard (existing cache/state)
-        try {
+    const handler = async (ev)=>{
+      ev.preventDefault(); ev.stopPropagation();
+      if (_lbLoading) return;
+      _lbLoading = true;
+      try {
+        lbMode = (lbMode === 'event') ? 'alltime' : 'event';
+        lbToggleBtn.setAttribute('aria-busy','true');
+        lbToggleBtn.disabled = true;
+        lbSpinner();
+
+        if (lbMode === 'alltime') {
+          // Always fetch fresh so the board reflects latest auto-updates
+          const rows = await getJSON(API.alltime);
+          alltime = Array.isArray(rows) ? rows : [];
+          renderAllTimeBoard(alltime);
+        } else {
           const rows = await getJSON(API.leaderboard);
           renderLeaderboard(Array.isArray(rows) ? rows : []);
-        } catch(e){
-          showDebug(`leaderboard: ${String(e.message||e)}`);
         }
-      }
 
-      try {
         lbToggleBtn.textContent = (lbMode === 'alltime') ? 'Show Event Leaderboard' : 'Show All-Time';
-      } catch(_) {}
-    });
+      } catch(e){
+        showDebug(`all-time toggle: ${String(e.message||e)}`);
+      } finally {
+        _lbLoading = false;
+        lbToggleBtn.removeAttribute('aria-busy');
+        lbToggleBtn.disabled = false;
+      }
+    };
+
+    // Attach both to be resilient across devices/browsers; they both hit the same debounced handler.
+    lbToggleBtn.addEventListener('pointerup', handler);
+    lbToggleBtn.addEventListener('click', handler);
   }
 
   // ---------- Bootstrap ----------
@@ -910,11 +935,14 @@
   }
 
   function init(){
+    if (window.__ffpInit) return; // double-init guard to prevent triple-click style bugs
+    window.__ffpInit = true;
+
     updateAuthUI();
     bindAuthFormHandlers();
     prefillUser();
     bindFightsAndSubmit();
-    bindLeaderboardToggle(); // NEW safe toggle
+    bindLeaderboardToggle(); // reliable toggle
     bindGlobal();
   }
 
