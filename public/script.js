@@ -10,6 +10,7 @@
    - 2025-10-07 (safe patch): All-Time leaderboard added behind a toggle; no change to initial load path
    - 2025-10-13: Lockout hard-kill of pick selectors; All-Time toggle made single-click & debounced
    - 2025-10-13: All-Time simplified to: User | Events Played | Events Won | Win %
+   - 2025-10-13: Fix mixed headers & scrolling jitter on leaderboard toggle (stable swap + thead toggle)
 */
 
 (() => {
@@ -24,6 +25,10 @@
   const fightsList   = q('#fightsList');
   const yourPicks    = q('#yourPicks');
   const lbBody       = q('#lbBody');
+
+  // Table elements used for stable swaps and header control
+  const lbTable  = lbBody ? lbBody.closest('table') : null;
+  const lbHeadEl = lbTable ? lbTable.querySelector('thead') : null;
 
   // Optional toggle button for Event ⟷ All-Time (safe if missing)
   const lbToggleBtn  = q('#lbToggleBtn');
@@ -95,6 +100,31 @@
     } catch {}
   }
 
+  // Toggle the static thead depending on view to avoid mixed headers
+  function setLbHeaderMode(mode){
+    if (!lbHeadEl) return;
+    // Event view uses the static THEAD (Rank | User | Points)
+    // All-Time view hides THEAD and we render a 4-col header row inside TBODY.
+    lbHeadEl.style.display = (mode === 'alltime') ? 'none' : '';
+  }
+
+  // Stable render: preserve scroll and lock table height briefly to prevent jitter
+  function renderStable(mutatorFn){
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    const oldH = lbTable ? lbTable.getBoundingClientRect().height : 0;
+    if (lbTable && oldH > 0) {
+      lbTable.style.minHeight = `${Math.ceil(oldH)}px`;
+    }
+    try {
+      mutatorFn();
+    } finally {
+      requestAnimationFrame(() => {
+        if (lbTable) lbTable.style.minHeight = '';
+        window.scrollTo(0, y);
+      });
+    }
+  }
+
   // Parse lockout robustly. If we can't get a finite ms, treat as +Infinity so preEvent is true (keep belt up pre-lockout).
   function lockoutMs(metaObj){
     const iso = String(metaObj?.lockout_iso || '').trim();
@@ -132,7 +162,7 @@
         return data;
       } catch(e) {
         const m = String(e && e.message || e || '');
-               const transient = /NetworkError|Failed to fetch|aborted|timeout|timed out/i.test(m);
+        const transient = /NetworkError|Failed to fetch|aborted|timeout|timed out/i.test(m);
         if (transient && i < max-1) {
           await new Promise(s=>setTimeout(s, 300*(i+1)));
           continue;
@@ -309,7 +339,7 @@
     const selRoundId  = `r_${hashKey(key)}`;
     const p = picksState[key] || {};
     const winnerVal = p.winner || '';
-       const methodVal = p.method || '';
+    const methodVal = p.method || '';
     const roundVal  = p.round  || '';
     const roundsN = Number(f.rounds||3);
     const roundDisabled = methodVal === 'Decision';
@@ -405,6 +435,7 @@
 
   // ---------- Leaderboard (Event) ----------
   function renderLeaderboard(rows){
+    setLbHeaderMode('event');
     if(!lbBody) return;
     if(!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="3" class="tiny">No scores yet.</td></tr>`;
@@ -429,6 +460,7 @@
 
   // ---------- All-Time (simplified: User | Events Played | Events Won | Win %) ----------
   function renderAllTimeBoard(rows){
+    setLbHeaderMode('alltime');
     if (!lbBody) return;
     if (!Array.isArray(rows) || !rows.length){
       lbBody.innerHTML = `<tr><td colspan="4" class="tiny">No all-time data yet.</td></tr>`;
@@ -515,7 +547,9 @@
     const champsSet = new Set(champUsernames.map(s => (s || '').trim().toLowerCase()));
     if (!lbBody) return;
     for (const tr of lbBody.querySelectorAll('tr')) {
-      const userCell = tr.querySelectorAll('td')[1] || tr.querySelectorAll('td')[0];
+      // Event rows: user is td[1]; All-time rows: user is td[0]
+      const tds = tr.querySelectorAll('td');
+      const userCell = tds[1] || tds[0];
       if (!userCell) continue;
       const label = userCell.querySelector('.lb-name');
       if (!label) continue;
@@ -703,6 +737,7 @@
   function lbSpinner(){
     if (!lbBody) return;
     const cols = (lbMode === 'alltime') ? 4 : 3; // simplified all-time has 4 columns now
+    setLbHeaderMode(lbMode); // ensure thead visibility matches mode even during loading state
     lbBody.innerHTML = `<tr><td colspan="${cols}" class="tiny">Loading…</td></tr>`;
   }
   function bindLeaderboardToggle(){
@@ -727,10 +762,10 @@
           // Always fetch fresh so the board reflects latest auto-updates
           const rows = await getJSON(API.alltime);
           alltime = Array.isArray(rows) ? rows : [];
-          renderAllTimeBoard(alltime);
+          renderStable(() => renderAllTimeBoard(alltime));
         } else {
           const rows = await getJSON(API.leaderboard);
-          renderLeaderboard(Array.isArray(rows) ? rows : []);
+          renderStable(() => renderLeaderboard(Array.isArray(rows) ? rows : []));
         }
 
         lbToggleBtn.textContent = (lbMode === 'alltime') ? 'Show Event Leaderboard' : 'Show All-Time';
@@ -760,7 +795,9 @@
       results = Array.isArray(payload.results) ? payload.results : [];
 
       // Event leaderboard (unchanged)
-      renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
+      renderStable(() => {
+        renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
+      });
 
       const bootChamps = Array.isArray(payload.champion) ? payload.champion : [];
       renderChampions(bootChamps);
@@ -819,7 +856,9 @@
         results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
         renderYourPicks();
 
-        renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
+        renderStable(() => {
+          renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
+        });
 
         const chArr = ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : [];
         renderChampions(chArr);
@@ -863,7 +902,8 @@
       ]);
       results = Array.isArray(resNew) ? resNew : [];
       renderYourPicks();
-      renderLeaderboard(Array.isArray(lbNew) ? lbNew : []);
+      // Keep header mode in "event" during live refreshes (live view concerns event board)
+      renderStable(() => renderLeaderboard(Array.isArray(lbNew) ? lbNew : []));
 
       if (shouldShowChampBelt() && (!Array.isArray(champs) || champs.length === 0) && !_fetchedChampsOnce) {
         try {
