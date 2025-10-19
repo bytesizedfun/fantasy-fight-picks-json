@@ -8,11 +8,10 @@
    - 2025-10-07: Championship belt (SVG) replaces old ribbon banner entirely
    - 2025-10-07: Suppress noisy fallback banner + mobile zoom fix (via CSS)
    - 2025-10-07 (safe patch): All-Time leaderboard added behind a toggle; no change to initial load path
-   - 2025-10-13: Lockout hard-kill of pick selectors; All-Time toggle made single-click & debounced
    - 2025-10-13: All-Time simplified to: User | Events Played | Events Won | Win %
    - 2025-10-13: Fix mixed headers & scrolling jitter on leaderboard toggle (stable swap + thead toggle)
    - 2025-10-19: Respect active leaderboard view everywhere; prevent snap-back; add mode class for alignment
-   - 2025-10-19: Prevent scroll jump on leaderboard toggle by stabilizing spinner render
+   - 2025-10-19: Prevent scroll jump (keep THEAD in-flow via visibility; stabilize spinner; final scroll restore)
 */
 
 (() => {
@@ -106,8 +105,17 @@
   // Toggle the static thead depending on view to avoid mixed headers
   function setLbHeaderMode(mode){
     if (lbHeadEl) {
-      // Event view uses THEAD; All-Time hides THEAD (header row is rendered inside TBODY)
-      lbHeadEl.style.display = (mode === 'alltime') ? 'none' : '';
+      // Keep header IN-FLOW to preserve height; hide visually during all-time
+      if (mode === 'alltime') {
+        lbHeadEl.style.visibility = 'hidden';
+        lbHeadEl.style.pointerEvents = 'none';
+        // DO NOT use display:none — it causes scroll anchoring jumps
+        lbHeadEl.style.display = ''; // ensure any previous display:none is cleared
+      } else {
+        lbHeadEl.style.visibility = '';
+        lbHeadEl.style.pointerEvents = '';
+        lbHeadEl.style.display = '';
+      }
     }
     if (lbPanel) {
       lbPanel.classList.toggle('mode-event',   mode === 'event');
@@ -743,10 +751,10 @@
   let _lbLoading = false;
   function lbSpinner(){
     if (!lbBody) return;
-    const cols = (lbMode === 'alltime') ? 4 : 3; // simplified all-time has 4 columns now
-    // Critical fix: do the header-mode flip + "Loading…" row inside a stable render to prevent scroll jumps
+    const cols = (lbMode === 'alltime') ? 4 : 3;
+    // Keep spinner swap stable
     renderStable(() => {
-      setLbHeaderMode(lbMode); // ensure thead visibility + mode class matches even during loading state
+      setLbHeaderMode(lbMode);
       lbBody.innerHTML = `<tr><td colspan="${cols}" class="tiny">Loading…</td></tr>`;
     });
   }
@@ -755,13 +763,14 @@
     try { lbToggleBtn.style.pointerEvents = 'auto'; } catch(_){}
     try { lbToggleBtn.textContent = (lbMode === 'alltime') ? 'Show Event Leaderboard' : (lbToggleBtn.textContent || 'Show All-Time'); } catch(_){}
 
-    if (lbToggleBtn.dataset.bound === '1') return; // prevent duplicate bind if script is re-inserted
+    if (lbToggleBtn.dataset.bound === '1') return;
     lbToggleBtn.dataset.bound = '1';
 
     const handler = async (ev)=>{
       ev.preventDefault(); ev.stopPropagation();
       if (_lbLoading) return;
       _lbLoading = true;
+      const ySaved = window.scrollY || document.documentElement.scrollTop || 0; // final restore guard
       try {
         lbMode = (lbMode === 'event') ? 'alltime' : 'event';
         lbToggleBtn.setAttribute('aria-busy','true');
@@ -784,6 +793,8 @@
         _lbLoading = false;
         lbToggleBtn.removeAttribute('aria-busy');
         lbToggleBtn.disabled = false;
+        // Belt & suspenders: ensure we end up exactly where we started
+        requestAnimationFrame(() => window.scrollTo(0, ySaved));
       }
     };
 
@@ -814,7 +825,6 @@
           alltime = Array.isArray(rows) ? rows : [];
           renderStable(() => renderAllTimeBoard(alltime));
         } catch (e) {
-          // fall back to event if all-time fails (but keep mode header hidden)
           renderStable(() => {
             renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
           });
