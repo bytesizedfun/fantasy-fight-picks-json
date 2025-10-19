@@ -12,6 +12,7 @@
    - 2025-10-13: All-Time simplified to: User | Events Played | Events Won | Win %
    - 2025-10-13: Fix mixed headers & scrolling jitter on leaderboard toggle (stable swap + thead toggle)
    - 2025-10-19: Respect active leaderboard view everywhere; prevent snap-back; add mode class for alignment
+   - 2025-10-19: Prevent scroll jump on leaderboard toggle by stabilizing spinner render
 */
 
 (() => {
@@ -702,7 +703,7 @@
         if (!winner) { showDebug(`Select a Winner for: ${label}`); return; }
         if (!method) { showDebug(`Select a Method for: ${label}`); return; }
         if (method !== 'Decision' && !round) { showDebug(`Select a Round for: ${label}`); return; }
-        if (method === 'Decision' && ps.round) ps.round = '';
+        if (method === 'Decision') { ps.round = ''; }
       }
 
       const picksPayload = fights.map(f => {
@@ -743,8 +744,11 @@
   function lbSpinner(){
     if (!lbBody) return;
     const cols = (lbMode === 'alltime') ? 4 : 3; // simplified all-time has 4 columns now
-    setLbHeaderMode(lbMode); // ensure thead visibility + mode class matches even during loading state
-    lbBody.innerHTML = `<tr><td colspan="${cols}" class="tiny">Loading…</td></tr>`;
+    // Critical fix: do the header-mode flip + "Loading…" row inside a stable render to prevent scroll jumps
+    renderStable(() => {
+      setLbHeaderMode(lbMode); // ensure thead visibility + mode class matches even during loading state
+      lbBody.innerHTML = `<tr><td colspan="${cols}" class="tiny">Loading…</td></tr>`;
+    });
   }
   function bindLeaderboardToggle(){
     if (!lbToggleBtn) return;
