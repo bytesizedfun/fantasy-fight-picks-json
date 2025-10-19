@@ -11,6 +11,7 @@
    - 2025-10-13: Lockout hard-kill of pick selectors; All-Time toggle made single-click & debounced
    - 2025-10-13: All-Time simplified to: User | Events Played | Events Won | Win %
    - 2025-10-13: Fix mixed headers & scrolling jitter on leaderboard toggle (stable swap + thead toggle)
+   - 2025-10-19: Respect active leaderboard view everywhere; prevent snap-back; add mode class for alignment
 */
 
 (() => {
@@ -29,6 +30,7 @@
   // Table elements used for stable swaps and header control
   const lbTable  = lbBody ? lbBody.closest('table') : null;
   const lbHeadEl = lbTable ? lbTable.querySelector('thead') : null;
+  const lbPanel  = lbTable ? lbTable.closest('.leaderboard') : null;
 
   // Optional toggle button for Event ⟷ All-Time (safe if missing)
   const lbToggleBtn  = q('#lbToggleBtn');
@@ -102,10 +104,14 @@
 
   // Toggle the static thead depending on view to avoid mixed headers
   function setLbHeaderMode(mode){
-    if (!lbHeadEl) return;
-    // Event view uses the static THEAD (Rank | User | Points)
-    // All-Time view hides THEAD and we render a 4-col header row inside TBODY.
-    lbHeadEl.style.display = (mode === 'alltime') ? 'none' : '';
+    if (lbHeadEl) {
+      // Event view uses THEAD; All-Time hides THEAD (header row is rendered inside TBODY)
+      lbHeadEl.style.display = (mode === 'alltime') ? 'none' : '';
+    }
+    if (lbPanel) {
+      lbPanel.classList.toggle('mode-event',   mode === 'event');
+      lbPanel.classList.toggle('mode-alltime', mode === 'alltime');
+    }
   }
 
   // Stable render: preserve scroll and lock table height briefly to prevent jitter
@@ -737,7 +743,7 @@
   function lbSpinner(){
     if (!lbBody) return;
     const cols = (lbMode === 'alltime') ? 4 : 3; // simplified all-time has 4 columns now
-    setLbHeaderMode(lbMode); // ensure thead visibility matches mode even during loading state
+    setLbHeaderMode(lbMode); // ensure thead visibility + mode class matches even during loading state
     lbBody.innerHTML = `<tr><td colspan="${cols}" class="tiny">Loading…</td></tr>`;
   }
   function bindLeaderboardToggle(){
@@ -759,7 +765,6 @@
         lbSpinner();
 
         if (lbMode === 'alltime') {
-          // Always fetch fresh so the board reflects latest auto-updates
           const rows = await getJSON(API.alltime);
           alltime = Array.isArray(rows) ? rows : [];
           renderStable(() => renderAllTimeBoard(alltime));
@@ -794,10 +799,23 @@
 
       results = Array.isArray(payload.results) ? payload.results : [];
 
-      // Event leaderboard (unchanged)
-      renderStable(() => {
-        renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
-      });
+      // Respect active view during bootstrap render
+      if (lbMode === 'event') {
+        renderStable(() => {
+          renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
+        });
+      } else {
+        try {
+          const rows = await getJSON(API.alltime);
+          alltime = Array.isArray(rows) ? rows : [];
+          renderStable(() => renderAllTimeBoard(alltime));
+        } catch (e) {
+          // fall back to event if all-time fails (but keep mode header hidden)
+          renderStable(() => {
+            renderLeaderboard(Array.isArray(payload.leaderboard) ? payload.leaderboard : []);
+          });
+        }
+      }
 
       const bootChamps = Array.isArray(payload.champion) ? payload.champion : [];
       renderChampions(bootChamps);
@@ -856,9 +874,21 @@
         results = rs.status==='fulfilled' && Array.isArray(rs.value) ? rs.value : [];
         renderYourPicks();
 
-        renderStable(() => {
-          renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
-        });
+        if (lbMode === 'event') {
+          renderStable(() => {
+            renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
+          });
+        } else {
+          try{
+            const rows = await getJSON(API.alltime);
+            alltime = Array.isArray(rows) ? rows : [];
+            renderStable(() => renderAllTimeBoard(alltime));
+          }catch(err){
+            renderStable(() => {
+              renderLeaderboard(lb.status==='fulfilled' && Array.isArray(lb.value) ? lb.value : []);
+            });
+          }
+        }
 
         const chArr = ch.status==='fulfilled' && Array.isArray(ch.value) ? ch.value : [];
         renderChampions(chArr);
@@ -893,17 +923,29 @@
     }
   }
 
-  // Lightweight live refresh (results + leaderboard only) with adaptive cadence
+  // Lightweight live refresh (results + leaderboard/alltime) with adaptive cadence
   async function refreshLive(){
+    const modeAtStart = lbMode; // capture to avoid late response clobbering
     try{
-      const [resNew, lbNew] = await Promise.all([
-        getJSON(API.results),
-        getJSON(API.leaderboard)
-      ]);
-      results = Array.isArray(resNew) ? resNew : [];
-      renderYourPicks();
-      // Keep header mode in "event" during live refreshes (live view concerns event board)
-      renderStable(() => renderLeaderboard(Array.isArray(lbNew) ? lbNew : []));
+      if (modeAtStart === 'event') {
+        const [resNew, lbNew] = await Promise.all([
+          getJSON(API.results),
+          getJSON(API.leaderboard)
+        ]);
+        if (lbMode !== modeAtStart) return; // user toggled mid-request — ignore
+        results = Array.isArray(resNew) ? resNew : [];
+        renderYourPicks();
+        renderStable(() => renderLeaderboard(Array.isArray(lbNew) ? lbNew : []));
+      } else {
+        const [resNew, atNew] = await Promise.all([
+          getJSON(API.results),
+          getJSON(API.alltime)
+        ]);
+        if (lbMode !== modeAtStart) return; // user toggled mid-request — ignore
+        results = Array.isArray(resNew) ? resNew : [];
+        renderYourPicks();
+        renderStable(() => renderAllTimeBoard(Array.isArray(atNew) ? atNew : []));
+      }
 
       if (shouldShowChampBelt() && (!Array.isArray(champs) || champs.length === 0) && !_fetchedChampsOnce) {
         try {
