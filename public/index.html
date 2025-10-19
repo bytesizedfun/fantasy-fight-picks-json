@@ -208,8 +208,8 @@
     #yourPicks .pick-line > *:last-child{flex:0 0 auto}
 
     /* leaderboard */
-    .leaderboard{ background:#151a20; border-color:var(--graphite); }
-    .leaderboard table{ width:100%; border-collapse:collapse; table-layout:fixed; } /* fixed for stable column widths */
+    .leaderboard{ background:#151a20; border-color:var(--graphite); overflow-anchor: none; }
+    .leaderboard table{ width:100%; border-collapse:collapse }
     .leaderboard thead th{
       position:sticky; top:0; z-index:1;
       background:#141920; color:var(--text);
@@ -224,26 +224,6 @@
     .pts{ font-weight:800; }
     .lb-me{ background:#172034 !important; }
     .lb-champ-name{ font-weight:800; }
-    .lb-name{ display:inline-block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-    /* MODED COLUMN WIDTHS (ensure User header/column lines up in both views) */
-    /* Event: 3 columns = Rank | User | Points */
-    .leaderboard.mode-event th:nth-child(1),
-    .leaderboard.mode-event td:nth-child(1){ width:64px; }
-    .leaderboard.mode-event th:nth-child(2),
-    .leaderboard.mode-event td:nth-child(2){ width:auto; }
-    .leaderboard.mode-event th:nth-child(3),
-    .leaderboard.mode-event td:nth-child(3){ width:90px; }
-
-    /* All-Time: 4 columns = User | Played | Won | Win % */
-    .leaderboard.mode-alltime th:nth-child(1),
-    .leaderboard.mode-alltime td:nth-child(1){ width:auto; }
-    .leaderboard.mode-alltime th:nth-child(2),
-    .leaderboard.mode-alltime td:nth-child(2){ width:140px; }
-    .leaderboard.mode-alltime th:nth-child(3),
-    .leaderboard.mode-alltime td:nth-child(3){ width:130px; }
-    .leaderboard.mode-alltime th:nth-child(4),
-    .leaderboard.mode-alltime td:nth-child(4){ width:90px; }
 
     .debug{
       display:none; margin:10px 0; font-size:12px;
